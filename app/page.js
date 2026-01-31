@@ -1644,83 +1644,64 @@ function DashboardPage() {
   );
 }
 // ==========================================
-// MEMBERS PAGE - With Photo Upload
+// MEMBERS PAGE - With Location Support
 // ==========================================
 function MembersPage() {
   const { t } = useLanguage();
   const [members, setMembers] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
-  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterLocation, setFilterLocation] = useState('all');
+
   const [form, setForm] = useState({
-    first_name: '', last_name: '', email: '', phone: '', whatsapp: '',
-    gender: '', date_of_birth: '', language_preference: 'FRENCH',
-    membership_status: 'ACTIVE', membership_date: '', baptism_status: false, photo_url: ''
+    first_name: '', last_name: '', email: '', phone: '', date_of_birth: '',
+    gender: 'MALE', address: '', city: '', status: 'ACTIVE', membership_date: '',
+    location_id: '', notes: ''
   });
 
-  useEffect(() => { fetchMembers(); }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  const fetchMembers = async () => {
+  const fetchData = async () => {
     setLoading(true);
-    const data = await supabaseQuery('members', { 
-      filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }],
-      order: 'last_name'
-    });
-    setMembers(data || []);
+    const [membersData, locationsData] = await Promise.all([
+      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc' }),
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+    ]);
+    setMembers(membersData || []);
+    setLocations(locationsData || []);
     setLoading(false);
   };
 
   const resetForm = () => {
+    const mainCampus = locations.find(l => l.is_main_campus);
     setForm({
-      first_name: '', last_name: '', email: '', phone: '', whatsapp: '',
-      gender: '', date_of_birth: '', language_preference: 'FRENCH',
-      membership_status: 'ACTIVE', membership_date: '', baptism_status: false, photo_url: ''
+      first_name: '', last_name: '', email: '', phone: '', date_of_birth: '',
+      gender: 'MALE', address: '', city: '', status: 'ACTIVE', membership_date: new Date().toISOString().split('T')[0],
+      location_id: mainCampus?.id || '', notes: ''
     });
     setEditingMember(null);
-    setPhotoFile(null);
-    setPhotoPreview(null);
   };
 
   const openModal = (member = null) => {
     if (member) {
       setEditingMember(member);
       setForm({
-        first_name: member.first_name || '',
-        last_name: member.last_name || '',
-        email: member.email || '',
-        phone: member.phone || '',
-        whatsapp: member.whatsapp || '',
-        gender: member.gender || '',
-        date_of_birth: member.date_of_birth || '',
-        language_preference: member.language_preference || 'FRENCH',
-        membership_status: member.membership_status || 'ACTIVE',
-        membership_date: member.membership_date || '',
-        baptism_status: member.baptism_status || false,
-        photo_url: member.photo_url || ''
+        first_name: member.first_name || '', last_name: member.last_name || '',
+        email: member.email || '', phone: member.phone || '', date_of_birth: member.date_of_birth || '',
+        gender: member.gender || 'MALE', address: member.address || '', city: member.city || '',
+        status: member.status || 'ACTIVE', membership_date: member.membership_date || '',
+        location_id: member.location_id || '', notes: member.notes || ''
       });
-      setPhotoPreview(member.photo_url || null);
     } else {
       resetForm();
     }
     setShowModal(true);
-  };
-
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   const handleSave = async () => {
@@ -1728,153 +1709,235 @@ function MembersPage() {
       alert('First name and last name are required');
       return;
     }
-
     setSaving(true);
     try {
-      let photoUrl = form.photo_url;
-      
-      // Upload photo if new file selected
-      if (photoFile) {
-        const uploadedUrl = await uploadPhoto(photoFile, 'avatars');
-        if (uploadedUrl) {
-          photoUrl = uploadedUrl;
-        }
-      }
-
-      const memberData = { ...form, photo_url: photoUrl };
-
+      const data = { ...form, location_id: form.location_id || null };
       if (editingMember) {
-        await supabaseUpdate('members', editingMember.id, memberData);
+        await supabaseUpdate('members', editingMember.id, data);
       } else {
-        const memberNumber = `FC-${String(members.length + 1).padStart(4, '0')}`;
-        await supabaseInsert('members', { ...memberData, member_number: memberNumber });
+        await supabaseInsert('members', data);
       }
       setShowModal(false);
       resetForm();
-      fetchMembers();
+      fetchData();
     } catch (error) {
-      alert('Error saving member: ' + error.message);
+      alert('Error: ' + error.message);
     }
     setSaving(false);
   };
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    try {
-      await supabaseDelete('members', deleteConfirm.id);
-      setDeleteConfirm(null);
-      fetchMembers();
-    } catch (error) {
-      alert('Error deleting member: ' + error.message);
-    }
+    await supabaseDelete('members', deleteConfirm.id);
+    setDeleteConfirm(null);
+    fetchData();
   };
 
-  const filteredMembers = members.filter(m =>
-    `${m.first_name} ${m.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
-    m.email?.toLowerCase().includes(search.toLowerCase()) ||
-    m.phone?.includes(search)
-  );
+  const getLocationName = (locationId) => {
+    const location = locations.find(l => l.id === locationId);
+    return location ? location.name : '—';
+  };
 
-  const columns = [
-    {
-      header: t('name'),
-      key: 'name',
-      render: (row) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {row.photo_url ? (
-            <img src={row.photo_url} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ width: '40px', height: '40px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600' }}>
-              {row.first_name?.[0]}{row.last_name?.[0]}
-            </div>
-          )}
-          <div>
-            <p style={{ margin: 0, fontWeight: '500' }}>{row.first_name} {row.last_name}</p>
-            <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{row.member_number}</p>
-          </div>
-        </div>
-      )
-    },
-    { header: t('email'), key: 'email', render: (row) => <span style={{ color: '#6b7280' }}>{row.email || '—'}</span> },
-    { header: t('phone'), key: 'phone', render: (row) => <span style={{ color: '#6b7280' }}>{row.phone || '—'}</span> },
-    { header: t('status'), key: 'status', render: (row) => <StatusBadge status={row.membership_status} /> },
-    { header: t('baptized'), key: 'baptized', render: (row) => row.baptism_status ? '✅' : '—' },
-  ];
+  const getLocationColor = (locationId) => {
+    const location = locations.find(l => l.id === locationId);
+    if (!location) return '#6b7280';
+    if (location.is_main_campus) return '#6366f1';
+    const colors = ['#f59e0b', '#10b981', '#ec4899', '#8b5cf6', '#3b82f6'];
+    const index = locations.filter(l => !l.is_main_campus).findIndex(l => l.id === locationId);
+    return colors[index % colors.length];
+  };
+
+  // Filter members
+  const filteredMembers = members.filter(m => {
+    if (filterStatus !== 'all' && m.status !== filterStatus) return false;
+    if (filterLocation !== 'all' && m.location_id !== filterLocation) return false;
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
+      if (!fullName.includes(search) && !m.email?.toLowerCase().includes(search) && !m.phone?.includes(search)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Stats
+  const totalActive = members.filter(m => m.status === 'ACTIVE').length;
+  const locationStats = locations.map(loc => ({
+    ...loc,
+    count: members.filter(m => m.location_id === loc.id).length
+  }));
+
+  const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
   return (
     <div>
       <PageHeader
         title={`👥 ${t('members')}`}
-        subtitle={`${members.length} ${t('total')}`}
+        subtitle={`Manage your ${members.length} church members across ${locations.length} locations`}
         actions={<Button onClick={() => openModal()}>➕ {t('addMember')}</Button>}
       />
 
+      {/* Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard label={t('total')} value={members.length} icon="👥" />
-        <StatCard label={t('active')} value={members.filter(m => m.membership_status === 'ACTIVE').length} icon="✅" color="#10b981" />
-        <StatCard label={t('baptized')} value={members.filter(m => m.baptism_status).length} icon="💧" color="#3b82f6" />
+        <StatCard label="Total Members" value={members.length} icon="👥" color="#6366f1" />
+        <StatCard label="Active" value={totalActive} icon="✅" color="#10b981" />
+        <StatCard label="Inactive" value={members.filter(m => m.status === 'INACTIVE').length} icon="⏸️" color="#f59e0b" />
+        <StatCard label="Locations" value={locations.length} icon="📍" color="#8b5cf6" />
       </div>
 
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <SearchBar value={search} onChange={setSearch} />
-          <span style={{ color: '#6b7280', fontSize: '14px' }}>{filteredMembers.length} results</span>
+      {/* Members by Location */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>📍 Members by Location</h3>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {locationStats.map((loc, i) => (
+            <div key={i} onClick={() => setFilterLocation(filterLocation === loc.id ? 'all' : loc.id)} style={{ padding: '16px 24px', backgroundColor: filterLocation === loc.id ? `${getLocationColor(loc.id)}20` : '#f9fafb', borderRadius: '12px', cursor: 'pointer', borderLeft: `4px solid ${getLocationColor(loc.id)}`, transition: 'all 0.2s', border: filterLocation === loc.id ? `2px solid ${getLocationColor(loc.id)}` : '2px solid transparent' }}>
+              <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: getLocationColor(loc.id) }}>{loc.count}</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>{loc.name}</p>
+              {loc.is_main_campus && <span style={{ fontSize: '10px', color: '#6366f1' }}>Main Campus</span>}
+            </div>
+          ))}
+          {members.filter(m => !m.location_id).length > 0 && (
+            <div style={{ padding: '16px 24px', backgroundColor: '#f9fafb', borderRadius: '12px', borderLeft: '4px solid #9ca3af' }}>
+              <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#9ca3af' }}>{members.filter(m => !m.location_id).length}</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>Unassigned</p>
+            </div>
+          )}
         </div>
-        {loading ? <LoadingSpinner /> : (
-          <DataTable columns={columns} data={filteredMembers} onEdit={openModal} onDelete={setDeleteConfirm} />
-        )}
       </div>
 
-      {/* Add/Edit Modal with Photo Upload */}
-      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingMember ? `✏️ ${t('editMember')}` : `➕ ${t('addMember')}`} width="600px">
-        {/* Photo Upload */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
-          <div style={{ textAlign: 'center' }}>
-            {photoPreview ? (
-              <img src={photoPreview} alt="Preview" style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', marginBottom: '12px' }} />
-            ) : (
-              <div style={{ width: '100px', height: '100px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '32px', color: '#6366f1' }}>
-                {form.first_name?.[0] || '👤'}
-              </div>
-            )}
-            <label style={{ cursor: 'pointer', color: '#6366f1', fontSize: '14px', fontWeight: '500' }}>
-              📷 {t('uploadPhoto')}
-              <input type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
-            </label>
+      {/* Filters */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <input
+              type="text"
+              placeholder="🔍 Search members..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+            />
+          </div>
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+            <option value="all">All Locations</option>
+            {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+          </select>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+            <option value="all">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+          {(filterLocation !== 'all' || filterStatus !== 'all' || searchTerm) && (
+            <button onClick={() => { setFilterLocation('all'); setFilterStatus('all'); setSearchTerm(''); }} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px' }}>
+              🔄 Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Members Table */}
+      {loading ? <LoadingSpinner /> : (
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>Showing {filteredMembers.length} of {members.length} members</span>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ backgroundColor: '#f9fafb' }}>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Member</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Contact</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Joined</th>
+                  <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMembers.map((member, index) => (
+                  <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '40px', height: '40px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600' }}>
+                          {member.first_name?.[0]}{member.last_name?.[0]}
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: '500' }}>{member.first_name} {member.last_name}</p>
+                          <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{member.gender === 'MALE' ? '👨' : '👩'} {member.gender}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <p style={{ margin: 0, fontSize: '14px' }}>{member.email || '—'}</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{member.phone || '—'}</p>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {member.location_id ? (
+                        <span style={{ padding: '4px 12px', backgroundColor: `${getLocationColor(member.location_id)}15`, color: getLocationColor(member.location_id), borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>
+                          📍 {getLocationName(member.location_id)}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#9ca3af', fontSize: '13px' }}>Not assigned</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <StatusBadge status={member.status} />
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '14px' }}>
+                      {formatDate(member.membership_date || member.created_at)}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <button onClick={() => openModal(member)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', marginRight: '8px', fontSize: '12px' }}>✏️ Edit</button>
+                      <button onClick={() => setDeleteConfirm(member)} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredMembers.length === 0 && (
+                  <tr>
+                    <td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
+                      <span style={{ fontSize: '48px' }}>👥</span>
+                      <p>No members found</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
+      )}
 
+      {/* Add/Edit Modal */}
+      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingMember ? '✏️ Edit Member' : '➕ Add Member'} width="600px">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={t('firstName')} value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required />
-          <FormInput label={t('lastName')} value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required />
-          <FormInput label={t('email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <FormInput label={t('phone')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+237 6XX XXX XXX" />
-          <FormInput label="WhatsApp" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="+237 6XX XXX XXX" />
-          <FormInput label={t('gender')} type="select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} options={[{ value: 'MALE', label: t('male') }, { value: 'FEMALE', label: t('female') }]} />
-          <FormInput label={t('dateOfBirth')} type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
-          <FormInput label={t('language')} type="select" value={form.language_preference} onChange={(e) => setForm({ ...form, language_preference: e.target.value })} options={[{ value: 'FRENCH', label: 'Français' }, { value: 'ENGLISH', label: 'English' }]} />
-          <FormInput label={t('membershipStatus')} type="select" value={form.membership_status} onChange={(e) => setForm({ ...form, membership_status: e.target.value })} options={[{ value: 'ACTIVE', label: t('active') }, { value: 'INACTIVE', label: t('inactive') }]} />
-          <FormInput label={t('membershipDate')} type="date" value={form.membership_date} onChange={(e) => setForm({ ...form, membership_date: e.target.value })} />
+          <FormInput label="First Name *" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required />
+          <FormInput label="Last Name *" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required />
         </div>
-        <div style={{ marginTop: '8px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <input type="checkbox" checked={form.baptism_status} onChange={(e) => setForm({ ...form, baptism_status: e.target.checked })} />
-            <span style={{ fontSize: '14px' }}>{t('baptized')}</span>
-          </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <FormInput label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+237 6XX XXX XXX" />
         </div>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>{t('cancel')}</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? '⏳...' : `💾 ${t('save')}`}</Button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="Date of Birth" type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
+          <FormInput label="Gender" type="select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} options={[{ value: 'MALE', label: '👨 Male' }, { value: 'FEMALE', label: '👩 Female' }]} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="📍 Location *" type="select" value={form.location_id} onChange={(e) => setForm({ ...form, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
+          <FormInput label="Status" type="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} options={[{ value: 'ACTIVE', label: '✅ Active' }, { value: 'INACTIVE', label: '⏸️ Inactive' }]} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          <FormInput label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+        </div>
+        <FormInput label="Membership Date" type="date" value={form.membership_date} onChange={(e) => setForm({ ...form, membership_date: e.target.value })} />
+        <FormInput label="Notes" type="textarea" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
+          <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
         </div>
       </Modal>
 
-      <ConfirmDialog
-        isOpen={!!deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
-        onConfirm={handleDelete}
-        title={`🗑️ ${t('delete')} ${t('members')}`}
-        message={`Are you sure you want to delete ${deleteConfirm?.first_name} ${deleteConfirm?.last_name}?`}
-      />
+      {/* Delete Confirmation */}
+      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title="🗑️ Delete Member" message={`Are you sure you want to delete "${deleteConfirm?.first_name} ${deleteConfirm?.last_name}"?`} />
     </div>
   );
 }
@@ -5023,16 +5086,30 @@ function SettingsPage() {
     if (!locationForm.name) { alert('Location name is required'); return; }
     setSaving(true);
     try {
-      const data = { ...locationForm, capacity: locationForm.capacity ? parseInt(locationForm.capacity) : null };
+      const data = { 
+        ...locationForm, 
+        church_id: CHURCH_ID, 
+        capacity: locationForm.capacity ? parseInt(locationForm.capacity) : null 
+      };
+      
+      console.log('Saving location data:', data);  // ADD THIS LINE HERE
+      
       if (data.is_main_campus && !editingLocation?.is_main_campus) {
         for (const loc of locations.filter(l => l.is_main_campus)) {
           await supabaseUpdate('church_locations', loc.id, { is_main_campus: false });
         }
       }
-      if (editingLocation) { await supabaseUpdate('church_locations', editingLocation.id, data); }
-      else { await supabaseInsert('church_locations', data); }
-      setShowLocationModal(false); resetLocationForm(); fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+      if (editingLocation) { 
+        await supabaseUpdate('church_locations', editingLocation.id, data); 
+      } else { 
+        await supabaseInsert('church_locations', data); 
+      }
+      setShowLocationModal(false); 
+      resetLocationForm(); 
+      fetchData();
+    } catch (error) { 
+      alert('Error: ' + error.message); 
+    }
     setSaving(false);
   };
 
