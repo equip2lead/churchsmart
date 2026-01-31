@@ -1226,7 +1226,7 @@ function SMSModal({ isOpen, onClose, recipient, onSend }) {
 }
 
 // ==========================================
-// DASHBOARD PAGE - Enhanced with Widgets
+// DASHBOARD PAGE - With Charts
 // ==========================================
 function DashboardPage() {
   const { t } = useLanguage();
@@ -1236,6 +1236,7 @@ function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState([]);
   const [recentVisitors, setRecentVisitors] = useState([]);
   const [recentSalvations, setRecentSalvations] = useState([]);
+  const [weeklyGiving, setWeeklyGiving] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchData(); }, []);
@@ -1243,7 +1244,7 @@ function DashboardPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [members, visitors, salvations, donations, services, events, activityLogs, prayers] = await Promise.all([
+      const [members, visitors, salvations, donations, services, events, activityLogs] = await Promise.all([
         supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'visit_date.desc', limit: 5 }),
         supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc', limit: 5 }),
@@ -1251,16 +1252,31 @@ function DashboardPage() {
         supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'event_date.asc' }),
         supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 5 }),
-        supabaseQuery('prayer_requests', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 3 }),
       ]);
 
       // Calculate total donations
       const totalDonations = (donations || []).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
       
-      // Get upcoming birthdays (next 30 days)
+      // Calculate weekly giving (last 7 days)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const weekData = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayTotal = (donations || [])
+          .filter(d => d.donation_date === dateStr)
+          .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+        weekData.push({
+          day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          amount: dayTotal,
+          date: dateStr
+        });
+      }
+      setWeeklyGiving(weekData);
       
+      // Get upcoming birthdays (next 30 days)
       const birthdayMembers = (members || []).filter(m => {
         if (!m.date_of_birth) return false;
         const dob = new Date(m.date_of_birth);
@@ -1284,19 +1300,9 @@ function DashboardPage() {
         const todayDay = today.getDay();
         let daysUntil = serviceDay - todayDay;
         if (daysUntil < 0) daysUntil += 7;
-        if (daysUntil === 0) daysUntil = 0; // Today
         const nextDate = new Date(today);
         nextDate.setDate(today.getDate() + daysUntil);
-        return {
-          id: service.id,
-          title: service.name,
-          date: nextDate,
-          time: service.start_time,
-          type: 'SERVICE',
-          icon: '⛪',
-          color: '#6366f1',
-          daysUntil
-        };
+        return { id: service.id, title: service.name, date: nextDate, time: service.start_time, type: 'SERVICE', icon: '⛪', color: '#6366f1', daysUntil };
       });
 
       // Get upcoming events
@@ -1305,47 +1311,23 @@ function DashboardPage() {
         const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
         const eventIcons = { 'SERVICE': '⛪', 'CONFERENCE': '🎤', 'PRAYER': '🙏', 'MEETING': '👥', 'OUTREACH': '🌍', 'YOUTH': '🎉', 'GENERAL': '📅', 'WORKSHOP': '📚' };
         const eventColors = { 'SERVICE': '#6366f1', 'CONFERENCE': '#f59e0b', 'PRAYER': '#ec4899', 'MEETING': '#10b981', 'OUTREACH': '#3b82f6', 'YOUTH': '#8b5cf6', 'GENERAL': '#6b7280', 'WORKSHOP': '#14b8a6' };
-        return {
-          id: event.id,
-          title: event.title,
-          date: eventDate,
-          time: event.start_time,
-          type: event.event_type,
-          icon: eventIcons[event.event_type] || '📅',
-          color: eventColors[event.event_type] || '#6b7280',
-          daysUntil,
-          isEvent: true
-        };
+        return { id: event.id, title: event.title, date: eventDate, time: event.start_time, type: event.event_type, icon: eventIcons[event.event_type] || '📅', color: eventColors[event.event_type] || '#6b7280', daysUntil, isEvent: true };
       });
 
-      // Combine and sort by date
-      const combined = [...upcomingServices, ...upcomingEvents]
-        .sort((a, b) => a.daysUntil - b.daysUntil)
-        .slice(0, 6);
+      const combined = [...upcomingServices, ...upcomingEvents].sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 6);
 
-      setStats({
-        members: members?.length || 0,
-        visitors: (visitors || []).length,
-        salvations: (salvations || []).length,
-        donations: totalDonations
-      });
+      setStats({ members: members?.length || 0, visitors: (visitors || []).length, salvations: (salvations || []).length, donations: totalDonations });
       setUpcomingBirthdays(birthdayMembers);
       setUpcomingItems(combined);
       setRecentActivity(activityLogs || []);
       setRecentVisitors(visitors || []);
       setRecentSalvations(salvations || []);
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    }
+    } catch (error) { console.error('Error:', error); }
     setLoading(false);
   };
 
   const formatCurrency = (amount) => `XAF ${(amount || 0).toLocaleString()}`;
-  const formatDate = (date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  };
+  const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
   const formatTime = (timeStr) => timeStr ? timeStr.slice(0, 5) : '';
   const timeAgo = (dateStr) => {
     const diff = (new Date() - new Date(dateStr)) / 1000;
@@ -1354,18 +1336,16 @@ function DashboardPage() {
     if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
     return `${Math.floor(diff / 86400)} days ago`;
   };
-
-  const activityIcons = {
-    'donation': '💰', 'attendance': '📊', 'salvation': '❤️', 'visitor': '🚶', 'member': '👤',
-    'CREATE': '➕', 'UPDATE': '✏️', 'DELETE': '🗑️'
-  };
-
   const getDaysLabel = (days) => {
     if (days === 0) return { label: 'Today', color: '#dc2626', bg: '#fef2f2' };
     if (days === 1) return { label: 'Tomorrow', color: '#f59e0b', bg: '#fef3c7' };
     if (days <= 3) return { label: `In ${days} days`, color: '#f59e0b', bg: '#fef3c7' };
     return { label: `In ${days} days`, color: '#6b7280', bg: '#f3f4f6' };
   };
+
+  // Calculate weekly total for chart
+  const weeklyTotal = weeklyGiving.reduce((sum, d) => sum + d.amount, 0);
+  const maxDayAmount = Math.max(...weeklyGiving.map(d => d.amount), 1);
 
   return (
     <div>
@@ -1385,18 +1365,45 @@ function DashboardPage() {
             <StatCard label={t('totalGiving')} value={formatCurrency(stats.donations)} icon="💰" color="#10b981" trend="+8%" />
           </div>
 
+          {/* Weekly Giving Chart */}
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#6b7280' }}>💰 Weekly Contributions</h3>
+                <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>{formatCurrency(weeklyTotal)}</p>
+              </div>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>Last 7 days</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '120px' }}>
+              {weeklyGiving.map((day, i) => (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '100%', backgroundColor: '#e0e7ff', borderRadius: '8px', position: 'relative', height: '100px', display: 'flex', alignItems: 'flex-end' }}>
+                    <div style={{ 
+                      width: '100%', 
+                      backgroundColor: '#6366f1', 
+                      borderRadius: '8px', 
+                      height: `${Math.max((day.amount / maxDayAmount) * 100, 5)}%`,
+                      minHeight: day.amount > 0 ? '10px' : '4px',
+                      transition: 'height 0.3s ease'
+                    }} />
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>{day.day}</span>
+                  <span style={{ fontSize: '10px', color: '#9ca3af' }}>{day.amount > 0 ? `${(day.amount / 1000).toFixed(0)}k` : '0'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Upcoming Birthdays */}
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                🎂 Upcoming Birthdays
-              </h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🎂 Upcoming Birthdays</h3>
               <span style={{ fontSize: '14px', color: '#6b7280' }}>Next 30 days</span>
             </div>
             {upcomingBirthdays.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
                 <span style={{ fontSize: '48px' }}>🎂</span>
-                <p>No upcoming birthdays in the next 30 days</p>
+                <p>No upcoming birthdays</p>
               </div>
             ) : (
               <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
@@ -1415,7 +1422,7 @@ function DashboardPage() {
             )}
           </div>
 
-          {/* Main Grid - Activity & Upcoming */}
+          {/* Main Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '24px' }}>
             
             {/* Recent Activity */}
@@ -1428,15 +1435,11 @@ function DashboardPage() {
                   {recentActivity.map((activity, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                       <div style={{ width: '36px', height: '36px', backgroundColor: '#f3f4f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
-                        {activityIcons[activity.entity_type] || activityIcons[activity.action] || '📝'}
+                        {activity.entity_type === 'donation' ? '💰' : activity.entity_type === 'attendance' ? '📊' : activity.entity_type === 'salvation' ? '❤️' : activity.entity_type === 'visitor' ? '🚶' : '📝'}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>
-                          {activity.action === 'CREATE' ? 'New' : activity.action} {activity.entity_type}
-                        </p>
-                        <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {activity.entity_name || activity.user_name}
-                        </p>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>{activity.action === 'CREATE' ? 'New' : activity.action} {activity.entity_type}</p>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activity.entity_name || activity.user_name}</p>
                       </div>
                       <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{timeAgo(activity.created_at)}</span>
                     </div>
@@ -1456,21 +1459,15 @@ function DashboardPage() {
                     const dayInfo = getDaysLabel(item.daysUntil);
                     return (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '10px', borderLeft: `4px solid ${item.color}` }}>
-                        <div style={{ width: '42px', height: '42px', backgroundColor: `${item.color}15`, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
-                          {item.icon}
-                        </div>
+                        <div style={{ width: '42px', height: '42px', backgroundColor: `${item.color}15`, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{item.icon}</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{item.title}</p>
                             {item.isEvent && <span style={{ padding: '2px 6px', backgroundColor: `${item.color}20`, color: item.color, borderRadius: '4px', fontSize: '10px', fontWeight: '600' }}>EVENT</span>}
                           </div>
-                          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
-                            {formatDate(item.date)} {item.time && `at ${formatTime(item.time)}`}
-                          </p>
+                          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{formatDate(item.date)} {item.time && `at ${formatTime(item.time)}`}</p>
                         </div>
-                        <span style={{ padding: '4px 10px', backgroundColor: dayInfo.bg, color: dayInfo.color, borderRadius: '9999px', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                          {dayInfo.label}
-                        </span>
+                        <span style={{ padding: '4px 10px', backgroundColor: dayInfo.bg, color: dayInfo.color, borderRadius: '9999px', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' }}>{dayInfo.label}</span>
                       </div>
                     );
                   })}
@@ -1505,8 +1502,8 @@ function DashboardPage() {
               )}
             </div>
 
-           {/* Salvation Decisions */}
-           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            {/* Salvation Decisions */}
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>❤️ Salvation Decisions</h3>
                 <span style={{ fontSize: '20px' }}>🙌</span>
@@ -2503,7 +2500,7 @@ function AttendancePage() {
   );
 }
 // ==========================================
-// GIVING PAGE - With Income, Expenses & Financial Report
+// GIVING PAGE - With Charts
 // ==========================================
 function GivingPage() {
   const { t } = useLanguage();
@@ -2514,22 +2511,17 @@ function GivingPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
-  
-  const [donationForm, setDonationForm] = useState({ 
-    member_id: '', amount: '', category_type: 'TITHE', 
-    donation_date: new Date().toISOString().split('T')[0], 
-    payment_method: 'CASH', is_anonymous: false, notes: '' 
-  });
-  
-  const [expenseForm, setExpenseForm] = useState({ 
-    category: 'GENERAL', amount: '', description: '', 
-    expense_date: new Date().toISOString().split('T')[0], 
-    payment_method: 'CASH', vendor_name: '', notes: '' 
-  });
+  const [chartView, setChartView] = useState('monthly');
+
+  const [donationForm, setDonationForm] = useState({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category: 'TITHE', payment_method: 'CASH', notes: '' });
+  const [expenseForm, setExpenseForm] = useState({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '' });
+
+  const categories = ['TITHE', 'OFFERING', 'DONATION', 'MISSIONS', 'BUILDING', 'SPECIAL', 'OTHER'];
+  const expenseCategories = ['GENERAL', 'BUILDING', 'UTILITIES', 'SALARIES', 'MISSIONS', 'SUPPLIES', 'TRANSPORT', 'EVENTS', 'OTHER'];
+  const paymentMethods = ['CASH', 'MOBILE_MONEY', 'BANK_TRANSFER', 'CHECK', 'OTHER'];
 
   useEffect(() => { fetchData(); }, []);
 
@@ -2546,56 +2538,68 @@ function GivingPage() {
     setLoading(false);
   };
 
-  // Calculate totals
+  // Calculations
   const totalIncome = donations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
   const netBalance = totalIncome - totalExpenses;
 
-  // Category breakdowns
-  const incomeByCategory = donations.reduce((acc, d) => {
-    acc[d.category_type] = (acc[d.category_type] || 0) + (parseFloat(d.amount) || 0);
-    return acc;
-  }, {});
+  // Category breakdown for pie chart
+  const categoryTotals = categories.map(cat => ({
+    category: cat,
+    amount: donations.filter(d => d.category === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+  })).filter(c => c.amount > 0);
 
-  const expensesByCategory = expenses.reduce((acc, e) => {
-    acc[e.category] = (acc[e.category] || 0) + (parseFloat(e.amount) || 0);
-    return acc;
-  }, {});
-
-  // Reset forms
-  const resetDonationForm = () => {
-    setDonationForm({ member_id: '', amount: '', category_type: 'TITHE', donation_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', is_anonymous: false, notes: '' });
-    setEditingItem(null);
+  const categoryColors = {
+    'TITHE': '#6366f1', 'OFFERING': '#f59e0b', 'DONATION': '#10b981', 'MISSIONS': '#ec4899',
+    'BUILDING': '#8b5cf6', 'SPECIAL': '#14b8a6', 'OTHER': '#6b7280'
   };
 
-  const resetExpenseForm = () => {
-    setExpenseForm({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '' });
-    setEditingItem(null);
+  // Monthly trends data
+  const getMonthlyData = () => {
+    const months = [];
+    const today = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const monthStr = date.toISOString().slice(0, 7);
+      const monthIncome = donations
+        .filter(d => d.donation_date?.startsWith(monthStr))
+        .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+      months.push({
+        month: date.toLocaleDateString('en-US', { month: 'short' }),
+        amount: monthIncome
+      });
+    }
+    return months;
   };
 
-  // Open modals
-  const openDonationModal = (item = null) => {
-    if (item) {
-      setEditingItem(item);
-      setDonationForm({ member_id: item.member_id || '', amount: item.amount || '', category_type: item.category_type || 'TITHE', donation_date: item.donation_date || '', payment_method: item.payment_method || 'CASH', is_anonymous: item.is_anonymous || false, notes: item.notes || '' });
+  const monthlyData = getMonthlyData();
+  const maxMonthly = Math.max(...monthlyData.map(m => m.amount), 1);
+
+  // Form handlers
+  const resetDonationForm = () => { setDonationForm({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category: 'TITHE', payment_method: 'CASH', notes: '' }); setEditingItem(null); };
+  const resetExpenseForm = () => { setExpenseForm({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '' }); setEditingItem(null); };
+
+  const openDonationModal = (donation = null) => {
+    if (donation) {
+      setEditingItem(donation);
+      setDonationForm({ member_id: donation.member_id || '', amount: donation.amount || '', donation_date: donation.donation_date || '', category: donation.category || 'TITHE', payment_method: donation.payment_method || 'CASH', notes: donation.notes || '' });
     } else { resetDonationForm(); }
     setShowModal(true);
   };
 
-  const openExpenseModal = (item = null) => {
-    if (item) {
-      setEditingItem(item);
-      setExpenseForm({ category: item.category || 'GENERAL', amount: item.amount || '', description: item.description || '', expense_date: item.expense_date || '', payment_method: item.payment_method || 'CASH', vendor_name: item.vendor_name || '', notes: item.notes || '' });
+  const openExpenseModal = (expense = null) => {
+    if (expense) {
+      setEditingItem(expense);
+      setExpenseForm({ category: expense.category || 'GENERAL', amount: expense.amount || '', description: expense.description || '', expense_date: expense.expense_date || '', payment_method: expense.payment_method || 'CASH', vendor_name: expense.vendor_name || '', notes: expense.notes || '' });
     } else { resetExpenseForm(); }
     setShowExpenseModal(true);
   };
 
-  // Save handlers
   const handleSaveDonation = async () => {
-    if (!donationForm.amount || !donationForm.donation_date) { alert('Amount and date required'); return; }
+    if (!donationForm.amount) { alert('Amount is required'); return; }
     setSaving(true);
     try {
-      const data = { ...donationForm, amount: parseFloat(donationForm.amount), member_id: donationForm.member_id || null };
+      const data = { ...donationForm, amount: parseFloat(donationForm.amount) };
       if (editingItem) { await supabaseUpdate('donations', editingItem.id, data); }
       else { await supabaseInsert('donations', data); }
       setShowModal(false); resetDonationForm(); fetchData();
@@ -2604,7 +2608,7 @@ function GivingPage() {
   };
 
   const handleSaveExpense = async () => {
-    if (!expenseForm.amount || !expenseForm.expense_date) { alert('Amount and date required'); return; }
+    if (!expenseForm.amount || !expenseForm.description) { alert('Amount and description are required'); return; }
     setSaving(true);
     try {
       const data = { ...expenseForm, amount: parseFloat(expenseForm.amount) };
@@ -2617,284 +2621,325 @@ function GivingPage() {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    const table = deleteConfirm.type === 'expense' ? 'expenses' : 'donations';
-    await supabaseDelete(table, deleteConfirm.id);
-    setDeleteConfirm(null);
-    fetchData();
+    await supabaseDelete(deleteConfirm.table, deleteConfirm.id);
+    setDeleteConfirm(null); fetchData();
   };
 
-  // Print report
-  const printReport = () => {
-    window.print();
+  const getMemberName = (memberId) => {
+    const member = members.find(m => m.id === memberId);
+    return member ? `${member.first_name} ${member.last_name}` : 'Anonymous';
   };
 
-  // Export to CSV
-  const exportToCSV = (type) => {
-    const data = type === 'income' ? donations : expenses;
-    const headers = type === 'income' 
-      ? ['Date', 'Category', 'Amount', 'Payment Method', 'Notes']
-      : ['Date', 'Category', 'Amount', 'Vendor', 'Description', 'Payment Method'];
+  const formatCurrency = (amount) => `XAF ${(parseFloat(amount) || 0).toLocaleString()}`;
+
+  // Pie chart SVG
+  const PieChart = ({ data, size = 200 }) => {
+    const total = data.reduce((sum, d) => sum + d.amount, 0);
+    if (total === 0) return <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>No data</div>;
     
-    const rows = data.map(item => type === 'income'
-      ? [item.donation_date, item.category_type, item.amount, item.payment_method, item.notes || '']
-      : [item.expense_date, item.category, item.amount, item.vendor_name || '', item.description || '', item.payment_method]
+    let currentAngle = 0;
+    const paths = data.map((item, i) => {
+      const percentage = item.amount / total;
+      const angle = percentage * 360;
+      const startAngle = currentAngle;
+      const endAngle = currentAngle + angle;
+      currentAngle = endAngle;
+
+      const startRad = (startAngle - 90) * Math.PI / 180;
+      const endRad = (endAngle - 90) * Math.PI / 180;
+      const largeArc = angle > 180 ? 1 : 0;
+
+      const x1 = 100 + 80 * Math.cos(startRad);
+      const y1 = 100 + 80 * Math.sin(startRad);
+      const x2 = 100 + 80 * Math.cos(endRad);
+      const y2 = 100 + 80 * Math.sin(endRad);
+
+      const pathData = `M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`;
+      
+      return <path key={i} d={pathData} fill={categoryColors[item.category] || '#6b7280'} stroke="white" strokeWidth="2" />;
+    });
+
+    return (
+      <svg width={size} height={size} viewBox="0 0 200 200">
+        {paths}
+        <circle cx="100" cy="100" r="40" fill="white" />
+        <text x="100" y="95" textAnchor="middle" fontSize="12" fill="#6b7280">Total</text>
+        <text x="100" y="115" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#374151">{(total / 1000000).toFixed(1)}M</text>
+      </svg>
     );
-
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${type}-report-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
   };
-
-  const incomeColumns = [
-    { header: t('date'), key: 'date', render: (row) => new Date(row.donation_date).toLocaleDateString() },
-    { header: t('category'), key: 'category', render: (row) => <StatusBadge status={row.category_type} /> },
-    { header: t('amount'), key: 'amount', render: (row) => <span style={{ fontWeight: 'bold', color: '#10b981' }}>XAF {parseFloat(row.amount).toLocaleString()}</span> },
-    { header: t('paymentMethod'), key: 'method', render: (row) => row.payment_method },
-  ];
-
-  const expenseColumns = [
-    { header: t('date'), key: 'date', render: (row) => new Date(row.expense_date).toLocaleDateString() },
-    { header: t('category'), key: 'category', render: (row) => <StatusBadge status={row.category} /> },
-    { header: t('amount'), key: 'amount', render: (row) => <span style={{ fontWeight: 'bold', color: '#ef4444' }}>XAF {parseFloat(row.amount).toLocaleString()}</span> },
-    { header: 'Vendor', key: 'vendor', render: (row) => row.vendor_name || '—' },
-    { header: t('description'), key: 'description', render: (row) => <span style={{ color: '#6b7280' }}>{row.description || '—'}</span> },
-  ];
 
   return (
     <div>
-      <PageHeader 
-        title={`💰 ${t('giving')}`} 
+      <PageHeader
+        title={`💰 ${t('giving')}`}
         subtitle="Track and manage all church income and expenses"
         actions={
           <div style={{ display: 'flex', gap: '12px' }}>
-            {activeTab === 'income' ? (
-              <Button onClick={() => openDonationModal()}>➕ Add Donation</Button>
-            ) : activeTab === 'expenses' ? (
-              <Button onClick={() => openExpenseModal()}>➕ Add Expense</Button>
-            ) : null}
-            <Button variant="secondary" onClick={() => setShowReportModal(true)}>📊 Financial Report</Button>
+            {activeTab === 'income' && <Button onClick={() => openDonationModal()}>➕ Add Donation</Button>}
+            {activeTab === 'expenses' && <Button onClick={() => openExpenseModal()}>➕ Add Expense</Button>}
           </div>
         }
       />
 
       {/* Tab Buttons */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-        <button
-          onClick={() => setActiveTab('income')}
-          style={{
-            padding: '12px 24px',
-            border: activeTab === 'income' ? '2px solid #10b981' : '1px solid #e5e7eb',
-            borderRadius: '10px',
-            backgroundColor: activeTab === 'income' ? '#f0fdf4' : 'white',
-            color: activeTab === 'income' ? '#10b981' : '#6b7280',
-            fontWeight: activeTab === 'income' ? '600' : '400',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          ↗️ Income
-        </button>
-        <button
-          onClick={() => setActiveTab('expenses')}
-          style={{
-            padding: '12px 24px',
-            border: activeTab === 'expenses' ? '2px solid #ef4444' : '1px solid #e5e7eb',
-            borderRadius: '10px',
-            backgroundColor: activeTab === 'expenses' ? '#fef2f2' : 'white',
-            color: activeTab === 'expenses' ? '#ef4444' : '#6b7280',
-            fontWeight: activeTab === 'expenses' ? '600' : '400',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          ↙️ Expenses
-        </button>
-        <button
-          onClick={() => setActiveTab('report')}
-          style={{
-            padding: '12px 24px',
-            border: activeTab === 'report' ? '2px solid #6366f1' : '1px solid #e5e7eb',
-            borderRadius: '10px',
-            backgroundColor: activeTab === 'report' ? '#eef2ff' : 'white',
-            color: activeTab === 'report' ? '#6366f1' : '#6b7280',
-            fontWeight: activeTab === 'report' ? '600' : '400',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          📊 Report
-        </button>
+        <button onClick={() => setActiveTab('income')} style={{ padding: '12px 24px', border: activeTab === 'income' ? '2px solid #10b981' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'income' ? '#d1fae5' : 'white', color: activeTab === 'income' ? '#10b981' : '#6b7280', fontWeight: activeTab === 'income' ? '600' : '400', cursor: 'pointer' }}>💵 Income</button>
+        <button onClick={() => setActiveTab('expenses')} style={{ padding: '12px 24px', border: activeTab === 'expenses' ? '2px solid #ef4444' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'expenses' ? '#fef2f2' : 'white', color: activeTab === 'expenses' ? '#ef4444' : '#6b7280', fontWeight: activeTab === 'expenses' ? '600' : '400', cursor: 'pointer' }}>📤 Expenses</button>
+        <button onClick={() => setActiveTab('report')} style={{ padding: '12px 24px', border: activeTab === 'report' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'report' ? '#eef2ff' : 'white', color: activeTab === 'report' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'report' ? '600' : '400', cursor: 'pointer' }}>📊 Report</button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard label="Total Income" value={`XAF ${totalIncome.toLocaleString()}`} icon="📈" color="#10b981" />
-        <StatCard label="Total Expenses" value={`XAF ${totalExpenses.toLocaleString()}`} icon="📉" color="#ef4444" />
-        <StatCard label="Net Balance" value={`XAF ${netBalance.toLocaleString()}`} icon="💰" color={netBalance >= 0 ? '#10b981' : '#ef4444'} />
+        <StatCard label="Total Income" value={formatCurrency(totalIncome)} icon="💵" color="#10b981" />
+        <StatCard label="Total Expenses" value={formatCurrency(totalExpenses)} icon="📤" color="#ef4444" />
+        <StatCard label="Net Balance" value={formatCurrency(netBalance)} icon="💰" color={netBalance >= 0 ? '#10b981' : '#ef4444'} />
+        <StatCard label="This Month" value={formatCurrency(donations.filter(d => d.donation_date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0))} icon="📅" color="#6366f1" />
       </div>
 
-      {/* Income Tab */}
-      {activeTab === 'income' && (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-          <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📥 Income / Donations</h3>
-            <button onClick={() => exportToCSV('income')} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px' }}>📥 Export CSV</button>
-          </div>
-          {loading ? <LoadingSpinner /> : (
-            <DataTable 
-              columns={incomeColumns} 
-              data={donations} 
-              onEdit={openDonationModal} 
-              onDelete={(item) => setDeleteConfirm({ ...item, type: 'donation' })} 
-            />
+      {loading ? <LoadingSpinner /> : (
+        <>
+          {/* INCOME TAB */}
+          {activeTab === 'income' && (
+            <>
+              {/* Charts Section */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+                {/* Pie Chart */}
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600' }}>📊 Giving by Category</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                    <PieChart data={categoryTotals} size={180} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {categoryTotals.map((cat, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: categoryColors[cat.category] }} />
+                          <span style={{ fontSize: '13px', color: '#374151' }}>{cat.category}</span>
+                          <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: 'auto' }}>{((cat.amount / totalIncome) * 100).toFixed(0)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Line Chart - Monthly Trends */}
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>📈 Giving Trends</h3>
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>Last 6 months</span>
+                  </div>
+                  <div style={{ position: 'relative', height: '150px' }}>
+                    {/* Y-axis labels */}
+                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 20, width: '50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '10px', color: '#6b7280' }}>
+                      <span>{(maxMonthly / 1000000).toFixed(1)}M</span>
+                      <span>{(maxMonthly / 2000000).toFixed(1)}M</span>
+                      <span>0</span>
+                    </div>
+                    {/* Chart area */}
+                    <div style={{ marginLeft: '55px', height: '130px', display: 'flex', alignItems: 'flex-end', gap: '8px', borderBottom: '1px solid #e5e7eb' }}>
+                      {monthlyData.map((month, i) => (
+                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ width: '100%', maxWidth: '40px', backgroundColor: '#6366f1', borderRadius: '4px 4px 0 0', height: `${Math.max((month.amount / maxMonthly) * 110, 4)}px`, transition: 'height 0.3s' }} />
+                        </div>
+                      ))}
+                    </div>
+                    {/* X-axis labels */}
+                    <div style={{ marginLeft: '55px', display: 'flex', gap: '8px', marginTop: '8px' }}>
+                      {monthlyData.map((month, i) => (
+                        <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: '11px', color: '#6b7280' }}>{month.month}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Donations Table */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💵 Recent Donations</h3>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>{donations.length} records</span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ backgroundColor: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Donor</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
+                        <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Method</th>
+                        <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {donations.slice(0, 10).map((donation, i) => (
+                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '12px 16px', fontSize: '14px' }}>{donation.donation_date}</td>
+                          <td style={{ padding: '12px 16px', fontWeight: '500' }}>{getMemberName(donation.member_id)}</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{ padding: '4px 10px', backgroundColor: `${categoryColors[donation.category]}20`, color: categoryColors[donation.category], borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{donation.category}</span>
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: '#10b981' }}>{formatCurrency(donation.amount)}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{donation.payment_method}</td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                            <button onClick={() => openDonationModal(donation)} style={{ padding: '4px 8px', border: 'none', background: '#f3f4f6', borderRadius: '4px', cursor: 'pointer', marginRight: '4px', fontSize: '12px' }}>✏️</button>
+                            <button onClick={() => setDeleteConfirm({ ...donation, table: 'donations' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '4px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
-        </div>
-      )}
 
-      {/* Expenses Tab */}
-      {activeTab === 'expenses' && (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-          <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📤 Expenses</h3>
-            <button onClick={() => exportToCSV('expenses')} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px' }}>📥 Export CSV</button>
-          </div>
-          {loading ? <LoadingSpinner /> : (
-            <DataTable 
-              columns={expenseColumns} 
-              data={expenses} 
-              onEdit={openExpenseModal} 
-              onDelete={(item) => setDeleteConfirm({ ...item, type: 'expense' })} 
-            />
-          )}
-        </div>
-      )}
-
-      {/* Report Tab */}
-      {activeTab === 'report' && (
-        <div id="financial-report">
-          {/* Report Header */}
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-              <div>
-                <h2 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: 'bold' }}>📊 Financial Report</h2>
-                <p style={{ margin: 0, color: '#6b7280' }}>
-                  {new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString()} - {new Date().toLocaleDateString()}
-                </p>
+          {/* EXPENSES TAB */}
+          {activeTab === 'expenses' && (
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📤 Expenses</h3>
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>{expenses.length} records</span>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={printReport} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>🖨️ Print</button>
-                <button onClick={() => exportToCSV('income')} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#dc2626', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>📄 PDF</button>
-                <button onClick={() => exportToCSV('income')} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#10b981', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>📊 Excel</button>
-              </div>
-            </div>
-
-            {/* Summary Cards in Report */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-              <div style={{ padding: '20px', backgroundColor: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>Total Income</p>
-                <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>XAF {totalIncome.toLocaleString()}</p>
-              </div>
-              <div style={{ padding: '20px', backgroundColor: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca' }}>
-                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>Total Expenses</p>
-                <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#ef4444' }}>XAF {totalExpenses.toLocaleString()}</p>
-              </div>
-              <div style={{ padding: '20px', backgroundColor: netBalance >= 0 ? '#f0fdf4' : '#fef2f2', borderRadius: '12px', border: `1px solid ${netBalance >= 0 ? '#bbf7d0' : '#fecaca'}` }}>
-                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>Net Balance</p>
-                <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>XAF {netBalance.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Category Breakdown */}
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📋 Category Breakdown</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                  <th style={{ textAlign: 'left', padding: '12px', color: '#6b7280', fontWeight: '600' }}>Category</th>
-                  <th style={{ textAlign: 'right', padding: '12px', color: '#6b7280', fontWeight: '600' }}>Income (XAF)</th>
-                  <th style={{ textAlign: 'right', padding: '12px', color: '#6b7280', fontWeight: '600' }}>Expenses (XAF)</th>
-                  <th style={{ textAlign: 'right', padding: '12px', color: '#6b7280', fontWeight: '600' }}>Net (XAF)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Get all unique categories */}
-                {[...new Set([...Object.keys(incomeByCategory), ...Object.keys(expensesByCategory)])].map((category, i) => {
-                  const income = incomeByCategory[category] || 0;
-                  const expense = expensesByCategory[category] || 0;
-                  const net = income - expense;
-                  return (
-                    <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '12px', fontWeight: '500' }}>{category}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: '#10b981' }}>{income > 0 ? `XAF ${income.toLocaleString()}` : '—'}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: '#ef4444' }}>{expense > 0 ? `XAF ${expense.toLocaleString()}` : '—'}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600', color: net >= 0 ? '#10b981' : '#ef4444' }}>XAF {net.toLocaleString()}</td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Description</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Vendor</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
                     </tr>
-                  );
-                })}
-                {/* Total Row */}
-                <tr style={{ backgroundColor: '#f9fafb', fontWeight: 'bold' }}>
-                  <td style={{ padding: '12px' }}>TOTAL</td>
-                  <td style={{ padding: '12px', textAlign: 'right', color: '#10b981' }}>XAF {totalIncome.toLocaleString()}</td>
-                  <td style={{ padding: '12px', textAlign: 'right', color: '#ef4444' }}>XAF {totalExpenses.toLocaleString()}</td>
-                  <td style={{ padding: '12px', textAlign: 'right', color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>XAF {netBalance.toLocaleString()}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </thead>
+                  <tbody>
+                    {expenses.map((expense, i) => (
+                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '14px' }}>{expense.expense_date}</td>
+                        <td style={{ padding: '12px 16px', fontWeight: '500' }}>{expense.description}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ padding: '4px 10px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '9999px', fontSize: '12px' }}>{expense.category}</span>
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: '#ef4444' }}>{formatCurrency(expense.amount)}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{expense.vendor_name || '—'}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <button onClick={() => openExpenseModal(expense)} style={{ padding: '4px 8px', border: 'none', background: '#f3f4f6', borderRadius: '4px', cursor: 'pointer', marginRight: '4px', fontSize: '12px' }}>✏️</button>
+                          <button onClick={() => setDeleteConfirm({ ...expense, table: 'expenses' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '4px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {expenses.length === 0 && <tr><td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No expenses recorded</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* REPORT TAB */}
+          {activeTab === 'report' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Summary Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <div style={{ backgroundColor: '#d1fae5', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#166534' }}>Total Income</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#166534' }}>{formatCurrency(totalIncome)}</p>
+                </div>
+                <div style={{ backgroundColor: '#fef2f2', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#991b1b' }}>Total Expenses</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#991b1b' }}>{formatCurrency(totalExpenses)}</p>
+                </div>
+                <div style={{ backgroundColor: netBalance >= 0 ? '#dbeafe' : '#fef2f2', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: netBalance >= 0 ? '#1e40af' : '#991b1b' }}>Net Balance</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: netBalance >= 0 ? '#1e40af' : '#991b1b' }}>{formatCurrency(netBalance)}</p>
+                </div>
+              </div>
+
+              {/* Category Breakdown Table */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📊 Category Breakdown</h3>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Income</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Expenses</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.map((cat, i) => {
+                      const income = donations.filter(d => d.category === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                      const expense = expenses.filter(e => e.category === cat).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+                      const net = income - expense;
+                      if (income === 0 && expense === 0) return null;
+                      return (
+                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: '500' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: categoryColors[cat] || '#6b7280' }} />
+                              {cat}
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', color: '#10b981' }}>{formatCurrency(income)}</td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', color: '#ef4444' }}>{formatCurrency(expense)}</td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: net >= 0 ? '#10b981' : '#ef4444' }}>{formatCurrency(net)}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr style={{ borderTop: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: '700' }}>TOTAL</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '700', color: '#10b981' }}>{formatCurrency(totalIncome)}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '700', color: '#ef4444' }}>{formatCurrency(totalExpenses)}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '700', color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>{formatCurrency(netBalance)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Export Buttons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <Button variant="secondary">🖨️ Print Report</Button>
+                <Button variant="secondary">📄 Export PDF</Button>
+                <Button variant="secondary">📊 Export Excel</Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Add Donation Modal */}
+      {/* Donation Modal */}
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetDonationForm(); }} title={editingItem ? '✏️ Edit Donation' : '➕ Add Donation'}>
-        <FormInput label="Donor (optional)" type="select" value={donationForm.member_id} onChange={(e) => setDonationForm({ ...donationForm, member_id: e.target.value })} options={members.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={`${t('amount')} (XAF)`} type="number" value={donationForm.amount} onChange={(e) => setDonationForm({ ...donationForm, amount: e.target.value })} required />
-          <FormInput label={t('date')} type="date" value={donationForm.donation_date} onChange={(e) => setDonationForm({ ...donationForm, donation_date: e.target.value })} required />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={t('category')} type="select" value={donationForm.category_type} onChange={(e) => setDonationForm({ ...donationForm, category_type: e.target.value })} options={[{ value: 'TITHE', label: t('tithe') }, { value: 'OFFERING', label: t('offeringCat') }, { value: 'MISSIONS', label: t('missions') }, { value: 'THANKSGIVING', label: t('thanksgiving') }, { value: 'BUILDING', label: 'Building' }]} />
-          <FormInput label={t('paymentMethod')} type="select" value={donationForm.payment_method} onChange={(e) => setDonationForm({ ...donationForm, payment_method: e.target.value })} options={[{ value: 'CASH', label: t('cash') }, { value: 'MOBILE_MONEY', label: t('mobileMoney') }, { value: 'BANK_TRANSFER', label: t('bankTransfer') }]} />
-        </div>
+        <FormInput label="Donor" type="select" value={donationForm.member_id} onChange={(e) => setDonationForm({ ...donationForm, member_id: e.target.value })} options={[{ value: '', label: 'Anonymous' }, ...members.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))]} />
+        <FormInput label="Amount (XAF) *" type="number" value={donationForm.amount} onChange={(e) => setDonationForm({ ...donationForm, amount: e.target.value })} required placeholder="50000" />
+        <FormInput label="Date" type="date" value={donationForm.donation_date} onChange={(e) => setDonationForm({ ...donationForm, donation_date: e.target.value })} />
+        <FormInput label="Category" type="select" value={donationForm.category} onChange={(e) => setDonationForm({ ...donationForm, category: e.target.value })} options={categories.map(c => ({ value: c, label: c }))} />
+        <FormInput label="Payment Method" type="select" value={donationForm.payment_method} onChange={(e) => setDonationForm({ ...donationForm, payment_method: e.target.value })} options={paymentMethods.map(m => ({ value: m, label: m.replace('_', ' ') }))} />
         <FormInput label="Notes" type="textarea" value={donationForm.notes} onChange={(e) => setDonationForm({ ...donationForm, notes: e.target.value })} />
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}><input type="checkbox" checked={donationForm.is_anonymous} onChange={(e) => setDonationForm({ ...donationForm, is_anonymous: e.target.checked })} /><span>{t('anonymous')}</span></label>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowModal(false); resetDonationForm(); }}>{t('cancel')}</Button><Button onClick={handleSaveDonation} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button></div>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowModal(false); resetDonationForm(); }}>Cancel</Button>
+          <Button onClick={handleSaveDonation} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
+        </div>
       </Modal>
 
-      {/* Add Expense Modal */}
+      {/* Expense Modal */}
       <Modal isOpen={showExpenseModal} onClose={() => { setShowExpenseModal(false); resetExpenseForm(); }} title={editingItem ? '✏️ Edit Expense' : '➕ Add Expense'}>
-        <FormInput label="Description" value={expenseForm.description} onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} placeholder="What was this expense for?" />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={`${t('amount')} (XAF)`} type="number" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} required />
-          <FormInput label={t('date')} type="date" value={expenseForm.expense_date} onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })} required />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={t('category')} type="select" value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })} options={[{ value: 'GENERAL', label: 'General' }, { value: 'BUILDING', label: 'Building' }, { value: 'UTILITIES', label: 'Utilities' }, { value: 'SALARIES', label: 'Salaries' }, { value: 'MISSIONS', label: 'Missions' }, { value: 'SUPPLIES', label: 'Supplies' }, { value: 'TRANSPORT', label: 'Transport' }, { value: 'EVENTS', label: 'Events' }]} />
-          <FormInput label={t('paymentMethod')} type="select" value={expenseForm.payment_method} onChange={(e) => setExpenseForm({ ...expenseForm, payment_method: e.target.value })} options={[{ value: 'CASH', label: t('cash') }, { value: 'MOBILE_MONEY', label: t('mobileMoney') }, { value: 'BANK_TRANSFER', label: t('bankTransfer') }]} />
-        </div>
-        <FormInput label="Vendor/Recipient" value={expenseForm.vendor_name} onChange={(e) => setExpenseForm({ ...expenseForm, vendor_name: e.target.value })} placeholder="Who was paid?" />
+        <FormInput label="Description *" value={expenseForm.description} onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} required placeholder="Office supplies" />
+        <FormInput label="Amount (XAF) *" type="number" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} required placeholder="25000" />
+        <FormInput label="Date" type="date" value={expenseForm.expense_date} onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })} />
+        <FormInput label="Category" type="select" value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })} options={expenseCategories.map(c => ({ value: c, label: c }))} />
+        <FormInput label="Vendor Name" value={expenseForm.vendor_name} onChange={(e) => setExpenseForm({ ...expenseForm, vendor_name: e.target.value })} placeholder="Supplier name" />
+        <FormInput label="Payment Method" type="select" value={expenseForm.payment_method} onChange={(e) => setExpenseForm({ ...expenseForm, payment_method: e.target.value })} options={paymentMethods.map(m => ({ value: m, label: m.replace('_', ' ') }))} />
         <FormInput label="Notes" type="textarea" value={expenseForm.notes} onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })} />
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowExpenseModal(false); resetExpenseForm(); }}>{t('cancel')}</Button><Button onClick={handleSaveExpense} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button></div>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowExpenseModal(false); resetExpenseForm(); }}>Cancel</Button>
+          <Button onClick={handleSaveExpense} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
+        </div>
       </Modal>
 
       {/* Delete Confirmation */}
-      <ConfirmDialog 
-        isOpen={!!deleteConfirm} 
-        onClose={() => setDeleteConfirm(null)} 
-        onConfirm={handleDelete} 
-        title={`🗑️ ${t('delete')}`} 
-        message={`Are you sure you want to delete this ${deleteConfirm?.type || 'item'}?`} 
-      />
+      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title="🗑️ Delete" message="Are you sure you want to delete this record?" />
     </div>
   );
 }
