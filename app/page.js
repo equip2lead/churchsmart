@@ -1228,13 +1228,17 @@ function SMSModal({ isOpen, onClose, recipient, onSend }) {
 }
 
 // ==========================================
-// DASHBOARD PAGE
+// DASHBOARD PAGE - Enhanced with Widgets
 // ==========================================
 function DashboardPage() {
   const { t } = useLanguage();
   const [stats, setStats] = useState({ members: 0, visitors: 0, salvations: 0, donations: 0 });
-  const [recentDonations, setRecentDonations] = useState([]);
-  const [recentAttendance, setRecentAttendance] = useState([]);
+  const [upcomingBirthdays, setUpcomingBirthdays] = useState([]);
+  const [upcomingItems, setUpcomingItems] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [recentVisitors, setRecentVisitors] = useState([]);
+  const [recentSalvations, setRecentSalvations] = useState([]);
+  const [recentPrayers, setRecentPrayers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchData(); }, []);
@@ -1242,25 +1246,98 @@ function DashboardPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [members, visitors, salvations, donations, attendance] = await Promise.all([
+      const [members, visitors, salvations, donations, services, events, activityLogs, prayers] = await Promise.all([
         supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'donation_date.desc', limit: 5 }),
-        supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc', limit: 5 }),
+        supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'visit_date.desc', limit: 5 }),
+        supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc', limit: 5 }),
+        supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'event_date.asc' }),
+        supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 5 }),
+        supabaseQuery('prayer_requests', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 3 }),
       ]);
 
-      const allDonations = await supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] });
-      const totalDonations = (allDonations || []).reduce((sum, d) => sum + (d.amount || 0), 0);
+      // Calculate total donations
+      const totalDonations = (donations || []).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
       
+      // Get upcoming birthdays (next 30 days)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const birthdayMembers = (members || []).filter(m => {
+        if (!m.date_of_birth) return false;
+        const dob = new Date(m.date_of_birth);
+        const thisYearBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
+        const nextYearBirthday = new Date(today.getFullYear() + 1, dob.getMonth(), dob.getDate());
+        const diffThis = Math.ceil((thisYearBirthday - today) / (1000 * 60 * 60 * 24));
+        const diffNext = Math.ceil((nextYearBirthday - today) / (1000 * 60 * 60 * 24));
+        return (diffThis >= 0 && diffThis <= 30) || (diffNext >= 0 && diffNext <= 30);
+      }).map(m => {
+        const dob = new Date(m.date_of_birth);
+        let birthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
+        if (birthday < today) birthday = new Date(today.getFullYear() + 1, dob.getMonth(), dob.getDate());
+        const daysUntil = Math.ceil((birthday - today) / (1000 * 60 * 60 * 24));
+        return { ...m, birthday, daysUntil };
+      }).sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 5);
+
+      // Calculate next occurrence for each service
+      const dayMap = { 'SUNDAY': 0, 'MONDAY': 1, 'TUESDAY': 2, 'WEDNESDAY': 3, 'THURSDAY': 4, 'FRIDAY': 5, 'SATURDAY': 6 };
+      const upcomingServices = (services || []).filter(s => s.is_active).map(service => {
+        const serviceDay = dayMap[service.day_of_week];
+        const todayDay = today.getDay();
+        let daysUntil = serviceDay - todayDay;
+        if (daysUntil < 0) daysUntil += 7;
+        if (daysUntil === 0) daysUntil = 0; // Today
+        const nextDate = new Date(today);
+        nextDate.setDate(today.getDate() + daysUntil);
+        return {
+          id: service.id,
+          title: service.name,
+          date: nextDate,
+          time: service.start_time,
+          type: 'SERVICE',
+          icon: '⛪',
+          color: '#6366f1',
+          daysUntil
+        };
+      });
+
+      // Get upcoming events
+      const upcomingEvents = (events || []).filter(e => new Date(e.event_date) >= today).map(event => {
+        const eventDate = new Date(event.event_date);
+        const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+        const eventIcons = { 'SERVICE': '⛪', 'CONFERENCE': '🎤', 'PRAYER': '🙏', 'MEETING': '👥', 'OUTREACH': '🌍', 'YOUTH': '🎉', 'GENERAL': '📅', 'WORKSHOP': '📚' };
+        const eventColors = { 'SERVICE': '#6366f1', 'CONFERENCE': '#f59e0b', 'PRAYER': '#ec4899', 'MEETING': '#10b981', 'OUTREACH': '#3b82f6', 'YOUTH': '#8b5cf6', 'GENERAL': '#6b7280', 'WORKSHOP': '#14b8a6' };
+        return {
+          id: event.id,
+          title: event.title,
+          date: eventDate,
+          time: event.start_time,
+          type: event.event_type,
+          icon: eventIcons[event.event_type] || '📅',
+          color: eventColors[event.event_type] || '#6b7280',
+          daysUntil,
+          isEvent: true
+        };
+      });
+
+      // Combine and sort by date
+      const combined = [...upcomingServices, ...upcomingEvents]
+        .sort((a, b) => a.daysUntil - b.daysUntil)
+        .slice(0, 6);
+
       setStats({
         members: members?.length || 0,
-        visitors: visitors?.length || 0,
-        salvations: salvations?.length || 0,
+        visitors: (visitors || []).length,
+        salvations: (salvations || []).length,
         donations: totalDonations
       });
-      setRecentDonations(donations || []);
-      setRecentAttendance(attendance || []);
+      setUpcomingBirthdays(birthdayMembers);
+      setUpcomingItems(combined);
+      setRecentActivity(activityLogs || []);
+      setRecentVisitors(visitors || []);
+      setRecentSalvations(salvations || []);
+      setRecentPrayers(prayers || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }
@@ -1268,57 +1345,213 @@ function DashboardPage() {
   };
 
   const formatCurrency = (amount) => `XAF ${(amount || 0).toLocaleString()}`;
+  const formatDate = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+  const formatTime = (timeStr) => timeStr ? timeStr.slice(0, 5) : '';
+  const timeAgo = (dateStr) => {
+    const diff = (new Date() - new Date(dateStr)) / 1000;
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+    return `${Math.floor(diff / 86400)} days ago`;
+  };
+
+  const activityIcons = {
+    'donation': '💰', 'attendance': '📊', 'salvation': '❤️', 'visitor': '🚶', 'member': '👤',
+    'CREATE': '➕', 'UPDATE': '✏️', 'DELETE': '🗑️'
+  };
+
+  const getDaysLabel = (days) => {
+    if (days === 0) return { label: 'Today', color: '#dc2626', bg: '#fef2f2' };
+    if (days === 1) return { label: 'Tomorrow', color: '#f59e0b', bg: '#fef3c7' };
+    if (days <= 3) return { label: `In ${days} days`, color: '#f59e0b', bg: '#fef3c7' };
+    return { label: `In ${days} days`, color: '#6b7280', bg: '#f3f4f6' };
+  };
 
   return (
     <div>
       <PageHeader 
         title={`📊 ${t('dashboard')}`}
-        subtitle={t('welcome')}
+        subtitle={`${t('welcome')} back! Here's what's happening at your church.`}
         actions={<Button onClick={fetchData} variant="secondary">🔄 Refresh</Button>}
       />
 
       {loading ? <LoadingSpinner /> : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+          {/* Stats Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '24px' }}>
             <StatCard label={t('totalMembers')} value={stats.members} icon="👥" color="#6366f1" trend="+5%" />
             <StatCard label={t('totalVisitors')} value={stats.visitors} icon="🚶" color="#f59e0b" trend="+3" />
             <StatCard label={t('salvations')} value={stats.salvations} icon="❤️" color="#ef4444" trend="+2" />
             <StatCard label={t('totalGiving')} value={formatCurrency(stats.donations)} icon="💰" color="#10b981" trend="+8%" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+          {/* Upcoming Birthdays */}
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🎂 Upcoming Birthdays
+              </h3>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>Next 30 days</span>
+            </div>
+            {upcomingBirthdays.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
+                <span style={{ fontSize: '48px' }}>🎂</span>
+                <p>No upcoming birthdays in the next 30 days</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
+                {upcomingBirthdays.map((member, i) => (
+                  <div key={i} style={{ minWidth: '140px', padding: '16px', backgroundColor: member.daysUntil === 0 ? '#fef2f2' : '#fef3c7', borderRadius: '12px', textAlign: 'center', border: member.daysUntil === 0 ? '2px solid #fecaca' : 'none' }}>
+                    <div style={{ width: '50px', height: '50px', backgroundColor: member.daysUntil === 0 ? '#ef4444' : '#fbbf24', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '18px', color: 'white', fontWeight: 'bold' }}>
+                      {member.first_name?.[0]}{member.last_name?.[0]}
+                    </div>
+                    <p style={{ margin: '0 0 4px 0', fontWeight: '600', fontSize: '14px' }}>{member.first_name}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: member.daysUntil === 0 ? '#dc2626' : '#92400e', fontWeight: '500' }}>
+                      {member.daysUntil === 0 ? '🎉 Today!' : member.daysUntil === 1 ? 'Tomorrow' : `In ${member.daysUntil} days`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Main Grid - Activity & Upcoming */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+            
+            {/* Recent Activity */}
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600' }}>💰 {t('recentDonations')}</h3>
-              {recentDonations.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No recent donations</p>
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>⚡ Recent Activity</h3>
+              {recentActivity.length === 0 ? (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No recent activity</p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {recentDonations.map((d, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
-                      <div>
-                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{d.category_type}</p>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{new Date(d.donation_date).toLocaleDateString()}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {recentActivity.map((activity, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ width: '36px', height: '36px', backgroundColor: '#f3f4f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
+                        {activityIcons[activity.entity_type] || activityIcons[activity.action] || '📝'}
                       </div>
-                      <span style={{ fontWeight: 'bold', color: '#10b981' }}>{formatCurrency(d.amount)}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>
+                          {activity.action === 'CREATE' ? 'New' : activity.action} {activity.entity_type}
+                        </p>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {activity.entity_name || activity.user_name}
+                        </p>
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{timeAgo(activity.created_at)}</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
+            {/* Upcoming Services & Events */}
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600' }}>📅 {t('recentAttendance')}</h3>
-              {recentAttendance.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No recent attendance</p>
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📅 Upcoming Services & Events</h3>
+              {upcomingItems.length === 0 ? (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No upcoming items</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {recentAttendance.map((a, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
-                      <div>
-                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{new Date(a.service_date).toLocaleDateString()}</p>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{t('men')}: {a.men_count} | {t('women')}: {a.women_count} | {t('children')}: {a.children_count}</p>
+                  {upcomingItems.map((item, i) => {
+                    const dayInfo = getDaysLabel(item.daysUntil);
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '10px', borderLeft: `4px solid ${item.color}` }}>
+                        <div style={{ width: '42px', height: '42px', backgroundColor: `${item.color}15`, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                          {item.icon}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{item.title}</p>
+                            {item.isEvent && <span style={{ padding: '2px 6px', backgroundColor: `${item.color}20`, color: item.color, borderRadius: '4px', fontSize: '10px', fontWeight: '600' }}>EVENT</span>}
+                          </div>
+                          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
+                            {formatDate(item.date)} {item.time && `at ${formatTime(item.time)}`}
+                          </p>
+                        </div>
+                        <span style={{ padding: '4px 10px', backgroundColor: dayInfo.bg, color: dayInfo.color, borderRadius: '9999px', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                          {dayInfo.label}
+                        </span>
                       </div>
-                      <span style={{ fontWeight: 'bold', color: '#6366f1' }}>{a.total_count} {t('total')}</span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+            
+            {/* Recent Visitors */}
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>🚶 Recent Visitors</h3>
+                <span style={{ fontSize: '20px' }}>👥</span>
+              </div>
+              {recentVisitors.length === 0 ? (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: '16px' }}>No recent visitors</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {recentVisitors.slice(0, 4).map((visitor, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{visitor.full_name}</p>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{formatDate(visitor.visit_date)}</p>
+                      </div>
+                      {visitor.is_first_time && <span style={{ padding: '2px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '11px' }}>First Time</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Salvation Decisions */}
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>❤️ Salvation Decisions</h3>
+                <span style={{ fontSize: '20px' }}>🙌</span>
+              </div>
+              {recentSalvations.length === 0 ? (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: '16px' }}>No recent salvations</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {recentSalvations.slice(0, 4).map((salvation, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{salvation.full_name}</p>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{formatDate(salvation.salvation_date)}</p>
+                      </div>
+                      <StatusBadge status={salvation.followup_status} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Prayer Requests */}
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>🙏 Prayer Requests</h3>
+                <span style={{ fontSize: '20px' }}>✨</span>
+              </div>
+              {recentPrayers.length === 0 ? (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: '16px' }}>No prayer requests</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {recentPrayers.map((prayer, i) => (
+                    <div key={i} style={{ padding: '10px', backgroundColor: '#fef9c3', borderRadius: '8px' }}>
+                      <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{prayer.title}</p>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {prayer.description || 'No description'}
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#6b7280' }}>{prayer.requester_name || 'Anonymous'}</span>
+                        <StatusBadge status={prayer.status} />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1330,7 +1563,6 @@ function DashboardPage() {
     </div>
   );
 }
-
 // ==========================================
 // MEMBERS PAGE - With Photo Upload
 // ==========================================
@@ -1800,22 +2032,28 @@ function VisitorsPage() {
     </div>
   );
 }
-
 // ==========================================
-// ATTENDANCE PAGE
+// ATTENDANCE PAGE - With Charts, Filters & Multi-Location
 // ==========================================
 function AttendancePage() {
   const { t } = useLanguage();
+  const [activeView, setActiveView] = useState('charts');
   const [attendance, setAttendance] = useState([]);
   const [services, setServices] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
   
+  // Filters
+  const [filterLocation, setFilterLocation] = useState('all');
+  const [filterService, setFilterService] = useState('all');
+  const [filterDateRange, setFilterDateRange] = useState('10weeks');
+  
   const [form, setForm] = useState({
-    service_id: '', service_date: new Date().toISOString().split('T')[0],
+    service_id: '', location_id: '', service_date: new Date().toISOString().split('T')[0],
     men_count: 0, women_count: 0, children_count: 0,
     first_timers_count: 0, total_offering: 0, weather: 'SUNNY', notes: ''
   });
@@ -1824,25 +2062,99 @@ function AttendancePage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [attendanceData, servicesData] = await Promise.all([
+    const [attendanceData, servicesData, locationsData] = await Promise.all([
       supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc' }),
-      supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
     ]);
     setAttendance(attendanceData || []);
     setServices(servicesData || []);
+    setLocations(locationsData || []);
     setLoading(false);
   };
 
+  // Filter attendance data
+  const getFilteredAttendance = () => {
+    let filtered = [...attendance];
+    
+    // Filter by location
+    if (filterLocation !== 'all') {
+      filtered = filtered.filter(a => a.location_id === filterLocation);
+    }
+    
+    // Filter by service
+    if (filterService !== 'all') {
+      filtered = filtered.filter(a => a.service_id === filterService);
+    }
+    
+    // Filter by date range
+    const now = new Date();
+    let startDate;
+    switch (filterDateRange) {
+      case '4weeks': startDate = new Date(now.setDate(now.getDate() - 28)); break;
+      case '10weeks': startDate = new Date(now.setDate(now.getDate() - 70)); break;
+      case '6months': startDate = new Date(now.setMonth(now.getMonth() - 6)); break;
+      case '1year': startDate = new Date(now.setFullYear(now.getFullYear() - 1)); break;
+      default: startDate = new Date(now.setDate(now.getDate() - 70));
+    }
+    filtered = filtered.filter(a => new Date(a.service_date) >= startDate);
+    
+    return filtered.sort((a, b) => new Date(a.service_date) - new Date(b.service_date));
+  };
+
+  const filteredAttendance = getFilteredAttendance();
+
+  // Calculate statistics
+  const currentWeekAttendance = filteredAttendance.length > 0 ? filteredAttendance[filteredAttendance.length - 1]?.total_count || 0 : 0;
+  const previousWeekAttendance = filteredAttendance.length > 1 ? filteredAttendance[filteredAttendance.length - 2]?.total_count || 0 : 0;
+  const weekOverWeekChange = previousWeekAttendance > 0 ? (((currentWeekAttendance - previousWeekAttendance) / previousWeekAttendance) * 100).toFixed(1) : 0;
+  
+  const totalAttendance = filteredAttendance.reduce((sum, a) => sum + (a.total_count || 0), 0);
+  const avgAttendance = filteredAttendance.length > 0 ? Math.round(totalAttendance / filteredAttendance.length) : 0;
+  const totalFirstTimers = filteredAttendance.reduce((sum, a) => sum + (a.first_timers_count || 0), 0);
+  const totalChildren = filteredAttendance.reduce((sum, a) => sum + (a.children_count || 0), 0);
+  const childrenPercentage = totalAttendance > 0 ? ((totalChildren / totalAttendance) * 100).toFixed(0) : 0;
+
+  // Get service name by ID
+  const getServiceName = (serviceId) => {
+    const service = services.find(s => s.id === serviceId);
+    return service?.name || 'Unknown';
+  };
+
+  // Get location name by ID
+  const getLocationName = (locationId) => {
+    const location = locations.find(l => l.id === locationId);
+    return location?.name || 'Main Campus';
+  };
+
   const resetForm = () => {
-    setForm({ service_id: services[0]?.id || '', service_date: new Date().toISOString().split('T')[0], men_count: 0, women_count: 0, children_count: 0, first_timers_count: 0, total_offering: 0, weather: 'SUNNY', notes: '' });
+    setForm({
+      service_id: services[0]?.id || '', location_id: locations.find(l => l.is_main_campus)?.id || locations[0]?.id || '',
+      service_date: new Date().toISOString().split('T')[0],
+      men_count: 0, women_count: 0, children_count: 0,
+      first_timers_count: 0, total_offering: 0, weather: 'SUNNY', notes: ''
+    });
     setEditingRecord(null);
   };
 
   const openModal = (record = null) => {
     if (record) {
       setEditingRecord(record);
-      setForm({ service_id: record.service_id || '', service_date: record.service_date || '', men_count: record.men_count || 0, women_count: record.women_count || 0, children_count: record.children_count || 0, first_timers_count: record.first_timers_count || 0, total_offering: record.total_offering || 0, weather: record.weather || 'SUNNY', notes: record.notes || '' });
-    } else { resetForm(); }
+      setForm({
+        service_id: record.service_id || '',
+        location_id: record.location_id || '',
+        service_date: record.service_date || '',
+        men_count: record.men_count || 0,
+        women_count: record.women_count || 0,
+        children_count: record.children_count || 0,
+        first_timers_count: record.first_timers_count || 0,
+        total_offering: record.total_offering || 0,
+        weather: record.weather || 'SUNNY',
+        notes: record.notes || ''
+      });
+    } else {
+      resetForm();
+    }
     setShowModal(true);
   };
 
@@ -1850,123 +2162,772 @@ function AttendancePage() {
     if (!form.service_date) { alert('Service date is required'); return; }
     setSaving(true);
     try {
-      const data = { ...form, men_count: parseInt(form.men_count), women_count: parseInt(form.women_count), children_count: parseInt(form.children_count), first_timers_count: parseInt(form.first_timers_count), total_offering: parseFloat(form.total_offering) };
-      if (editingRecord) { await supabaseUpdate('attendance_records', editingRecord.id, data); }
-      else { await supabaseInsert('attendance_records', data); }
-      setShowModal(false); resetForm(); fetchData();
-    } catch (error) { alert('Error saving: ' + error.message); }
+      const data = {
+        ...form,
+        men_count: parseInt(form.men_count) || 0,
+        women_count: parseInt(form.women_count) || 0,
+        children_count: parseInt(form.children_count) || 0,
+        first_timers_count: parseInt(form.first_timers_count) || 0,
+        total_offering: parseFloat(form.total_offering) || 0
+      };
+      if (editingRecord) {
+        await supabaseUpdate('attendance_records', editingRecord.id, data);
+      } else {
+        await supabaseInsert('attendance_records', data);
+      }
+      setShowModal(false);
+      resetForm();
+      fetchData();
+    } catch (error) {
+      alert('Error saving: ' + error.message);
+    }
     setSaving(false);
   };
 
-  const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('attendance_records', deleteConfirm.id); setDeleteConfirm(null); fetchData(); };
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    await supabaseDelete('attendance_records', deleteConfirm.id);
+    setDeleteConfirm(null);
+    fetchData();
+  };
 
-  const totalAttendance = attendance.reduce((s, a) => s + (a.total_count || 0), 0);
-  const avgAttendance = attendance.length ? Math.round(totalAttendance / attendance.length) : 0;
-
-  const columns = [
-    { header: t('date'), key: 'date', render: (row) => <span style={{ fontWeight: '500' }}>{new Date(row.service_date).toLocaleDateString()}</span> },
-    { header: t('men'), key: 'men_count' },
-    { header: t('women'), key: 'women_count' },
-    { header: t('children'), key: 'children_count' },
-    { header: t('total'), key: 'total', render: (row) => <span style={{ fontWeight: 'bold', color: '#6366f1' }}>{row.total_count}</span> },
-    { header: t('offering'), key: 'offering', render: (row) => <span style={{ color: '#10b981' }}>XAF {row.total_offering?.toLocaleString()}</span> },
-  ];
+  // Simple chart using divs (bar chart visualization)
+  const maxAttendance = Math.max(...filteredAttendance.map(a => a.total_count || 0), 1);
 
   return (
     <div>
-      <PageHeader title={`📅 ${t('attendance')}`} subtitle={`${attendance.length} records`} actions={<Button onClick={() => openModal()}>➕ {t('recordAttendance')}</Button>} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard label={t('total')} value={totalAttendance} icon="👥" />
-        <StatCard label="Average" value={avgAttendance} icon="📊" color="#10b981" />
-        <StatCard label={t('services')} value={attendance.length} icon="⛪" color="#f59e0b" />
-      </div>
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        {loading ? <LoadingSpinner /> : <DataTable columns={columns} data={attendance} onEdit={openModal} onDelete={setDeleteConfirm} />}
-      </div>
-      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingRecord ? `✏️ ${t('edit')}` : `➕ ${t('recordAttendance')}`}>
-        <FormInput label={t('services')} type="select" value={form.service_id} onChange={(e) => setForm({ ...form, service_id: e.target.value })} options={services.map(s => ({ value: s.id, label: s.name }))} />
-        <FormInput label={t('date')} type="date" value={form.service_date} onChange={(e) => setForm({ ...form, service_date: e.target.value })} required />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-          <FormInput label={t('men')} type="number" value={form.men_count} onChange={(e) => setForm({ ...form, men_count: e.target.value })} />
-          <FormInput label={t('women')} type="number" value={form.women_count} onChange={(e) => setForm({ ...form, women_count: e.target.value })} />
-          <FormInput label={t('children')} type="number" value={form.children_count} onChange={(e) => setForm({ ...form, children_count: e.target.value })} />
+      <PageHeader 
+        title={`📊 ${t('attendance')}`}
+        subtitle="Track attendance across all services and locations."
+        actions={
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => setActiveView('charts')}
+              style={{
+                padding: '10px 20px',
+                border: activeView === 'charts' ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                borderRadius: '10px',
+                backgroundColor: activeView === 'charts' ? '#6366f1' : 'white',
+                color: activeView === 'charts' ? 'white' : '#6b7280',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: '500'
+              }}
+            >
+              📈 Charts
+            </button>
+            <button
+              onClick={() => setActiveView('details')}
+              style={{
+                padding: '10px 20px',
+                border: activeView === 'details' ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                borderRadius: '10px',
+                backgroundColor: activeView === 'details' ? '#6366f1' : 'white',
+                color: activeView === 'details' ? 'white' : '#6b7280',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: '500'
+              }}
+            >
+              📋 Details
+            </button>
+            <Button onClick={() => openModal()}>➕ {t('recordAttendance')}</Button>
+          </div>
+        }
+      />
+
+      {/* Filters */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Location</label>
+            <select
+              value={filterLocation}
+              onChange={(e) => setFilterLocation(e.target.value)}
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+            >
+              <option value="all">All Locations</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Service</label>
+            <select
+              value={filterService}
+              onChange={(e) => setFilterService(e.target.value)}
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+            >
+              <option value="all">All Services</option>
+              {services.map(svc => (
+                <option key={svc.id} value={svc.id}>{svc.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Date Range</label>
+            <select
+              value={filterDateRange}
+              onChange={(e) => setFilterDateRange(e.target.value)}
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+            >
+              <option value="4weeks">Last 4 Weeks</option>
+              <option value="10weeks">Last 10 Weeks</option>
+              <option value="6months">Last 6 Months</option>
+              <option value="1year">Last Year</option>
+            </select>
+          </div>
         </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>Current Week Attendance</p>
+          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#111827' }}>{currentWeekAttendance}</p>
+          <p style={{ fontSize: '14px', margin: 0, color: parseFloat(weekOverWeekChange) >= 0 ? '#10b981' : '#ef4444' }}>
+            {parseFloat(weekOverWeekChange) >= 0 ? '+' : ''}{weekOverWeekChange}% from previous week
+          </p>
+        </div>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>Average Attendance</p>
+          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#111827' }}>{avgAttendance}</p>
+          <p style={{ fontSize: '14px', margin: 0, color: '#6b7280' }}>Over the {filterDateRange.replace('weeks', ' weeks').replace('months', ' months').replace('year', ' year')}</p>
+        </div>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>First Time Visitors</p>
+          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#111827' }}>{totalFirstTimers}</p>
+          <p style={{ fontSize: '14px', margin: 0, color: '#6b7280' }}>{filteredAttendance.length} total in period</p>
+        </div>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>Children's Attendance</p>
+          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#111827' }}>{totalChildren}</p>
+          <p style={{ fontSize: '14px', margin: 0, color: '#6b7280' }}>{childrenPercentage}% of total attendance</p>
+        </div>
+      </div>
+
+      {/* Charts View */}
+      {activeView === 'charts' && (
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📈 Attendance Trends</h3>
+            <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '12px', height: '12px', backgroundColor: '#6366f1', borderRadius: '2px' }}></span>
+                Total Attendance
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '12px', height: '12px', backgroundColor: '#f59e0b', borderRadius: '2px' }}></span>
+                Children
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '12px', height: '12px', backgroundColor: '#ec4899', borderRadius: '2px' }}></span>
+                First Time Visitors
+              </span>
+            </div>
+          </div>
+          
+          {/* Chart Area */}
+          <div style={{ height: '300px', display: 'flex', alignItems: 'flex-end', gap: '8px', paddingBottom: '40px', position: 'relative' }}>
+            {/* Y-axis labels */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: '40px', width: '50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280' }}>
+              <span>{maxAttendance}</span>
+              <span>{Math.round(maxAttendance * 0.75)}</span>
+              <span>{Math.round(maxAttendance * 0.5)}</span>
+              <span>{Math.round(maxAttendance * 0.25)}</span>
+              <span>0</span>
+            </div>
+            
+            {/* Bars */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '4px', marginLeft: '60px', height: '100%' }}>
+              {filteredAttendance.slice(-12).map((record, index) => {
+                const totalHeight = ((record.total_count || 0) / maxAttendance) * 100;
+                const childrenHeight = ((record.children_count || 0) / maxAttendance) * 100;
+                const firstTimersHeight = ((record.first_timers_count || 0) / maxAttendance) * 100;
+                
+                return (
+                  <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ width: '100%', display: 'flex', gap: '2px', alignItems: 'flex-end', height: '220px' }}>
+                      {/* Total bar */}
+                      <div
+                        style={{
+                          flex: 1,
+                          height: `${totalHeight}%`,
+                          backgroundColor: '#6366f1',
+                          borderRadius: '4px 4px 0 0',
+                          minHeight: '4px',
+                          transition: 'height 0.3s ease'
+                        }}
+                        title={`Total: ${record.total_count}`}
+                      />
+                      {/* Children bar */}
+                      <div
+                        style={{
+                          flex: 1,
+                          height: `${childrenHeight}%`,
+                          backgroundColor: '#f59e0b',
+                          borderRadius: '4px 4px 0 0',
+                          minHeight: record.children_count > 0 ? '4px' : '0',
+                          transition: 'height 0.3s ease'
+                        }}
+                        title={`Children: ${record.children_count}`}
+                      />
+                      {/* First timers bar */}
+                      <div
+                        style={{
+                          flex: 1,
+                          height: `${firstTimersHeight}%`,
+                          backgroundColor: '#ec4899',
+                          borderRadius: '4px 4px 0 0',
+                          minHeight: record.first_timers_count > 0 ? '4px' : '0',
+                          transition: 'height 0.3s ease'
+                        }}
+                        title={`First Timers: ${record.first_timers_count}`}
+                      />
+                    </div>
+                    <span style={{ fontSize: '10px', color: '#6b7280', transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>
+                      {new Date(record.service_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Summary below chart */}
+          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#6366f1', margin: 0 }}>{totalAttendance}</p>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Total Attendance</p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981', margin: 0 }}>{filteredAttendance.length}</p>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Services Recorded</p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b', margin: 0 }}>XAF {filteredAttendance.reduce((sum, a) => sum + (a.total_offering || 0), 0).toLocaleString()}</p>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Total Offering</p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#ec4899', margin: 0 }}>{locations.length}</p>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Locations</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Details View */}
+      {activeView === 'details' && (
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📋 Attendance Records</h3>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>{filteredAttendance.length} records</span>
+          </div>
+          {loading ? <LoadingSpinner /> : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('date')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Service</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('men')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('women')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('children')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('total')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>First Timers</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Offering</th>
+                    <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAttendance.slice().reverse().map((record, index) => (
+                    <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '16px', fontWeight: '500' }}>{new Date(record.service_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
+                      <td style={{ padding: '16px', color: '#6366f1' }}>{getServiceName(record.service_id)}</td>
+                      <td style={{ padding: '16px', color: '#6b7280' }}>{getLocationName(record.location_id)}</td>
+                      <td style={{ padding: '16px' }}>{record.men_count}</td>
+                      <td style={{ padding: '16px' }}>{record.women_count}</td>
+                      <td style={{ padding: '16px' }}>{record.children_count}</td>
+                      <td style={{ padding: '16px', fontWeight: 'bold', color: '#6366f1' }}>{record.total_count}</td>
+                      <td style={{ padding: '16px', color: '#ec4899' }}>{record.first_timers_count}</td>
+                      <td style={{ padding: '16px', color: '#10b981', fontWeight: '500' }}>XAF {(record.total_offering || 0).toLocaleString()}</td>
+                      <td style={{ padding: '16px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button onClick={() => openModal(record)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️ Edit</button>
+                          <button onClick={() => setDeleteConfirm(record)} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑️ Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Record Attendance Modal */}
+      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingRecord ? `✏️ Edit Attendance` : `➕ ${t('recordAttendance')}`} width="600px">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput 
+            label="Service" 
+            type="select" 
+            value={form.service_id} 
+            onChange={(e) => setForm({ ...form, service_id: e.target.value })}
+            options={services.map(s => ({ value: s.id, label: s.name }))} 
+          />
+          <FormInput 
+            label="Location" 
+            type="select" 
+            value={form.location_id} 
+            onChange={(e) => setForm({ ...form, location_id: e.target.value })}
+            options={locations.map(l => ({ value: l.id, label: l.name }))} 
+          />
+        </div>
+        <FormInput label={t('date')} type="date" value={form.service_date} onChange={(e) => setForm({ ...form, service_date: e.target.value })} required />
+        
+        <div style={{ backgroundColor: '#f9fafb', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>👥 Attendance Count</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            <FormInput label={t('men')} type="number" value={form.men_count} onChange={(e) => setForm({ ...form, men_count: e.target.value })} />
+            <FormInput label={t('women')} type="number" value={form.women_count} onChange={(e) => setForm({ ...form, women_count: e.target.value })} />
+            <FormInput label={t('children')} type="number" value={form.children_count} onChange={(e) => setForm({ ...form, children_count: e.target.value })} />
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <FormInput label={t('firstTimers')} type="number" value={form.first_timers_count} onChange={(e) => setForm({ ...form, first_timers_count: e.target.value })} />
           <FormInput label={`${t('offering')} (XAF)`} type="number" value={form.total_offering} onChange={(e) => setForm({ ...form, total_offering: e.target.value })} />
         </div>
-        <FormInput label={t('weather')} type="select" value={form.weather} onChange={(e) => setForm({ ...form, weather: e.target.value })} options={[{ value: 'SUNNY', label: `☀️ ${t('sunny')}` }, { value: 'CLOUDY', label: `☁️ ${t('cloudy')}` }, { value: 'RAINY', label: `🌧️ ${t('rainy')}` }]} />
+        
+        <FormInput 
+          label={t('weather')} 
+          type="select" 
+          value={form.weather} 
+          onChange={(e) => setForm({ ...form, weather: e.target.value })}
+          options={[{ value: 'SUNNY', label: `☀️ ${t('sunny')}` }, { value: 'CLOUDY', label: `☁️ ${t('cloudy')}` }, { value: 'RAINY', label: `🌧️ ${t('rainy')}` }]} 
+        />
+        
+        <FormInput label="Notes" type="textarea" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any notes about this service..." />
+        
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>{t('cancel')}</Button>
           <Button onClick={handleSave} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button>
         </div>
       </Modal>
-      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title={`🗑️ ${t('delete')}`} message="Delete this record?" />
+
+      <ConfirmDialog 
+        isOpen={!!deleteConfirm} 
+        onClose={() => setDeleteConfirm(null)} 
+        onConfirm={handleDelete} 
+        title={`🗑️ ${t('delete')}`} 
+        message="Are you sure you want to delete this attendance record?" 
+      />
     </div>
   );
 }
-
 // ==========================================
-// GIVING PAGE
+// GIVING PAGE - With Income, Expenses & Financial Report
 // ==========================================
 function GivingPage() {
   const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState('income');
   const [donations, setDonations] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingDonation, setEditingDonation] = useState(null);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ member_id: '', amount: '', category_type: 'TITHE', donation_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', is_anonymous: false, notes: '' });
+  
+  const [donationForm, setDonationForm] = useState({ 
+    member_id: '', amount: '', category_type: 'TITHE', 
+    donation_date: new Date().toISOString().split('T')[0], 
+    payment_method: 'CASH', is_anonymous: false, notes: '' 
+  });
+  
+  const [expenseForm, setExpenseForm] = useState({ 
+    category: 'GENERAL', amount: '', description: '', 
+    expense_date: new Date().toISOString().split('T')[0], 
+    payment_method: 'CASH', vendor_name: '', notes: '' 
+  });
 
   useEffect(() => { fetchData(); }, []);
-  const fetchData = async () => { setLoading(true); const [donationsData, membersData] = await Promise.all([supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'donation_date.desc' }), supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setDonations(donationsData || []); setMembers(membersData || []); setLoading(false); };
-  const resetForm = () => { setForm({ member_id: '', amount: '', category_type: 'TITHE', donation_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', is_anonymous: false, notes: '' }); setEditingDonation(null); };
-  const openModal = (donation = null) => { if (donation) { setEditingDonation(donation); setForm({ member_id: donation.member_id || '', amount: donation.amount || '', category_type: donation.category_type || 'TITHE', donation_date: donation.donation_date || '', payment_method: donation.payment_method || 'CASH', is_anonymous: donation.is_anonymous || false, notes: donation.notes || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.amount || !form.donation_date) { alert('Amount and date required'); return; } setSaving(true); try { const data = { ...form, amount: parseFloat(form.amount), member_id: form.member_id || null }; if (editingDonation) { await supabaseUpdate('donations', editingDonation.id, data); } else { await supabaseInsert('donations', data); } setShowModal(false); resetForm(); fetchData(); } catch (error) { alert('Error: ' + error.message); } setSaving(false); };
-  const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('donations', deleteConfirm.id); setDeleteConfirm(null); fetchData(); };
 
-  const total = donations.reduce((s, d) => s + (d.amount || 0), 0);
-  const byCategory = donations.reduce((acc, d) => { acc[d.category_type] = (acc[d.category_type] || 0) + d.amount; return acc; }, {});
+  const fetchData = async () => {
+    setLoading(true);
+    const [donationsData, expensesData, membersData] = await Promise.all([
+      supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'donation_date.desc' }),
+      supabaseQuery('expenses', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'expense_date.desc' }),
+      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+    ]);
+    setDonations(donationsData || []);
+    setExpenses(expensesData || []);
+    setMembers(membersData || []);
+    setLoading(false);
+  };
 
-  const columns = [
+  // Calculate totals
+  const totalIncome = donations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  const netBalance = totalIncome - totalExpenses;
+
+  // Category breakdowns
+  const incomeByCategory = donations.reduce((acc, d) => {
+    acc[d.category_type] = (acc[d.category_type] || 0) + (parseFloat(d.amount) || 0);
+    return acc;
+  }, {});
+
+  const expensesByCategory = expenses.reduce((acc, e) => {
+    acc[e.category] = (acc[e.category] || 0) + (parseFloat(e.amount) || 0);
+    return acc;
+  }, {});
+
+  // Reset forms
+  const resetDonationForm = () => {
+    setDonationForm({ member_id: '', amount: '', category_type: 'TITHE', donation_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', is_anonymous: false, notes: '' });
+    setEditingItem(null);
+  };
+
+  const resetExpenseForm = () => {
+    setExpenseForm({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '' });
+    setEditingItem(null);
+  };
+
+  // Open modals
+  const openDonationModal = (item = null) => {
+    if (item) {
+      setEditingItem(item);
+      setDonationForm({ member_id: item.member_id || '', amount: item.amount || '', category_type: item.category_type || 'TITHE', donation_date: item.donation_date || '', payment_method: item.payment_method || 'CASH', is_anonymous: item.is_anonymous || false, notes: item.notes || '' });
+    } else { resetDonationForm(); }
+    setShowModal(true);
+  };
+
+  const openExpenseModal = (item = null) => {
+    if (item) {
+      setEditingItem(item);
+      setExpenseForm({ category: item.category || 'GENERAL', amount: item.amount || '', description: item.description || '', expense_date: item.expense_date || '', payment_method: item.payment_method || 'CASH', vendor_name: item.vendor_name || '', notes: item.notes || '' });
+    } else { resetExpenseForm(); }
+    setShowExpenseModal(true);
+  };
+
+  // Save handlers
+  const handleSaveDonation = async () => {
+    if (!donationForm.amount || !donationForm.donation_date) { alert('Amount and date required'); return; }
+    setSaving(true);
+    try {
+      const data = { ...donationForm, amount: parseFloat(donationForm.amount), member_id: donationForm.member_id || null };
+      if (editingItem) { await supabaseUpdate('donations', editingItem.id, data); }
+      else { await supabaseInsert('donations', data); }
+      setShowModal(false); resetDonationForm(); fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  const handleSaveExpense = async () => {
+    if (!expenseForm.amount || !expenseForm.expense_date) { alert('Amount and date required'); return; }
+    setSaving(true);
+    try {
+      const data = { ...expenseForm, amount: parseFloat(expenseForm.amount) };
+      if (editingItem) { await supabaseUpdate('expenses', editingItem.id, data); }
+      else { await supabaseInsert('expenses', data); }
+      setShowExpenseModal(false); resetExpenseForm(); fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    const table = deleteConfirm.type === 'expense' ? 'expenses' : 'donations';
+    await supabaseDelete(table, deleteConfirm.id);
+    setDeleteConfirm(null);
+    fetchData();
+  };
+
+  // Print report
+  const printReport = () => {
+    window.print();
+  };
+
+  // Export to CSV
+  const exportToCSV = (type) => {
+    const data = type === 'income' ? donations : expenses;
+    const headers = type === 'income' 
+      ? ['Date', 'Category', 'Amount', 'Payment Method', 'Notes']
+      : ['Date', 'Category', 'Amount', 'Vendor', 'Description', 'Payment Method'];
+    
+    const rows = data.map(item => type === 'income'
+      ? [item.donation_date, item.category_type, item.amount, item.payment_method, item.notes || '']
+      : [item.expense_date, item.category, item.amount, item.vendor_name || '', item.description || '', item.payment_method]
+    );
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  };
+
+  const incomeColumns = [
     { header: t('date'), key: 'date', render: (row) => new Date(row.donation_date).toLocaleDateString() },
     { header: t('category'), key: 'category', render: (row) => <StatusBadge status={row.category_type} /> },
-    { header: t('amount'), key: 'amount', render: (row) => <span style={{ fontWeight: 'bold', color: '#10b981' }}>XAF {row.amount?.toLocaleString()}</span> },
+    { header: t('amount'), key: 'amount', render: (row) => <span style={{ fontWeight: 'bold', color: '#10b981' }}>XAF {parseFloat(row.amount).toLocaleString()}</span> },
     { header: t('paymentMethod'), key: 'method', render: (row) => row.payment_method },
+  ];
+
+  const expenseColumns = [
+    { header: t('date'), key: 'date', render: (row) => new Date(row.expense_date).toLocaleDateString() },
+    { header: t('category'), key: 'category', render: (row) => <StatusBadge status={row.category} /> },
+    { header: t('amount'), key: 'amount', render: (row) => <span style={{ fontWeight: 'bold', color: '#ef4444' }}>XAF {parseFloat(row.amount).toLocaleString()}</span> },
+    { header: 'Vendor', key: 'vendor', render: (row) => row.vendor_name || '—' },
+    { header: t('description'), key: 'description', render: (row) => <span style={{ color: '#6b7280' }}>{row.description || '—'}</span> },
   ];
 
   return (
     <div>
-      <PageHeader title={`💰 ${t('giving')}`} subtitle={`${donations.length} donations`} actions={<Button onClick={() => openModal()}>➕ {t('recordDonation')}</Button>} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard label={t('total')} value={`XAF ${total.toLocaleString()}`} icon="💰" color="#10b981" />
-        <StatCard label={t('tithe')} value={`XAF ${(byCategory.TITHE || 0).toLocaleString()}`} icon="📿" color="#6366f1" />
-        <StatCard label={t('offeringCat')} value={`XAF ${(byCategory.OFFERING || 0).toLocaleString()}`} icon="🎁" color="#f59e0b" />
-        <StatCard label={t('missions')} value={`XAF ${(byCategory.MISSIONS || 0).toLocaleString()}`} icon="🌍" color="#3b82f6" />
+      <PageHeader 
+        title={`💰 ${t('giving')}`} 
+        subtitle="Track and manage all church income and expenses"
+        actions={
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {activeTab === 'income' ? (
+              <Button onClick={() => openDonationModal()}>➕ Add Donation</Button>
+            ) : activeTab === 'expenses' ? (
+              <Button onClick={() => openExpenseModal()}>➕ Add Expense</Button>
+            ) : null}
+            <Button variant="secondary" onClick={() => setShowReportModal(true)}>📊 Financial Report</Button>
+          </div>
+        }
+      />
+
+      {/* Tab Buttons */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+        <button
+          onClick={() => setActiveTab('income')}
+          style={{
+            padding: '12px 24px',
+            border: activeTab === 'income' ? '2px solid #10b981' : '1px solid #e5e7eb',
+            borderRadius: '10px',
+            backgroundColor: activeTab === 'income' ? '#f0fdf4' : 'white',
+            color: activeTab === 'income' ? '#10b981' : '#6b7280',
+            fontWeight: activeTab === 'income' ? '600' : '400',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          ↗️ Income
+        </button>
+        <button
+          onClick={() => setActiveTab('expenses')}
+          style={{
+            padding: '12px 24px',
+            border: activeTab === 'expenses' ? '2px solid #ef4444' : '1px solid #e5e7eb',
+            borderRadius: '10px',
+            backgroundColor: activeTab === 'expenses' ? '#fef2f2' : 'white',
+            color: activeTab === 'expenses' ? '#ef4444' : '#6b7280',
+            fontWeight: activeTab === 'expenses' ? '600' : '400',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          ↙️ Expenses
+        </button>
+        <button
+          onClick={() => setActiveTab('report')}
+          style={{
+            padding: '12px 24px',
+            border: activeTab === 'report' ? '2px solid #6366f1' : '1px solid #e5e7eb',
+            borderRadius: '10px',
+            backgroundColor: activeTab === 'report' ? '#eef2ff' : 'white',
+            color: activeTab === 'report' ? '#6366f1' : '#6b7280',
+            fontWeight: activeTab === 'report' ? '600' : '400',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          📊 Report
+        </button>
       </div>
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        {loading ? <LoadingSpinner /> : <DataTable columns={columns} data={donations} onEdit={openModal} onDelete={setDeleteConfirm} />}
+
+      {/* Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <StatCard label="Total Income" value={`XAF ${totalIncome.toLocaleString()}`} icon="📈" color="#10b981" />
+        <StatCard label="Total Expenses" value={`XAF ${totalExpenses.toLocaleString()}`} icon="📉" color="#ef4444" />
+        <StatCard label="Net Balance" value={`XAF ${netBalance.toLocaleString()}`} icon="💰" color={netBalance >= 0 ? '#10b981' : '#ef4444'} />
       </div>
-      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingDonation ? `✏️ ${t('edit')}` : `➕ ${t('recordDonation')}`}>
-        <FormInput label="Donor" type="select" value={form.member_id} onChange={(e) => setForm({ ...form, member_id: e.target.value })} options={members.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))} />
+
+      {/* Income Tab */}
+      {activeTab === 'income' && (
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📥 Income / Donations</h3>
+            <button onClick={() => exportToCSV('income')} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px' }}>📥 Export CSV</button>
+          </div>
+          {loading ? <LoadingSpinner /> : (
+            <DataTable 
+              columns={incomeColumns} 
+              data={donations} 
+              onEdit={openDonationModal} 
+              onDelete={(item) => setDeleteConfirm({ ...item, type: 'donation' })} 
+            />
+          )}
+        </div>
+      )}
+
+      {/* Expenses Tab */}
+      {activeTab === 'expenses' && (
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📤 Expenses</h3>
+            <button onClick={() => exportToCSV('expenses')} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px' }}>📥 Export CSV</button>
+          </div>
+          {loading ? <LoadingSpinner /> : (
+            <DataTable 
+              columns={expenseColumns} 
+              data={expenses} 
+              onEdit={openExpenseModal} 
+              onDelete={(item) => setDeleteConfirm({ ...item, type: 'expense' })} 
+            />
+          )}
+        </div>
+      )}
+
+      {/* Report Tab */}
+      {activeTab === 'report' && (
+        <div id="financial-report">
+          {/* Report Header */}
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+              <div>
+                <h2 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: 'bold' }}>📊 Financial Report</h2>
+                <p style={{ margin: 0, color: '#6b7280' }}>
+                  {new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString()} - {new Date().toLocaleDateString()}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={printReport} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>🖨️ Print</button>
+                <button onClick={() => exportToCSV('income')} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#dc2626', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>📄 PDF</button>
+                <button onClick={() => exportToCSV('income')} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#10b981', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>📊 Excel</button>
+              </div>
+            </div>
+
+            {/* Summary Cards in Report */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+              <div style={{ padding: '20px', backgroundColor: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>Total Income</p>
+                <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>XAF {totalIncome.toLocaleString()}</p>
+              </div>
+              <div style={{ padding: '20px', backgroundColor: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca' }}>
+                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>Total Expenses</p>
+                <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#ef4444' }}>XAF {totalExpenses.toLocaleString()}</p>
+              </div>
+              <div style={{ padding: '20px', backgroundColor: netBalance >= 0 ? '#f0fdf4' : '#fef2f2', borderRadius: '12px', border: `1px solid ${netBalance >= 0 ? '#bbf7d0' : '#fecaca'}` }}>
+                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>Net Balance</p>
+                <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>XAF {netBalance.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Category Breakdown */}
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📋 Category Breakdown</h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                  <th style={{ textAlign: 'left', padding: '12px', color: '#6b7280', fontWeight: '600' }}>Category</th>
+                  <th style={{ textAlign: 'right', padding: '12px', color: '#6b7280', fontWeight: '600' }}>Income (XAF)</th>
+                  <th style={{ textAlign: 'right', padding: '12px', color: '#6b7280', fontWeight: '600' }}>Expenses (XAF)</th>
+                  <th style={{ textAlign: 'right', padding: '12px', color: '#6b7280', fontWeight: '600' }}>Net (XAF)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Get all unique categories */}
+                {[...new Set([...Object.keys(incomeByCategory), ...Object.keys(expensesByCategory)])].map((category, i) => {
+                  const income = incomeByCategory[category] || 0;
+                  const expense = expensesByCategory[category] || 0;
+                  const net = income - expense;
+                  return (
+                    <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px', fontWeight: '500' }}>{category}</td>
+                      <td style={{ padding: '12px', textAlign: 'right', color: '#10b981' }}>{income > 0 ? `XAF ${income.toLocaleString()}` : '—'}</td>
+                      <td style={{ padding: '12px', textAlign: 'right', color: '#ef4444' }}>{expense > 0 ? `XAF ${expense.toLocaleString()}` : '—'}</td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600', color: net >= 0 ? '#10b981' : '#ef4444' }}>XAF {net.toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+                {/* Total Row */}
+                <tr style={{ backgroundColor: '#f9fafb', fontWeight: 'bold' }}>
+                  <td style={{ padding: '12px' }}>TOTAL</td>
+                  <td style={{ padding: '12px', textAlign: 'right', color: '#10b981' }}>XAF {totalIncome.toLocaleString()}</td>
+                  <td style={{ padding: '12px', textAlign: 'right', color: '#ef4444' }}>XAF {totalExpenses.toLocaleString()}</td>
+                  <td style={{ padding: '12px', textAlign: 'right', color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>XAF {netBalance.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Add Donation Modal */}
+      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetDonationForm(); }} title={editingItem ? '✏️ Edit Donation' : '➕ Add Donation'}>
+        <FormInput label="Donor (optional)" type="select" value={donationForm.member_id} onChange={(e) => setDonationForm({ ...donationForm, member_id: e.target.value })} options={members.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={`${t('amount')} (XAF)`} type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-          <FormInput label={t('date')} type="date" value={form.donation_date} onChange={(e) => setForm({ ...form, donation_date: e.target.value })} required />
+          <FormInput label={`${t('amount')} (XAF)`} type="number" value={donationForm.amount} onChange={(e) => setDonationForm({ ...donationForm, amount: e.target.value })} required />
+          <FormInput label={t('date')} type="date" value={donationForm.donation_date} onChange={(e) => setDonationForm({ ...donationForm, donation_date: e.target.value })} required />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={t('category')} type="select" value={form.category_type} onChange={(e) => setForm({ ...form, category_type: e.target.value })} options={[{ value: 'TITHE', label: t('tithe') }, { value: 'OFFERING', label: t('offeringCat') }, { value: 'MISSIONS', label: t('missions') }, { value: 'THANKSGIVING', label: t('thanksgiving') }]} />
-          <FormInput label={t('paymentMethod')} type="select" value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} options={[{ value: 'CASH', label: t('cash') }, { value: 'MOBILE_MONEY', label: t('mobileMoney') }, { value: 'BANK_TRANSFER', label: t('bankTransfer') }]} />
+          <FormInput label={t('category')} type="select" value={donationForm.category_type} onChange={(e) => setDonationForm({ ...donationForm, category_type: e.target.value })} options={[{ value: 'TITHE', label: t('tithe') }, { value: 'OFFERING', label: t('offeringCat') }, { value: 'MISSIONS', label: t('missions') }, { value: 'THANKSGIVING', label: t('thanksgiving') }, { value: 'BUILDING', label: 'Building' }]} />
+          <FormInput label={t('paymentMethod')} type="select" value={donationForm.payment_method} onChange={(e) => setDonationForm({ ...donationForm, payment_method: e.target.value })} options={[{ value: 'CASH', label: t('cash') }, { value: 'MOBILE_MONEY', label: t('mobileMoney') }, { value: 'BANK_TRANSFER', label: t('bankTransfer') }]} />
         </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}><input type="checkbox" checked={form.is_anonymous} onChange={(e) => setForm({ ...form, is_anonymous: e.target.checked })} /><span>{t('anonymous')}</span></label>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>{t('cancel')}</Button><Button onClick={handleSave} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button></div>
+        <FormInput label="Notes" type="textarea" value={donationForm.notes} onChange={(e) => setDonationForm({ ...donationForm, notes: e.target.value })} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}><input type="checkbox" checked={donationForm.is_anonymous} onChange={(e) => setDonationForm({ ...donationForm, is_anonymous: e.target.checked })} /><span>{t('anonymous')}</span></label>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowModal(false); resetDonationForm(); }}>{t('cancel')}</Button><Button onClick={handleSaveDonation} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button></div>
       </Modal>
-      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title={`🗑️ ${t('delete')}`} message="Delete this donation?" />
+
+      {/* Add Expense Modal */}
+      <Modal isOpen={showExpenseModal} onClose={() => { setShowExpenseModal(false); resetExpenseForm(); }} title={editingItem ? '✏️ Edit Expense' : '➕ Add Expense'}>
+        <FormInput label="Description" value={expenseForm.description} onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} placeholder="What was this expense for?" />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label={`${t('amount')} (XAF)`} type="number" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} required />
+          <FormInput label={t('date')} type="date" value={expenseForm.expense_date} onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })} required />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label={t('category')} type="select" value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })} options={[{ value: 'GENERAL', label: 'General' }, { value: 'BUILDING', label: 'Building' }, { value: 'UTILITIES', label: 'Utilities' }, { value: 'SALARIES', label: 'Salaries' }, { value: 'MISSIONS', label: 'Missions' }, { value: 'SUPPLIES', label: 'Supplies' }, { value: 'TRANSPORT', label: 'Transport' }, { value: 'EVENTS', label: 'Events' }]} />
+          <FormInput label={t('paymentMethod')} type="select" value={expenseForm.payment_method} onChange={(e) => setExpenseForm({ ...expenseForm, payment_method: e.target.value })} options={[{ value: 'CASH', label: t('cash') }, { value: 'MOBILE_MONEY', label: t('mobileMoney') }, { value: 'BANK_TRANSFER', label: t('bankTransfer') }]} />
+        </div>
+        <FormInput label="Vendor/Recipient" value={expenseForm.vendor_name} onChange={(e) => setExpenseForm({ ...expenseForm, vendor_name: e.target.value })} placeholder="Who was paid?" />
+        <FormInput label="Notes" type="textarea" value={expenseForm.notes} onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })} />
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowExpenseModal(false); resetExpenseForm(); }}>{t('cancel')}</Button><Button onClick={handleSaveExpense} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button></div>
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog 
+        isOpen={!!deleteConfirm} 
+        onClose={() => setDeleteConfirm(null)} 
+        onConfirm={handleDelete} 
+        title={`🗑️ ${t('delete')}`} 
+        message={`Are you sure you want to delete this ${deleteConfirm?.type || 'item'}?`} 
+      />
     </div>
   );
 }
-
 // ==========================================
 // SALVATIONS PAGE
 // ==========================================
@@ -2149,115 +3110,840 @@ function PrayersPage() {
 }
 
 // ==========================================
-// SERVICES PAGE
+// SERVICES & EVENTS PAGE
 // ==========================================
 function ServicesPage() {
   const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState('services');
   const [services, setServices] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', day_of_week: 'SUNDAY', start_time: '09:00', end_time: '11:00', is_active: true });
+  const [filterLocation, setFilterLocation] = useState('all');
 
-  useEffect(() => { fetchServices(); }, []);
-  const fetchServices = async () => { setLoading(true); const data = await supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }); setServices(data || []); setLoading(false); };
-  const resetForm = () => { setForm({ name: '', description: '', day_of_week: 'SUNDAY', start_time: '09:00', end_time: '11:00', is_active: true }); setEditingService(null); };
-  const openModal = (service = null) => { if (service) { setEditingService(service); setForm({ name: service.name || '', description: service.description || '', day_of_week: service.day_of_week || 'SUNDAY', start_time: service.start_time || '09:00', end_time: service.end_time || '11:00', is_active: service.is_active ?? true }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.name) { alert('Name required'); return; } setSaving(true); try { if (editingService) { await supabaseUpdate('services', editingService.id, form); } else { await supabaseInsert('services', form); } setShowModal(false); resetForm(); fetchServices(); } catch (error) { alert('Error: ' + error.message); } setSaving(false); };
-  const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('services', deleteConfirm.id); setDeleteConfirm(null); fetchServices(); };
+  const [serviceForm, setServiceForm] = useState({ 
+    name: '', description: '', location_id: '', day_of_week: 'SUNDAY', 
+    start_time: '09:00', end_time: '11:00', is_active: true 
+  });
 
-  const columns = [
-    { header: t('name'), key: 'name', render: (row) => <span style={{ fontWeight: '500' }}>{row.name}</span> },
-    { header: t('meetingDay'), key: 'day', render: (row) => row.day_of_week },
-    { header: t('meetingTime'), key: 'time', render: (row) => `${row.start_time} - ${row.end_time}` },
-    { header: t('status'), key: 'status', render: (row) => row.is_active ? <span style={{ color: '#10b981' }}>✅ {t('active')}</span> : <span style={{ color: '#ef4444' }}>❌ {t('inactive')}</span> },
-  ];
+  const [eventForm, setEventForm] = useState({
+    title: '', description: '', event_date: '', start_time: '09:00', 
+    end_time: '12:00', location_id: '', event_type: 'GENERAL', 
+    is_recurring: false, recurrence_pattern: ''
+  });
+
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const [servicesData, eventsData, locationsData, attendanceData] = await Promise.all([
+      supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'event_date.asc' }),
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc', limit: 10 })
+    ]);
+    setServices(servicesData || []);
+    setEvents(eventsData || []);
+    setLocations(locationsData || []);
+    setAttendance(attendanceData || []);
+    setLoading(false);
+  };
+
+  // Reset forms
+  const resetServiceForm = () => {
+    setServiceForm({ name: '', description: '', location_id: locations[0]?.id || '', day_of_week: 'SUNDAY', start_time: '09:00', end_time: '11:00', is_active: true });
+    setEditingService(null);
+  };
+
+  const resetEventForm = () => {
+    setEventForm({ title: '', description: '', event_date: '', start_time: '09:00', end_time: '12:00', location_id: locations[0]?.id || '', event_type: 'GENERAL', is_recurring: false, recurrence_pattern: '' });
+    setEditingEvent(null);
+  };
+
+  // Open modals
+  const openServiceModal = (service = null) => {
+    if (service) {
+      setEditingService(service);
+      setServiceForm({
+        name: service.name || '', description: service.description || '',
+        location_id: service.location_id || '', day_of_week: service.day_of_week || 'SUNDAY',
+        start_time: service.start_time || '09:00', end_time: service.end_time || '11:00',
+        is_active: service.is_active ?? true
+      });
+    } else { resetServiceForm(); }
+    setShowServiceModal(true);
+  };
+
+  const openEventModal = (event = null) => {
+    if (event) {
+      setEditingEvent(event);
+      setEventForm({
+        title: event.title || '', description: event.description || '',
+        event_date: event.event_date || '', start_time: event.start_time || '09:00',
+        end_time: event.end_time || '12:00', location_id: event.location_id || '',
+        event_type: event.event_type || 'GENERAL', is_recurring: event.is_recurring || false,
+        recurrence_pattern: event.recurrence_pattern || ''
+      });
+    } else { resetEventForm(); }
+    setShowEventModal(true);
+  };
+
+  // Save handlers
+  const handleSaveService = async () => {
+    if (!serviceForm.name) { alert('Service name is required'); return; }
+    setSaving(true);
+    try {
+      if (editingService) {
+        await supabaseUpdate('services', editingService.id, serviceForm);
+      } else {
+        await supabaseInsert('services', serviceForm);
+      }
+      setShowServiceModal(false);
+      resetServiceForm();
+      fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  const handleSaveEvent = async () => {
+    if (!eventForm.title || !eventForm.event_date) { alert('Event title and date are required'); return; }
+    setSaving(true);
+    try {
+      if (editingEvent) {
+        await supabaseUpdate('events', editingEvent.id, eventForm);
+      } else {
+        await supabaseInsert('events', eventForm);
+      }
+      setShowEventModal(false);
+      resetEventForm();
+      fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  // Delete handler
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      if (deleteConfirm.type === 'service') {
+        await supabaseDelete('services', deleteConfirm.id);
+      } else {
+        await supabaseDelete('events', deleteConfirm.id);
+      }
+      setDeleteConfirm(null);
+      fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
+  };
+
+  // Helper functions
+  const getLocationName = (locationId) => {
+    const location = locations.find(l => l.id === locationId);
+    return location?.name || 'Main Campus';
+  };
+
+  const getServiceName = (serviceId) => {
+    const service = services.find(s => s.id === serviceId);
+    return service?.name || 'Unknown';
+  };
+
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const formatTime = (timeStr) => timeStr ? timeStr.slice(0, 5) : '';
+
+  const isUpcoming = (dateStr) => new Date(dateStr) >= new Date();
+  const isPast = (dateStr) => new Date(dateStr) < new Date();
+
+  // Filter services by location
+  const filteredServices = filterLocation === 'all' ? services : services.filter(s => s.location_id === filterLocation);
+
+  // Separate upcoming and past events
+  const upcomingEvents = events.filter(e => isUpcoming(e.event_date));
+  const pastEvents = events.filter(e => isPast(e.event_date));
+
+  const eventTypeIcons = {
+    'SERVICE': '⛪', 'CONFERENCE': '🎤', 'PRAYER': '🙏', 'MEETING': '👥',
+    'OUTREACH': '🌍', 'YOUTH': '🎉', 'GENERAL': '📅', 'WORKSHOP': '📚'
+  };
+
+  const eventTypeColors = {
+    'SERVICE': '#6366f1', 'CONFERENCE': '#f59e0b', 'PRAYER': '#ec4899', 'MEETING': '#10b981',
+    'OUTREACH': '#3b82f6', 'YOUTH': '#8b5cf6', 'GENERAL': '#6b7280', 'WORKSHOP': '#14b8a6'
+  };
 
   return (
     <div>
-      <PageHeader title={`⛪ ${t('services')}`} subtitle={`${services.length} ${t('services')}`} actions={<Button onClick={() => openModal()}>➕ {t('add')} Service</Button>} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard label={t('total')} value={services.length} icon="⛪" />
-        <StatCard label={t('active')} value={services.filter(s => s.is_active).length} icon="✅" color="#10b981" />
-        <StatCard label={t('sunday')} value={services.filter(s => s.day_of_week === 'SUNDAY').length} icon="📅" color="#6366f1" />
+      <PageHeader
+        title="⛪ Services & Events"
+        subtitle={`${services.length} services • ${upcomingEvents.length} upcoming events`}
+        actions={
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {activeTab === 'services' ? (
+              <Button onClick={() => openServiceModal()}>➕ Add Service</Button>
+            ) : (
+              <Button onClick={() => openEventModal()}>➕ Add Event</Button>
+            )}
+          </div>
+        }
+      />
+
+      {/* Tab Buttons */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+        <button
+          onClick={() => setActiveTab('services')}
+          style={{
+            padding: '12px 24px',
+            border: activeTab === 'services' ? '2px solid #6366f1' : '1px solid #e5e7eb',
+            borderRadius: '10px',
+            backgroundColor: activeTab === 'services' ? '#eef2ff' : 'white',
+            color: activeTab === 'services' ? '#6366f1' : '#6b7280',
+            fontWeight: activeTab === 'services' ? '600' : '400',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          🕐 Services ({services.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('events')}
+          style={{
+            padding: '12px 24px',
+            border: activeTab === 'events' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+            borderRadius: '10px',
+            backgroundColor: activeTab === 'events' ? '#fef3c7' : 'white',
+            color: activeTab === 'events' ? '#f59e0b' : '#6b7280',
+            fontWeight: activeTab === 'events' ? '600' : '400',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          🎉 Events ({events.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('attendance')}
+          style={{
+            padding: '12px 24px',
+            border: activeTab === 'attendance' ? '2px solid #10b981' : '1px solid #e5e7eb',
+            borderRadius: '10px',
+            backgroundColor: activeTab === 'attendance' ? '#d1fae5' : 'white',
+            color: activeTab === 'attendance' ? '#10b981' : '#6b7280',
+            fontWeight: activeTab === 'attendance' ? '600' : '400',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          📊 Recent Attendance
+        </button>
       </div>
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>{loading ? <LoadingSpinner /> : <DataTable columns={columns} data={services} onEdit={openModal} onDelete={setDeleteConfirm} />}</div>
-      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingService ? `✏️ ${t('edit')}` : `➕ ${t('add')} Service`}>
-        <FormInput label={t('name')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        <FormInput label={t('description')} type="textarea" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <FormInput label={t('meetingDay')} type="select" value={form.day_of_week} onChange={(e) => setForm({ ...form, day_of_week: e.target.value })} options={[{ value: 'SUNDAY', label: t('sunday') }, { value: 'MONDAY', label: t('monday') }, { value: 'TUESDAY', label: t('tuesday') }, { value: 'WEDNESDAY', label: t('wednesday') }, { value: 'THURSDAY', label: t('thursday') }, { value: 'FRIDAY', label: t('friday') }, { value: 'SATURDAY', label: t('saturday') }]} />
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <StatCard label="Total Services" value={services.length} icon="⛪" />
+        <StatCard label="Active Services" value={services.filter(s => s.is_active).length} icon="✅" color="#10b981" />
+        <StatCard label="Upcoming Events" value={upcomingEvents.length} icon="📅" color="#f59e0b" />
+        <StatCard label="Locations" value={locations.length} icon="📍" color="#6366f1" />
+      </div>
+
+      {loading ? <LoadingSpinner /> : (
+        <>
+          {/* SERVICES TAB */}
+          {activeTab === 'services' && (
+            <>
+              {/* Service Times Table */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', marginBottom: '24px' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🕐 Service Times</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label style={{ fontSize: '14px', color: '#6b7280' }}>Filter:</label>
+                    <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}>
+                      <option value="all">All Locations</option>
+                      {locations.map(loc => (<option key={loc.id} value={loc.id}>{loc.name}</option>))}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ backgroundColor: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Service</th>
+                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
+                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Day</th>
+                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Time</th>
+                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
+                        <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredServices.map((service, index) => (
+                        <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ width: '40px', height: '40px', backgroundColor: '#e0e7ff', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>⛪</div>
+                              <div>
+                                <p style={{ margin: 0, fontWeight: '500' }}>{service.name}</p>
+                                {service.description && <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{service.description}</p>}
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                            <span style={{ padding: '4px 12px', backgroundColor: '#e0e7ff', color: '#4338ca', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>
+                              📍 {getLocationName(service.location_id)}
+                            </span>
+                          </td>
+                          <td style={{ padding: '16px', color: '#374151', fontWeight: '500' }}>{service.day_of_week}</td>
+                          <td style={{ padding: '16px', color: '#6b7280' }}>{formatTime(service.start_time)} - {formatTime(service.end_time)}</td>
+                          <td style={{ padding: '16px' }}>
+                            {service.is_active 
+                              ? <span style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px' }}>✅ Active</span>
+                              : <span style={{ padding: '4px 12px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '9999px', fontSize: '12px' }}>❌ Inactive</span>
+                            }
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                              <button onClick={() => openServiceModal(service)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️ Edit</button>
+                              <button onClick={() => setDeleteConfirm({ ...service, type: 'service' })} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑️</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredServices.length === 0 && (
+                        <tr><td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No services found</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Locations Overview */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📍 Services by Location</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  {locations.map((location, index) => {
+                    const locationServices = services.filter(s => s.location_id === location.id);
+                    return (
+                      <div key={index} style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '24px' }}>{location.is_main_campus ? '🏛️' : '🏢'}</span>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>{location.name}</h4>
+                            {location.is_main_campus && <span style={{ fontSize: '11px', color: '#6366f1' }}>Main Campus</span>}
+                          </div>
+                        </div>
+                        <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280' }}>
+                          ⛪ {locationServices.length} services • ✅ {locationServices.filter(s => s.is_active).length} active
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {locationServices.map((svc, i) => (
+                            <span key={i} style={{ padding: '4px 8px', backgroundColor: 'white', borderRadius: '6px', fontSize: '11px', color: '#374151', border: '1px solid #e5e7eb' }}>
+                              {svc.day_of_week} {formatTime(svc.start_time)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* EVENTS TAB */}
+          {activeTab === 'events' && (
+            <>
+              {/* Upcoming Events */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', marginBottom: '24px' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🎉 Upcoming Events</h3>
+                  <span style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px' }}>{upcomingEvents.length} upcoming</span>
+                </div>
+                {upcomingEvents.length === 0 ? (
+                  <div style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
+                    <span style={{ fontSize: '48px' }}>📅</span>
+                    <p>No upcoming events. Create one!</p>
+                  </div>
+                ) : (
+                  <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+                    {upcomingEvents.map((event, index) => {
+                      const daysUntil = Math.ceil((new Date(event.event_date) - new Date()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div key={index} style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px', border: `2px solid ${eventTypeColors[event.event_type] || '#e5e7eb'}20`, position: 'relative' }}>
+                          <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '4px' }}>
+                            <button onClick={() => openEventModal(event)} style={{ padding: '4px 8px', border: 'none', background: '#f3f4f6', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>✏️</button>
+                            <button onClick={() => setDeleteConfirm({ ...event, type: 'event' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', color: '#dc2626' }}>🗑️</button>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+                            <div style={{ width: '50px', height: '50px', backgroundColor: `${eventTypeColors[event.event_type] || '#6b7280'}20`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                              {eventTypeIcons[event.event_type] || '📅'}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>{event.title}</h4>
+                              <span style={{ padding: '2px 8px', backgroundColor: `${eventTypeColors[event.event_type] || '#6b7280'}20`, color: eventTypeColors[event.event_type] || '#6b7280', borderRadius: '9999px', fontSize: '11px', fontWeight: '500' }}>
+                                {event.event_type}
+                              </span>
+                            </div>
+                          </div>
+                          {event.description && <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>{event.description}</p>}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '13px', color: '#374151' }}>
+                            <span>📅 {formatDate(event.event_date)}</span>
+                            {event.start_time && <span>🕐 {formatTime(event.start_time)} - {formatTime(event.end_time)}</span>}
+                            {event.location_id && <span>📍 {getLocationName(event.location_id)}</span>}
+                          </div>
+                          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                            <span style={{ padding: '4px 12px', backgroundColor: daysUntil <= 3 ? '#fef3c7' : '#dbeafe', color: daysUntil <= 3 ? '#92400e' : '#1e40af', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>
+                              {daysUntil === 0 ? '🎉 Today!' : daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Past Events */}
+              {pastEvents.length > 0 && (
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                  <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#6b7280' }}>📜 Past Events</h3>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ backgroundColor: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Event</th>
+                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
+                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                          <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pastEvents.slice(0, 5).map((event, index) => (
+                          <tr key={index} style={{ borderTop: '1px solid #e5e7eb', opacity: 0.7 }}>
+                            <td style={{ padding: '12px 16px', fontWeight: '500' }}>{event.title}</td>
+                            <td style={{ padding: '12px 16px' }}><span style={{ fontSize: '12px' }}>{eventTypeIcons[event.event_type]} {event.event_type}</span></td>
+                            <td style={{ padding: '12px 16px', color: '#6b7280' }}>{formatDate(event.event_date)}</td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                              <button onClick={() => setDeleteConfirm({ ...event, type: 'event' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', color: '#dc2626' }}>🗑️</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ATTENDANCE TAB */}
+          {activeTab === 'attendance' && (
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📊 Recent Attendance Records</h3>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Service</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Men</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Women</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Children</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Total</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Offering</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendance.map((record, index) => (
+                      <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '16px', fontWeight: '500' }}>{formatDate(record.service_date)}</td>
+                        <td style={{ padding: '16px', color: '#6366f1' }}>{getServiceName(record.service_id)}</td>
+                        <td style={{ padding: '16px' }}><span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '6px', fontSize: '12px' }}>{getLocationName(record.location_id)}</span></td>
+                        <td style={{ padding: '16px' }}>{record.men_count}</td>
+                        <td style={{ padding: '16px' }}>{record.women_count}</td>
+                        <td style={{ padding: '16px' }}>{record.children_count}</td>
+                        <td style={{ padding: '16px', fontWeight: 'bold', color: '#6366f1' }}>{record.total_count}</td>
+                        <td style={{ padding: '16px', color: '#10b981', fontWeight: '500' }}>XAF {(record.total_offering || 0).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                    {attendance.length === 0 && (
+                      <tr><td colSpan="8" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No attendance records yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Add/Edit Service Modal */}
+      <Modal isOpen={showServiceModal} onClose={() => { setShowServiceModal(false); resetServiceForm(); }} title={editingService ? '✏️ Edit Service' : '➕ Add Service'}>
+        <FormInput label="Service Name *" value={serviceForm.name} onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })} required placeholder="e.g., Sunday First Service" />
+        <FormInput label="Description" type="textarea" value={serviceForm.description} onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })} placeholder="Brief description..." />
+        <FormInput label="📍 Location" type="select" value={serviceForm.location_id} onChange={(e) => setServiceForm({ ...serviceForm, location_id: e.target.value })} options={locations.map(l => ({ value: l.id, label: `${l.is_main_campus ? '🏛️' : '🏢'} ${l.name}` }))} />
+        <FormInput label="Day of Week" type="select" value={serviceForm.day_of_week} onChange={(e) => setServiceForm({ ...serviceForm, day_of_week: e.target.value })} options={[{ value: 'SUNDAY', label: 'Sunday' }, { value: 'MONDAY', label: 'Monday' }, { value: 'TUESDAY', label: 'Tuesday' }, { value: 'WEDNESDAY', label: 'Wednesday' }, { value: 'THURSDAY', label: 'Thursday' }, { value: 'FRIDAY', label: 'Friday' }, { value: 'SATURDAY', label: 'Saturday' }]} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label="Start Time" type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} />
-          <FormInput label="End Time" type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} />
+          <FormInput label="Start Time" type="time" value={serviceForm.start_time} onChange={(e) => setServiceForm({ ...serviceForm, start_time: e.target.value })} />
+          <FormInput label="End Time" type="time" value={serviceForm.end_time} onChange={(e) => setServiceForm({ ...serviceForm, end_time: e.target.value })} />
         </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /><span>{t('active')}</span></label>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>{t('cancel')}</Button><Button onClick={handleSave} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button></div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <input type="checkbox" checked={serviceForm.is_active} onChange={(e) => setServiceForm({ ...serviceForm, is_active: e.target.checked })} />
+          <span>✅ Active</span>
+        </label>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowServiceModal(false); resetServiceForm(); }}>{t('cancel')}</Button>
+          <Button onClick={handleSaveService} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
+        </div>
       </Modal>
-      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title={`🗑️ ${t('delete')}`} message={`Delete "${deleteConfirm?.name}"?`} />
+
+      {/* Add/Edit Event Modal */}
+      <Modal isOpen={showEventModal} onClose={() => { setShowEventModal(false); resetEventForm(); }} title={editingEvent ? '✏️ Edit Event' : '➕ Add Event'} width="600px">
+        <FormInput label="Event Title *" value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} required placeholder="e.g., Youth Conference 2026" />
+        <FormInput label="Description" type="textarea" value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })} placeholder="What is this event about?" />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="Event Date *" type="date" value={eventForm.event_date} onChange={(e) => setEventForm({ ...eventForm, event_date: e.target.value })} required />
+          <FormInput label="Event Type" type="select" value={eventForm.event_type} onChange={(e) => setEventForm({ ...eventForm, event_type: e.target.value })} options={[{ value: 'GENERAL', label: '📅 General' }, { value: 'CONFERENCE', label: '🎤 Conference' }, { value: 'PRAYER', label: '🙏 Prayer' }, { value: 'MEETING', label: '👥 Meeting' }, { value: 'OUTREACH', label: '🌍 Outreach' }, { value: 'YOUTH', label: '🎉 Youth' }, { value: 'WORKSHOP', label: '📚 Workshop' }]} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="Start Time" type="time" value={eventForm.start_time} onChange={(e) => setEventForm({ ...eventForm, start_time: e.target.value })} />
+          <FormInput label="End Time" type="time" value={eventForm.end_time} onChange={(e) => setEventForm({ ...eventForm, end_time: e.target.value })} />
+        </div>
+        <FormInput label="📍 Location" type="select" value={eventForm.location_id} onChange={(e) => setEventForm({ ...eventForm, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: `${l.is_main_campus ? '🏛️' : '🏢'} ${l.name}` }))]} />
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowEventModal(false); resetEventForm(); }}>{t('cancel')}</Button>
+          <Button onClick={handleSaveEvent} disabled={saving}>{saving ? '⏳' : '💾 Save Event'}</Button>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={handleDelete}
+        title={`🗑️ Delete ${deleteConfirm?.type === 'service' ? 'Service' : 'Event'}`}
+        message={`Are you sure you want to delete "${deleteConfirm?.name || deleteConfirm?.title}"?`}
+      />
     </div>
   );
 }
-
 // ==========================================
-// SETTINGS PAGE
+// SETTINGS PAGE - With Locations Management
 // ==========================================
 function SettingsPage() {
   const { user, logout } = useAuth();
   const { t, language, changeLanguage } = useLanguage();
   const [church, setChurch] = useState(null);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [activeSection, setActiveSection] = useState('general');
 
-  useEffect(() => { fetchChurch(); }, []);
-  const fetchChurch = async () => { setLoading(true); const data = await supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }); setChurch(data); setLoading(false); };
+  const [locationForm, setLocationForm] = useState({
+    name: '',
+    address: '',
+    city: '',
+    phone: '',
+    pastor_name: '',
+    capacity: '',
+    is_main_campus: false,
+    is_active: true
+  });
+
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const [churchData, locationsData] = await Promise.all([
+      supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+    ]);
+    setChurch(churchData);
+    setLocations(locationsData || []);
+    setLoading(false);
+  };
+
+  const resetLocationForm = () => {
+    setLocationForm({
+      name: '',
+      address: '',
+      city: '',
+      phone: '',
+      pastor_name: '',
+      capacity: '',
+      is_main_campus: false,
+      is_active: true
+    });
+    setEditingLocation(null);
+  };
+
+  const openLocationModal = (location = null) => {
+    if (location) {
+      setEditingLocation(location);
+      setLocationForm({
+        name: location.name || '',
+        address: location.address || '',
+        city: location.city || '',
+        phone: location.phone || '',
+        pastor_name: location.pastor_name || '',
+        capacity: location.capacity || '',
+        is_main_campus: location.is_main_campus || false,
+        is_active: location.is_active ?? true
+      });
+    } else {
+      resetLocationForm();
+    }
+    setShowLocationModal(true);
+  };
+
+  const handleSaveLocation = async () => {
+    if (!locationForm.name) { alert('Location name is required'); return; }
+    setSaving(true);
+    try {
+      const data = {
+        ...locationForm,
+        capacity: locationForm.capacity ? parseInt(locationForm.capacity) : null
+      };
+
+      // If setting as main campus, unset other main campuses first
+      if (data.is_main_campus && !editingLocation?.is_main_campus) {
+        for (const loc of locations.filter(l => l.is_main_campus)) {
+          await supabaseUpdate('church_locations', loc.id, { is_main_campus: false });
+        }
+      }
+
+      if (editingLocation) {
+        await supabaseUpdate('church_locations', editingLocation.id, data);
+      } else {
+        await supabaseInsert('church_locations', data);
+      }
+      setShowLocationModal(false);
+      resetLocationForm();
+      fetchData();
+    } catch (error) {
+      alert('Error saving location: ' + error.message);
+    }
+    setSaving(false);
+  };
+
+  const handleDeleteLocation = async () => {
+    if (!deleteConfirm) return;
+    if (deleteConfirm.is_main_campus) {
+      alert('Cannot delete the main campus. Please set another location as main campus first.');
+      setDeleteConfirm(null);
+      return;
+    }
+    try {
+      await supabaseDelete('church_locations', deleteConfirm.id);
+      setDeleteConfirm(null);
+      fetchData();
+    } catch (error) {
+      alert('Error deleting location: ' + error.message);
+    }
+  };
+
+  const sections = [
+    { id: 'general', label: '⚙️ General', icon: '⚙️' },
+    { id: 'locations', label: '📍 Locations', icon: '📍' },
+    { id: 'account', label: '👤 Account', icon: '👤' },
+  ];
 
   return (
     <div>
-      <PageHeader title={`⚙️ ${t('settings')}`} subtitle="Manage your church settings" />
+      <PageHeader title={`⚙️ ${t('settings')}`} subtitle="Manage your church settings and locations" />
+
+      {/* Settings Navigation */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+        {sections.map(section => (
+          <button
+            key={section.id}
+            onClick={() => setActiveSection(section.id)}
+            style={{
+              padding: '12px 24px',
+              border: activeSection === section.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
+              borderRadius: '10px',
+              backgroundColor: activeSection === section.id ? '#eef2ff' : 'white',
+              color: activeSection === section.id ? '#6366f1' : '#6b7280',
+              fontWeight: activeSection === section.id ? '600' : '400',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            {section.label}
+          </button>
+        ))}
+      </div>
+
       {loading ? <LoadingSpinner /> : (
         <div style={{ display: 'grid', gap: '24px' }}>
-          {/* Language Settings */}
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🌍 {t('language')}</h3>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => changeLanguage('en')} style={{ padding: '12px 24px', border: language === 'en' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: language === 'en' ? '#eef2ff' : 'white', cursor: 'pointer', fontWeight: language === 'en' ? '600' : '400' }}>🇬🇧 English</button>
-              <button onClick={() => changeLanguage('fr')} style={{ padding: '12px 24px', border: language === 'fr' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: language === 'fr' ? '#eef2ff' : 'white', cursor: 'pointer', fontWeight: language === 'fr' ? '600' : '400' }}>🇫🇷 Français</button>
-            </div>
-          </div>
 
-          {/* Church Info */}
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>⛪ Church Information</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-              <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Church Name</label><p style={{ margin: 0, fontWeight: '500' }}>{church?.name}</p></div>
-              <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Address</label><p style={{ margin: 0 }}>{church?.address}</p></div>
-              <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>City</label><p style={{ margin: 0 }}>{church?.city}</p></div>
-              <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('phone')}</label><p style={{ margin: 0 }}>{church?.phone}</p></div>
-              <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('email')}</label><p style={{ margin: 0 }}>{church?.email}</p></div>
-              <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Currency</label><p style={{ margin: 0 }}>{church?.currency}</p></div>
-            </div>
-          </div>
+          {/* General Settings */}
+          {activeSection === 'general' && (
+            <>
+              {/* Language Settings */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🌍 {t('language')}</h3>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={() => changeLanguage('en')} style={{ padding: '12px 24px', border: language === 'en' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: language === 'en' ? '#eef2ff' : 'white', cursor: 'pointer', fontWeight: language === 'en' ? '600' : '400' }}>🇬🇧 English</button>
+                  <button onClick={() => changeLanguage('fr')} style={{ padding: '12px 24px', border: language === 'fr' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: language === 'fr' ? '#eef2ff' : 'white', cursor: 'pointer', fontWeight: language === 'fr' ? '600' : '400' }}>🇫🇷 Français</button>
+                </div>
+              </div>
 
-          {/* User Info */}
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>👤 Your Account</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-              <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('name')}</label><p style={{ margin: 0, fontWeight: '500' }}>{user?.name}</p></div>
-              <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('email')}</label><p style={{ margin: 0 }}>{user?.email}</p></div>
-              <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Role</label><p style={{ margin: 0 }}><StatusBadge status={user?.role} /></p></div>
-            </div>
-          </div>
+              {/* Church Info */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>⛪ Church Information</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Church Name</label><p style={{ margin: 0, fontWeight: '500' }}>{church?.name}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Address</label><p style={{ margin: 0 }}>{church?.address || '—'}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>City</label><p style={{ margin: 0 }}>{church?.city || '—'}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('phone')}</label><p style={{ margin: 0 }}>{church?.phone || '—'}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('email')}</label><p style={{ margin: 0 }}>{church?.email || '—'}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Currency</label><p style={{ margin: 0 }}>{church?.currency || 'XAF'}</p></div>
+                </div>
+              </div>
+            </>
+          )}
 
-          {/* Actions */}
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🔧 Actions</h3>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <Button variant="secondary">📤 Export Data</Button>
-              <Button variant="secondary">📊 Generate Report</Button>
-              <Button variant="danger" onClick={logout}>🚪 {t('signOut')}</Button>
+          {/* Locations Management */}
+          {activeSection === 'locations' && (
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📍 Church Locations / Branches</h3>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Manage your church campuses and branches</p>
+                </div>
+                <Button onClick={() => openLocationModal()}>➕ Add Location</Button>
+              </div>
+
+              {/* Stats */}
+              <div style={{ padding: '20px', backgroundColor: '#f9fafb', display: 'flex', gap: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '24px' }}>🏢</span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{locations.length}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Total Locations</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '24px' }}>✅</span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{locations.filter(l => l.is_active).length}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Active</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '24px' }}>👥</span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{locations.reduce((sum, l) => sum + (l.capacity || 0), 0)}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Total Capacity</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Locations Table */}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>City</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Pastor</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Capacity</th>
+                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
+                      <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {locations.map((location, index) => (
+                      <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <span style={{ fontSize: '24px' }}>{location.is_main_campus ? '🏛️' : '🏢'}</span>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: '500' }}>{location.name}</p>
+                              {location.is_main_campus && (
+                                <span style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px' }}>Main Campus</span>
+                              )}
+                              {location.address && <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{location.address}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '16px', color: '#6b7280' }}>{location.city || '—'}</td>
+                        <td style={{ padding: '16px', color: '#6b7280' }}>{location.pastor_name || '—'}</td>
+                        <td style={{ padding: '16px', color: '#6b7280' }}>{location.capacity ? `${location.capacity} seats` : '—'}</td>
+                        <td style={{ padding: '16px' }}>
+                          {location.is_active 
+                            ? <span style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px' }}>Active</span>
+                            : <span style={{ padding: '4px 12px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '9999px', fontSize: '12px' }}>Inactive</span>
+                          }
+                        </td>
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button onClick={() => openLocationModal(location)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️ Edit</button>
+                            <button onClick={() => setDeleteConfirm(location)} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑️ Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {locations.length === 0 && (
+                      <tr>
+                        <td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
+                          <p style={{ fontSize: '48px', marginBottom: '16px' }}>📍</p>
+                          <p>No locations yet. Add your first location!</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Account Settings */}
+          {activeSection === 'account' && (
+            <>
+              {/* User Info */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>👤 Your Account</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('name')}</label><p style={{ margin: 0, fontWeight: '500' }}>{user?.name}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('email')}</label><p style={{ margin: 0 }}>{user?.email}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Role</label><p style={{ margin: 0 }}><StatusBadge status={user?.role} /></p></div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🔧 Actions</h3>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <Button variant="secondary">📤 Export Data</Button>
+                  <Button variant="secondary">📊 Generate Report</Button>
+                  <Button variant="danger" onClick={logout}>🚪 {t('signOut')}</Button>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* App Info */}
           <div style={{ backgroundColor: '#f9fafb', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
@@ -2268,6 +3954,88 @@ function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Add/Edit Location Modal */}
+      <Modal isOpen={showLocationModal} onClose={() => { setShowLocationModal(false); resetLocationForm(); }} title={editingLocation ? '✏️ Edit Location' : '➕ Add Location'} width="600px">
+        <FormInput 
+          label="Location Name *" 
+          value={locationForm.name} 
+          onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })} 
+          required 
+          placeholder="e.g., East Campus, Yaounde Branch" 
+        />
+        
+        <FormInput 
+          label="Address" 
+          value={locationForm.address} 
+          onChange={(e) => setLocationForm({ ...locationForm, address: e.target.value })} 
+          placeholder="Street address" 
+        />
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput 
+            label="City" 
+            value={locationForm.city} 
+            onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })} 
+            placeholder="e.g., Douala, Yaounde" 
+          />
+          <FormInput 
+            label="Phone" 
+            value={locationForm.phone} 
+            onChange={(e) => setLocationForm({ ...locationForm, phone: e.target.value })} 
+            placeholder="+237 6XX XXX XXX" 
+          />
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput 
+            label="Campus Pastor" 
+            value={locationForm.pastor_name} 
+            onChange={(e) => setLocationForm({ ...locationForm, pastor_name: e.target.value })} 
+            placeholder="Pastor's name" 
+          />
+          <FormInput 
+            label="Seating Capacity" 
+            type="number" 
+            value={locationForm.capacity} 
+            onChange={(e) => setLocationForm({ ...locationForm, capacity: e.target.value })} 
+            placeholder="e.g., 500" 
+          />
+        </div>
+        
+        <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={locationForm.is_main_campus} 
+              onChange={(e) => setLocationForm({ ...locationForm, is_main_campus: e.target.checked })} 
+            />
+            <span>🏛️ Main Campus</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={locationForm.is_active} 
+              onChange={(e) => setLocationForm({ ...locationForm, is_active: e.target.checked })} 
+            />
+            <span>✅ Active</span>
+          </label>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowLocationModal(false); resetLocationForm(); }}>{t('cancel')}</Button>
+          <Button onClick={handleSaveLocation} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog 
+        isOpen={!!deleteConfirm} 
+        onClose={() => setDeleteConfirm(null)} 
+        onConfirm={handleDeleteLocation} 
+        title="🗑️ Delete Location" 
+        message={`Are you sure you want to delete "${deleteConfirm?.name}"? This will also affect all services and attendance records linked to this location.`} 
+      />
     </div>
   );
 }
