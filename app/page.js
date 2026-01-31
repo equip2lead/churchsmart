@@ -766,7 +766,6 @@ function Dashboard() {
     { id: 'giving', label: t('giving'), icon: '💰' },
     { id: 'salvations', label: t('salvations'), icon: '❤️' },
     { id: 'groups', label: t('groups'), icon: '👨‍👩‍👧‍👦' },
-    { id: 'prayers', label: t('prayers'), icon: '🙏' },
     { id: 'services', label: t('services'), icon: '⛪' },
     { id: 'settings', label: t('settings'), icon: '⚙️' },
   ];
@@ -881,7 +880,6 @@ function Dashboard() {
           {activeTab === 'giving' && <GivingPage />}
           {activeTab === 'salvations' && <SalvationsPage />}
           {activeTab === 'groups' && <GroupsPage />}
-          {activeTab === 'prayers' && <PrayersPage />}
           {activeTab === 'services' && <ServicesPage />}
           {activeTab === 'settings' && <SettingsPage />}
         </main>
@@ -1238,7 +1236,6 @@ function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState([]);
   const [recentVisitors, setRecentVisitors] = useState([]);
   const [recentSalvations, setRecentSalvations] = useState([]);
-  const [recentPrayers, setRecentPrayers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchData(); }, []);
@@ -1337,7 +1334,6 @@ function DashboardPage() {
       setRecentActivity(activityLogs || []);
       setRecentVisitors(visitors || []);
       setRecentSalvations(salvations || []);
-      setRecentPrayers(prayers || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }
@@ -1509,8 +1505,8 @@ function DashboardPage() {
               )}
             </div>
 
-            {/* Salvation Decisions */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+           {/* Salvation Decisions */}
+           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>❤️ Salvation Decisions</h3>
                 <span style={{ fontSize: '20px' }}>🙌</span>
@@ -1526,32 +1522,6 @@ function DashboardPage() {
                         <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{formatDate(salvation.salvation_date)}</p>
                       </div>
                       <StatusBadge status={salvation.followup_status} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Prayer Requests */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>🙏 Prayer Requests</h3>
-                <span style={{ fontSize: '20px' }}>✨</span>
-              </div>
-              {recentPrayers.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '16px' }}>No prayer requests</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {recentPrayers.map((prayer, i) => (
-                    <div key={i} style={{ padding: '10px', backgroundColor: '#fef9c3', borderRadius: '8px' }}>
-                      <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{prayer.title}</p>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {prayer.description || 'No description'}
-                      </p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                        <span style={{ fontSize: '11px', color: '#6b7280' }}>{prayer.requester_name || 'Anonymous'}</span>
-                        <StatusBadge status={prayer.status} />
-                      </div>
                     </div>
                   ))}
                 </div>
