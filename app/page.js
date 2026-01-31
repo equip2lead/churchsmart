@@ -3644,74 +3644,72 @@ function ServicesPage() {
   );
 }
 // ==========================================
-// SETTINGS PAGE - With Locations Management
+// SETTINGS PAGE - Complete with All Features
 // ==========================================
 function SettingsPage() {
   const { user, logout } = useAuth();
   const { t, language, changeLanguage } = useLanguage();
   const [church, setChurch] = useState(null);
   const [locations, setLocations] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [roleAssignments, setRoleAssignments] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [automationSettings, setAutomationSettings] = useState([]);
+  const [messageTemplates, setMessageTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showLocationModal, setShowLocationModal] = useState(false);
-  const [editingLocation, setEditingLocation] = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('general');
 
-  const [locationForm, setLocationForm] = useState({
-    name: '',
-    address: '',
-    city: '',
-    phone: '',
-    pastor_name: '',
-    capacity: '',
-    is_main_campus: false,
-    is_active: true
-  });
+  // Modals
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showAssignRoleModal, setShowAssignRoleModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(null);
+  const [editingRole, setEditingRole] = useState(null);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  // Forms
+  const [locationForm, setLocationForm] = useState({ name: '', address: '', city: '', phone: '', pastor_name: '', capacity: '', is_main_campus: false, is_active: true });
+  const [roleForm, setRoleForm] = useState({ name: '', description: '', permissions: {} });
+  const [assignForm, setAssignForm] = useState({ user_email: '', user_name: '', role_id: '' });
+  const [templateForm, setTemplateForm] = useState({ name: '', category: 'BIRTHDAY', body: '' });
+
+  // Activity Log Filters
+  const [logFilters, setLogFilters] = useState({ action: 'all', entity_type: 'all', from_date: '', to_date: '' });
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     setLoading(true);
-    const [churchData, locationsData] = await Promise.all([
+    const [churchData, locationsData, rolesData, assignmentsData, logsData, automationData, templatesData] = await Promise.all([
       supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('user_roles', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('user_role_assignments', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 50 }),
+      supabaseQuery('automation_settings', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
     ]);
     setChurch(churchData);
     setLocations(locationsData || []);
+    setRoles(rolesData || []);
+    setRoleAssignments(assignmentsData || []);
+    setActivityLogs(logsData || []);
+    setAutomationSettings(automationData || []);
+    setMessageTemplates(templatesData || []);
     setLoading(false);
   };
 
-  const resetLocationForm = () => {
-    setLocationForm({
-      name: '',
-      address: '',
-      city: '',
-      phone: '',
-      pastor_name: '',
-      capacity: '',
-      is_main_campus: false,
-      is_active: true
-    });
-    setEditingLocation(null);
-  };
-
+  // ============ LOCATION HANDLERS ============
+  const resetLocationForm = () => { setLocationForm({ name: '', address: '', city: '', phone: '', pastor_name: '', capacity: '', is_main_campus: false, is_active: true }); setEditingLocation(null); };
+  
   const openLocationModal = (location = null) => {
     if (location) {
       setEditingLocation(location);
-      setLocationForm({
-        name: location.name || '',
-        address: location.address || '',
-        city: location.city || '',
-        phone: location.phone || '',
-        pastor_name: location.pastor_name || '',
-        capacity: location.capacity || '',
-        is_main_campus: location.is_main_campus || false,
-        is_active: location.is_active ?? true
-      });
-    } else {
-      resetLocationForm();
-    }
+      setLocationForm({ name: location.name || '', address: location.address || '', city: location.city || '', phone: location.phone || '', pastor_name: location.pastor_name || '', capacity: location.capacity || '', is_main_campus: location.is_main_campus || false, is_active: location.is_active ?? true });
+    } else { resetLocationForm(); }
     setShowLocationModal(true);
   };
 
@@ -3719,75 +3717,150 @@ function SettingsPage() {
     if (!locationForm.name) { alert('Location name is required'); return; }
     setSaving(true);
     try {
-      const data = {
-        ...locationForm,
-        capacity: locationForm.capacity ? parseInt(locationForm.capacity) : null
-      };
-
-      // If setting as main campus, unset other main campuses first
+      const data = { ...locationForm, capacity: locationForm.capacity ? parseInt(locationForm.capacity) : null };
       if (data.is_main_campus && !editingLocation?.is_main_campus) {
         for (const loc of locations.filter(l => l.is_main_campus)) {
           await supabaseUpdate('church_locations', loc.id, { is_main_campus: false });
         }
       }
-
-      if (editingLocation) {
-        await supabaseUpdate('church_locations', editingLocation.id, data);
-      } else {
-        await supabaseInsert('church_locations', data);
-      }
-      setShowLocationModal(false);
-      resetLocationForm();
-      fetchData();
-    } catch (error) {
-      alert('Error saving location: ' + error.message);
-    }
+      if (editingLocation) { await supabaseUpdate('church_locations', editingLocation.id, data); }
+      else { await supabaseInsert('church_locations', data); }
+      setShowLocationModal(false); resetLocationForm(); fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
     setSaving(false);
   };
 
-  const handleDeleteLocation = async () => {
-    if (!deleteConfirm) return;
-    if (deleteConfirm.is_main_campus) {
-      alert('Cannot delete the main campus. Please set another location as main campus first.');
-      setDeleteConfirm(null);
-      return;
-    }
+  // ============ ROLE HANDLERS ============
+  const resetRoleForm = () => { setRoleForm({ name: '', description: '', permissions: {} }); setEditingRole(null); };
+  
+  const openRoleModal = (role = null) => {
+    if (role) {
+      setEditingRole(role);
+      setRoleForm({ name: role.name || '', description: role.description || '', permissions: role.permissions || {} });
+    } else { resetRoleForm(); }
+    setShowRoleModal(true);
+  };
+
+  const handleSaveRole = async () => {
+    if (!roleForm.name) { alert('Role name is required'); return; }
+    setSaving(true);
     try {
-      await supabaseDelete('church_locations', deleteConfirm.id);
-      setDeleteConfirm(null);
+      if (editingRole) { await supabaseUpdate('user_roles', editingRole.id, roleForm); }
+      else { await supabaseInsert('user_roles', { ...roleForm, is_system_role: false }); }
+      setShowRoleModal(false); resetRoleForm(); fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  // ============ ROLE ASSIGNMENT HANDLERS ============
+  const handleAssignRole = async () => {
+    if (!assignForm.user_email || !assignForm.role_id) { alert('Email and role are required'); return; }
+    setSaving(true);
+    try {
+      await supabaseInsert('user_role_assignments', { ...assignForm, assigned_by: user?.email });
+      setShowAssignRoleModal(false);
+      setAssignForm({ user_email: '', user_name: '', role_id: '' });
       fetchData();
-    } catch (error) {
-      alert('Error deleting location: ' + error.message);
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  const handleRemoveAssignment = async (id) => {
+    if (!confirm('Remove this role assignment?')) return;
+    await supabaseDelete('user_role_assignments', id);
+    fetchData();
+  };
+
+  // ============ AUTOMATION HANDLERS ============
+  const toggleAutomation = async (automationType, enabled) => {
+    const setting = automationSettings.find(a => a.automation_type === automationType);
+    if (setting) {
+      await supabaseUpdate('automation_settings', setting.id, { is_enabled: enabled });
+      fetchData();
     }
   };
+
+  // ============ TEMPLATE HANDLERS ============
+  const resetTemplateForm = () => { setTemplateForm({ name: '', category: 'BIRTHDAY', body: '' }); setEditingTemplate(null); };
+  
+  const openTemplateModal = (template = null) => {
+    if (template) {
+      setEditingTemplate(template);
+      setTemplateForm({ name: template.name || '', category: template.category || 'BIRTHDAY', body: template.body || '' });
+    } else { resetTemplateForm(); }
+    setShowTemplateModal(true);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!templateForm.name || !templateForm.body) { alert('Name and message body are required'); return; }
+    setSaving(true);
+    try {
+      if (editingTemplate) { await supabaseUpdate('message_templates', editingTemplate.id, templateForm); }
+      else { await supabaseInsert('message_templates', templateForm); }
+      setShowTemplateModal(false); resetTemplateForm(); fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  // ============ DELETE HANDLER ============
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      if (deleteConfirm.table === 'church_locations') {
+        if (deleteConfirm.is_main_campus) { alert('Cannot delete main campus'); setDeleteConfirm(null); return; }
+      }
+      await supabaseDelete(deleteConfirm.table, deleteConfirm.id);
+      setDeleteConfirm(null); fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
+  };
+
+  // ============ HELPERS ============
+  const getRoleName = (roleId) => roles.find(r => r.id === roleId)?.name || 'Unknown';
+  const getAutomationSetting = (type) => automationSettings.find(a => a.automation_type === type);
+  const formatDateTime = (dateStr) => new Date(dateStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  const filteredLogs = activityLogs.filter(log => {
+    if (logFilters.action !== 'all' && log.action !== logFilters.action) return false;
+    if (logFilters.entity_type !== 'all' && log.entity_type !== logFilters.entity_type) return false;
+    return true;
+  });
 
   const sections = [
     { id: 'general', label: '⚙️ General', icon: '⚙️' },
     { id: 'locations', label: '📍 Locations', icon: '📍' },
+    { id: 'automation', label: '🤖 Automation', icon: '🤖' },
+    { id: 'roles', label: '👥 User Roles', icon: '👥' },
+    { id: 'logs', label: '📜 Activity Logs', icon: '📜' },
     { id: 'account', label: '👤 Account', icon: '👤' },
+  ];
+
+  const permissionsList = [
+    { key: 'members', label: '👥 Members' },
+    { key: 'visitors', label: '🚶 Visitors' },
+    { key: 'attendance', label: '📊 Attendance' },
+    { key: 'giving', label: '💰 Giving/Finance' },
+    { key: 'salvations', label: '❤️ Salvations' },
+    { key: 'groups', label: '👨‍👩‍👧‍👦 Groups' },
+    { key: 'prayers', label: '🙏 Prayer Requests' },
+    { key: 'services', label: '⛪ Services & Events' },
+    { key: 'settings', label: '⚙️ Settings' },
   ];
 
   return (
     <div>
-      <PageHeader title={`⚙️ ${t('settings')}`} subtitle="Manage your church settings and locations" />
+      <PageHeader title={`⚙️ ${t('settings')}`} subtitle="Manage your church settings, users, and automation" />
 
       {/* Settings Navigation */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
         {sections.map(section => (
           <button
             key={section.id}
             onClick={() => setActiveSection(section.id)}
             style={{
-              padding: '12px 24px',
-              border: activeSection === section.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
-              borderRadius: '10px',
-              backgroundColor: activeSection === section.id ? '#eef2ff' : 'white',
-              color: activeSection === section.id ? '#6366f1' : '#6b7280',
-              fontWeight: activeSection === section.id ? '600' : '400',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
+              padding: '10px 20px', border: activeSection === section.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
+              borderRadius: '10px', backgroundColor: activeSection === section.id ? '#eef2ff' : 'white',
+              color: activeSection === section.id ? '#6366f1' : '#6b7280', fontWeight: activeSection === section.id ? '600' : '400',
+              cursor: 'pointer', fontSize: '14px'
             }}
           >
             {section.label}
@@ -3796,14 +3869,13 @@ function SettingsPage() {
       </div>
 
       {loading ? <LoadingSpinner /> : (
-        <div style={{ display: 'grid', gap: '24px' }}>
-
-          {/* General Settings */}
+        <>
+          {/* ============ GENERAL SETTINGS ============ */}
           {activeSection === 'general' && (
-            <>
-              {/* Language Settings */}
+            <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Language */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🌍 {t('language')}</h3>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🌍 Language / Langue</h3>
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <button onClick={() => changeLanguage('en')} style={{ padding: '12px 24px', border: language === 'en' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: language === 'en' ? '#eef2ff' : 'white', cursor: 'pointer', fontWeight: language === 'en' ? '600' : '400' }}>🇬🇧 English</button>
                   <button onClick={() => changeLanguage('fr')} style={{ padding: '12px 24px', border: language === 'fr' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: language === 'fr' ? '#eef2ff' : 'white', cursor: 'pointer', fontWeight: language === 'fr' ? '600' : '400' }}>🇫🇷 Français</button>
@@ -3813,19 +3885,19 @@ function SettingsPage() {
               {/* Church Info */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>⛪ Church Information</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Church Name</label><p style={{ margin: 0, fontWeight: '500' }}>{church?.name}</p></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Church Name</label><p style={{ margin: 0, fontWeight: '500', fontSize: '16px' }}>{church?.name || '—'}</p></div>
                   <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Address</label><p style={{ margin: 0 }}>{church?.address || '—'}</p></div>
                   <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>City</label><p style={{ margin: 0 }}>{church?.city || '—'}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('phone')}</label><p style={{ margin: 0 }}>{church?.phone || '—'}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('email')}</label><p style={{ margin: 0 }}>{church?.email || '—'}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Phone</label><p style={{ margin: 0 }}>{church?.phone || '—'}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Email</label><p style={{ margin: 0 }}>{church?.email || '—'}</p></div>
                   <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Currency</label><p style={{ margin: 0 }}>{church?.currency || 'XAF'}</p></div>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
-          {/* Locations Management */}
+          {/* ============ LOCATIONS ============ */}
           {activeSection === 'locations' && (
             <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
               <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3835,207 +3907,413 @@ function SettingsPage() {
                 </div>
                 <Button onClick={() => openLocationModal()}>➕ Add Location</Button>
               </div>
+              <div style={{ padding: '16px', backgroundColor: '#f9fafb', display: 'flex', gap: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '20px' }}>🏢</span><div><p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{locations.length}</p><p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>Total</p></div></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '20px' }}>✅</span><div><p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{locations.filter(l => l.is_active).length}</p><p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>Active</p></div></div>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>City</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Pastor</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
+                    <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locations.map((loc, i) => (
+                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '20px' }}>{loc.is_main_campus ? '🏛️' : '🏢'}</span>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: '500' }}>{loc.name}</p>
+                            {loc.is_main_campus && <span style={{ fontSize: '10px', padding: '2px 6px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '4px' }}>Main Campus</span>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280' }}>{loc.city || '—'}</td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280' }}>{loc.pastor_name || '—'}</td>
+                      <td style={{ padding: '12px 16px' }}>{loc.is_active ? <span style={{ color: '#10b981' }}>✅ Active</span> : <span style={{ color: '#ef4444' }}>❌ Inactive</span>}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <button onClick={() => openLocationModal(loc)} style={{ padding: '4px 10px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', marginRight: '6px', fontSize: '12px' }}>✏️</button>
+                        <button onClick={() => setDeleteConfirm({ ...loc, table: 'church_locations' })} style={{ padding: '4px 10px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-              {/* Stats */}
-              <div style={{ padding: '20px', backgroundColor: '#f9fafb', display: 'flex', gap: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '24px' }}>🏢</span>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{locations.length}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Total Locations</p>
-                  </div>
+          {/* ============ AUTOMATION ============ */}
+          {activeSection === 'automation' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Birthday Settings */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🎂 Birthday Settings</h3>
+                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Automatically send birthday wishes to members</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '24px' }}>📱</span>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: '500' }}>Send SMS notifications</p>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Send birthday SMS to members on their birthday</p>
+                      </div>
+                    </div>
+                    <input type="checkbox" checked={getAutomationSetting('BIRTHDAY_SMS')?.is_enabled || false} onChange={(e) => toggleAutomation('BIRTHDAY_SMS', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                  </label>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '24px' }}>💬</span>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: '500' }}>Send WhatsApp notifications</p>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Send birthday WhatsApp to members</p>
+                      </div>
+                    </div>
+                    <input type="checkbox" checked={getAutomationSetting('BIRTHDAY_WHATSAPP')?.is_enabled || false} onChange={(e) => toggleAutomation('BIRTHDAY_WHATSAPP', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                  </label>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '24px' }}>✅</span>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{locations.filter(l => l.is_active).length}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Active</p>
+              </div>
+
+              {/* Visitor Follow-up */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🚶 Visitor Follow-up Sequence</h3>
+                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Automatically send follow-up messages to first-time visitors</p>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled ? '#f0fdf4' : '#f9fafb', borderRadius: '10px', marginBottom: '16px', border: getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled ? '1px solid #bbf7d0' : '1px solid transparent' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '24px' }}>🤖</span>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: '500' }}>Enable Visitor Follow-up Sequence</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Automatically send Day 1, Day 3, and Day 7 messages</p>
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '24px' }}>👥</span>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{locations.reduce((sum, l) => sum + (l.capacity || 0), 0)}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Total Capacity</p>
+                  <input type="checkbox" checked={getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled || false} onChange={(e) => toggleAutomation('VISITOR_FOLLOWUP', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                </label>
+                <div style={{ paddingLeft: '20px', borderLeft: '3px solid #e5e7eb' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <span style={{ width: '28px', height: '28px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>1</span>
+                    <div><p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>Day 1: Welcome Message</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Send a welcome message thanking visitors for attending</p></div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <span style={{ width: '28px', height: '28px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>3</span>
+                    <div><p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>Day 3: Group Invite & Midweek Reminder</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Invite visitors to join a group and remind them of midweek service</p></div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ width: '28px', height: '28px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>7</span>
+                    <div><p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>Day 7: Membership & Pastor Invitation</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Invite visitors to meet the pastor and learn about membership</p></div>
                   </div>
                 </div>
               </div>
 
-              {/* Locations Table */}
-              <div style={{ overflowX: 'auto' }}>
+              {/* Message Templates */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📝 Message Templates</h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Customize your automated messages</p>
+                  </div>
+                  <Button onClick={() => openTemplateModal()}>➕ Add Template</Button>
+                </div>
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {messageTemplates.map((template, i) => (
+                    <div key={i} style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <p style={{ margin: 0, fontWeight: '500' }}>{template.name}</p>
+                          <span style={{ padding: '2px 8px', backgroundColor: template.category === 'BIRTHDAY' ? '#fef3c7' : '#dbeafe', color: template.category === 'BIRTHDAY' ? '#92400e' : '#1e40af', borderRadius: '9999px', fontSize: '11px' }}>{template.category}</span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{template.body?.substring(0, 100)}{template.body?.length > 100 ? '...' : ''}</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => openTemplateModal(template)} style={{ padding: '4px 10px', border: 'none', background: '#e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️</button>
+                        <button onClick={() => setDeleteConfirm({ ...template, table: 'message_templates' })} style={{ padding: '4px 10px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                      </div>
+                    </div>
+                  ))}
+                  {messageTemplates.length === 0 && <p style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>No message templates yet</p>}
+                </div>
+              </div>
+
+              {/* Scheduled Reports */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>📊 Scheduled Reports</h3>
+                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Automatically send reports to specified email addresses</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: '500' }}>Weekly Report (Every Monday)</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Attendance and giving summary</p>
+                    </div>
+                    <input type="checkbox" checked={getAutomationSetting('WEEKLY_REPORT')?.is_enabled || false} onChange={(e) => toggleAutomation('WEEKLY_REPORT', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                  </label>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: '500' }}>Monthly Report (1st of each month)</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Full monthly summary including visitors and salvations</p>
+                    </div>
+                    <input type="checkbox" checked={getAutomationSetting('MONTHLY_REPORT')?.is_enabled || false} onChange={(e) => toggleAutomation('MONTHLY_REPORT', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============ USER ROLES ============ */}
+          {activeSection === 'roles' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Roles */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>👥 User Roles</h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Define roles and permissions for users</p>
+                  </div>
+                  <Button onClick={() => openRoleModal()}>➕ Create Role</Button>
+                </div>
+                <div style={{ padding: '20px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#6b7280' }}>System Roles</h4>
+                  <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
+                    {roles.filter(r => r.is_system_role).map((role, i) => (
+                      <div key={i} style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ margin: '0 0 4px 0', fontWeight: '500' }}>{role.name}</p>
+                          <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{role.description}</p>
+                        </div>
+                        <span style={{ padding: '4px 10px', backgroundColor: '#e5e7eb', borderRadius: '6px', fontSize: '11px', color: '#6b7280' }}>System</span>
+                      </div>
+                    ))}
+                  </div>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#6b7280' }}>Custom Roles</h4>
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    {roles.filter(r => !r.is_system_role).map((role, i) => (
+                      <div key={i} style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ margin: '0 0 4px 0', fontWeight: '500' }}>{role.name}</p>
+                          <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{role.description || 'No description'}</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => openRoleModal(role)} style={{ padding: '4px 10px', border: 'none', background: '#e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️</button>
+                          <button onClick={() => setDeleteConfirm({ ...role, table: 'user_roles' })} style={{ padding: '4px 10px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                        </div>
+                      </div>
+                    ))}
+                    {roles.filter(r => !r.is_system_role).length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
+                        <span style={{ fontSize: '32px' }}>🛡️</span>
+                        <p>No custom roles created yet</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Role Assignments */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>🎫 Role Assignments</h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Assign roles to users</p>
+                  </div>
+                  <Button onClick={() => setShowAssignRoleModal(true)}>➕ Assign Role</Button>
+                </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ backgroundColor: '#f9fafb' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>City</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Pastor</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Capacity</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
-                      <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>User</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Role</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {locations.map((location, index) => (
-                      <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span style={{ fontSize: '24px' }}>{location.is_main_campus ? '🏛️' : '🏢'}</span>
+                    {roleAssignments.map((assignment, i) => (
+                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '36px', height: '36px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600' }}>{assignment.user_name?.[0] || assignment.user_email?.[0]?.toUpperCase()}</div>
                             <div>
-                              <p style={{ margin: 0, fontWeight: '500' }}>{location.name}</p>
-                              {location.is_main_campus && (
-                                <span style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px' }}>Main Campus</span>
-                              )}
-                              {location.address && <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{location.address}</p>}
+                              <p style={{ margin: 0, fontWeight: '500' }}>{assignment.user_name || 'Unknown'}</p>
+                              <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{assignment.user_email}</p>
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '16px', color: '#6b7280' }}>{location.city || '—'}</td>
-                        <td style={{ padding: '16px', color: '#6b7280' }}>{location.pastor_name || '—'}</td>
-                        <td style={{ padding: '16px', color: '#6b7280' }}>{location.capacity ? `${location.capacity} seats` : '—'}</td>
-                        <td style={{ padding: '16px' }}>
-                          {location.is_active 
-                            ? <span style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px' }}>Active</span>
-                            : <span style={{ padding: '4px 12px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '9999px', fontSize: '12px' }}>Inactive</span>
-                          }
-                        </td>
-                        <td style={{ padding: '16px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                            <button onClick={() => openLocationModal(location)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️ Edit</button>
-                            <button onClick={() => setDeleteConfirm(location)} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑️ Delete</button>
-                          </div>
+                        <td style={{ padding: '12px 16px' }}><span style={{ padding: '4px 12px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{getRoleName(assignment.role_id)}</span></td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <button onClick={() => handleRemoveAssignment(assignment.id)} style={{ padding: '4px 10px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
                         </td>
                       </tr>
                     ))}
-                    {locations.length === 0 && (
-                      <tr>
-                        <td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
-                          <p style={{ fontSize: '48px', marginBottom: '16px' }}>📍</p>
-                          <p>No locations yet. Add your first location!</p>
-                        </td>
-                      </tr>
-                    )}
+                    {roleAssignments.length === 0 && <tr><td colSpan="3" style={{ padding: '32px', textAlign: 'center', color: '#6b7280' }}>No role assignments yet</td></tr>}
                   </tbody>
                 </table>
               </div>
             </div>
           )}
 
-          {/* Account Settings */}
+          {/* ============ ACTIVITY LOGS ============ */}
+          {activeSection === 'logs' && (
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📜 Activity Logs</h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Track who adds data to the platform or records attendance and finance</p>
+              </div>
+              {/* Filters */}
+              <div style={{ padding: '16px', backgroundColor: '#f9fafb', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Action</label>
+                  <select value={logFilters.action} onChange={(e) => setLogFilters({ ...logFilters, action: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}>
+                    <option value="all">All Actions</option>
+                    <option value="CREATE">Create</option>
+                    <option value="UPDATE">Update</option>
+                    <option value="DELETE">Delete</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Entity Type</label>
+                  <select value={logFilters.entity_type} onChange={(e) => setLogFilters({ ...logFilters, entity_type: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}>
+                    <option value="all">All Entities</option>
+                    <option value="member">Members</option>
+                    <option value="visitor">Visitors</option>
+                    <option value="attendance">Attendance</option>
+                    <option value="donation">Donations</option>
+                    <option value="salvation">Salvations</option>
+                  </select>
+                </div>
+                <button onClick={() => setLogFilters({ action: 'all', entity_type: 'all', from_date: '', to_date: '' })} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px', marginTop: '18px' }}>🔄 Reset</button>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Action</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Entity</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>User</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLogs.map((log, i) => (
+                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '4px 10px', backgroundColor: log.action === 'CREATE' ? '#dcfce7' : log.action === 'UPDATE' ? '#fef3c7' : '#fef2f2', color: log.action === 'CREATE' ? '#166534' : log.action === 'UPDATE' ? '#92400e' : '#991b1b', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}>
+                          {log.action === 'CREATE' ? '➕' : log.action === 'UPDATE' ? '✏️' : '🗑️'} {log.action}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{log.entity_type}</p>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{log.entity_name || '—'}</p>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '14px' }}>{log.user_name || log.user_email || 'System'}</td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '13px' }}>{formatDateTime(log.created_at)}</td>
+                    </tr>
+                  ))}
+                  {filteredLogs.length === 0 && <tr><td colSpan="4" style={{ padding: '32px', textAlign: 'center', color: '#6b7280' }}>No activity logs found</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ============ ACCOUNT ============ */}
           {activeSection === 'account' && (
-            <>
-              {/* User Info */}
+            <div style={{ display: 'grid', gap: '24px' }}>
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>👤 Your Account</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('name')}</label><p style={{ margin: 0, fontWeight: '500' }}>{user?.name}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{t('email')}</label><p style={{ margin: 0 }}>{user?.email}</p></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Name</label><p style={{ margin: 0, fontWeight: '500', fontSize: '16px' }}>{user?.name}</p></div>
+                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Email</label><p style={{ margin: 0 }}>{user?.email}</p></div>
                   <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Role</label><p style={{ margin: 0 }}><StatusBadge status={user?.role} /></p></div>
                 </div>
               </div>
-
-              {/* Actions */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🔧 Actions</h3>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                   <Button variant="secondary">📤 Export Data</Button>
                   <Button variant="secondary">📊 Generate Report</Button>
-                  <Button variant="danger" onClick={logout}>🚪 {t('signOut')}</Button>
+                  <Button variant="danger" onClick={logout}>🚪 Sign Out</Button>
                 </div>
               </div>
-            </>
+              <div style={{ backgroundColor: '#f9fafb', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>✝</div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 'bold' }}>ChurchSmart</h3>
+                <p style={{ margin: 0, color: '#6b7280' }}>Version 2.5.0 • Connected to Supabase</p>
+                <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#9ca3af' }}>Built with ❤️ for churches in Cameroon</p>
+              </div>
+            </div>
           )}
-
-          {/* App Info */}
-          <div style={{ backgroundColor: '#f9fafb', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>✝</div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 'bold' }}>ChurchSmart</h3>
-            <p style={{ margin: 0, color: '#6b7280' }}>Version 2.0.0 • Connected to Supabase</p>
-            <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#9ca3af' }}>Built with ❤️ for churches in Cameroon</p>
-          </div>
-        </div>
+        </>
       )}
 
-      {/* Add/Edit Location Modal */}
-      <Modal isOpen={showLocationModal} onClose={() => { setShowLocationModal(false); resetLocationForm(); }} title={editingLocation ? '✏️ Edit Location' : '➕ Add Location'} width="600px">
-        <FormInput 
-          label="Location Name *" 
-          value={locationForm.name} 
-          onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })} 
-          required 
-          placeholder="e.g., East Campus, Yaounde Branch" 
-        />
-        
-        <FormInput 
-          label="Address" 
-          value={locationForm.address} 
-          onChange={(e) => setLocationForm({ ...locationForm, address: e.target.value })} 
-          placeholder="Street address" 
-        />
-        
+      {/* ============ MODALS ============ */}
+
+      {/* Location Modal */}
+      <Modal isOpen={showLocationModal} onClose={() => { setShowLocationModal(false); resetLocationForm(); }} title={editingLocation ? '✏️ Edit Location' : '➕ Add Location'}>
+        <FormInput label="Location Name *" value={locationForm.name} onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })} required placeholder="e.g., East Campus" />
+        <FormInput label="Address" value={locationForm.address} onChange={(e) => setLocationForm({ ...locationForm, address: e.target.value })} placeholder="Street address" />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput 
-            label="City" 
-            value={locationForm.city} 
-            onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })} 
-            placeholder="e.g., Douala, Yaounde" 
-          />
-          <FormInput 
-            label="Phone" 
-            value={locationForm.phone} 
-            onChange={(e) => setLocationForm({ ...locationForm, phone: e.target.value })} 
-            placeholder="+237 6XX XXX XXX" 
-          />
+          <FormInput label="City" value={locationForm.city} onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })} placeholder="Douala" />
+          <FormInput label="Phone" value={locationForm.phone} onChange={(e) => setLocationForm({ ...locationForm, phone: e.target.value })} placeholder="+237..." />
         </div>
-        
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput 
-            label="Campus Pastor" 
-            value={locationForm.pastor_name} 
-            onChange={(e) => setLocationForm({ ...locationForm, pastor_name: e.target.value })} 
-            placeholder="Pastor's name" 
-          />
-          <FormInput 
-            label="Seating Capacity" 
-            type="number" 
-            value={locationForm.capacity} 
-            onChange={(e) => setLocationForm({ ...locationForm, capacity: e.target.value })} 
-            placeholder="e.g., 500" 
-          />
+          <FormInput label="Campus Pastor" value={locationForm.pastor_name} onChange={(e) => setLocationForm({ ...locationForm, pastor_name: e.target.value })} />
+          <FormInput label="Capacity" type="number" value={locationForm.capacity} onChange={(e) => setLocationForm({ ...locationForm, capacity: e.target.value })} placeholder="500" />
         </div>
-        
         <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <input 
-              type="checkbox" 
-              checked={locationForm.is_main_campus} 
-              onChange={(e) => setLocationForm({ ...locationForm, is_main_campus: e.target.checked })} 
-            />
-            <span>🏛️ Main Campus</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <input 
-              type="checkbox" 
-              checked={locationForm.is_active} 
-              onChange={(e) => setLocationForm({ ...locationForm, is_active: e.target.checked })} 
-            />
-            <span>✅ Active</span>
-          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}><input type="checkbox" checked={locationForm.is_main_campus} onChange={(e) => setLocationForm({ ...locationForm, is_main_campus: e.target.checked })} /><span>🏛️ Main Campus</span></label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}><input type="checkbox" checked={locationForm.is_active} onChange={(e) => setLocationForm({ ...locationForm, is_active: e.target.checked })} /><span>✅ Active</span></label>
         </div>
-        
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-          <Button variant="secondary" onClick={() => { setShowLocationModal(false); resetLocationForm(); }}>{t('cancel')}</Button>
-          <Button onClick={handleSaveLocation} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button>
+          <Button variant="secondary" onClick={() => { setShowLocationModal(false); resetLocationForm(); }}>Cancel</Button>
+          <Button onClick={handleSaveLocation} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
+        </div>
+      </Modal>
+
+      {/* Role Modal */}
+      <Modal isOpen={showRoleModal} onClose={() => { setShowRoleModal(false); resetRoleForm(); }} title={editingRole ? '✏️ Edit Role' : '➕ Create Role'}>
+        <FormInput label="Role Name *" value={roleForm.name} onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })} required placeholder="e.g., Finance Manager" />
+        <FormInput label="Description" type="textarea" value={roleForm.description} onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })} placeholder="What can this role do?" />
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '12px' }}>Permissions</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            {permissionsList.map((perm, i) => (
+              <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: '#f9fafb', borderRadius: '8px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={roleForm.permissions[perm.key] || false} onChange={(e) => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, [perm.key]: e.target.checked } })} />
+                <span style={{ fontSize: '13px' }}>{perm.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowRoleModal(false); resetRoleForm(); }}>Cancel</Button>
+          <Button onClick={handleSaveRole} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
+        </div>
+      </Modal>
+
+      {/* Assign Role Modal */}
+      <Modal isOpen={showAssignRoleModal} onClose={() => setShowAssignRoleModal(false)} title="🎫 Assign Role">
+        <FormInput label="User Name" value={assignForm.user_name} onChange={(e) => setAssignForm({ ...assignForm, user_name: e.target.value })} placeholder="John Doe" />
+        <FormInput label="User Email *" type="email" value={assignForm.user_email} onChange={(e) => setAssignForm({ ...assignForm, user_email: e.target.value })} required placeholder="john@example.com" />
+        <FormInput label="Role *" type="select" value={assignForm.role_id} onChange={(e) => setAssignForm({ ...assignForm, role_id: e.target.value })} options={roles.map(r => ({ value: r.id, label: r.name }))} />
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => setShowAssignRoleModal(false)}>Cancel</Button>
+          <Button onClick={handleAssignRole} disabled={saving}>{saving ? '⏳' : '🎫 Assign'}</Button>
+        </div>
+      </Modal>
+
+      {/* Template Modal */}
+      <Modal isOpen={showTemplateModal} onClose={() => { setShowTemplateModal(false); resetTemplateForm(); }} title={editingTemplate ? '✏️ Edit Template' : '➕ Add Template'}>
+        <FormInput label="Template Name *" value={templateForm.name} onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })} required placeholder="e.g., Birthday Greeting" />
+        <FormInput label="Category" type="select" value={templateForm.category} onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })} options={[{ value: 'BIRTHDAY', label: '🎂 Birthday' }, { value: 'VISITOR_FOLLOWUP', label: '🚶 Visitor Follow-up' }, { value: 'GENERAL', label: '📝 General' }]} />
+        <FormInput label="Message Body *" type="textarea" value={templateForm.body} onChange={(e) => setTemplateForm({ ...templateForm, body: e.target.value })} required placeholder="Happy Birthday {{name}}! ..." />
+        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 16px 0' }}>💡 Use {"{{name}}"} to insert the recipient's name</p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowTemplateModal(false); resetTemplateForm(); }}>Cancel</Button>
+          <Button onClick={handleSaveTemplate} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
         </div>
       </Modal>
 
       {/* Delete Confirmation */}
-      <ConfirmDialog 
-        isOpen={!!deleteConfirm} 
-        onClose={() => setDeleteConfirm(null)} 
-        onConfirm={handleDeleteLocation} 
-        title="🗑️ Delete Location" 
-        message={`Are you sure you want to delete "${deleteConfirm?.name}"? This will also affect all services and attendance records linked to this location.`} 
-      />
+      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title="🗑️ Delete" message={`Are you sure you want to delete "${deleteConfirm?.name || deleteConfirm?.title || 'this item'}"?`} />
     </div>
   );
 }
