@@ -7,6 +7,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 // ==========================================
 const SUPABASE_URL = 'https://ntngwrtbbgetobinwvxd.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bmd3cnRiYmdldG9iaW53dnhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTc3NTIsImV4cCI6MjA4NTMzMzc1Mn0.uvMWB2zwd4LYJM1P1jpov5rG83L62Eqbe7Bko9kI_1Q';
+const SUPABASE_ANON_KEY = SUPABASE_KEY;
 const CHURCH_ID = '11111111-1111-1111-1111-111111111111';
 const EDGE_FUNCTION_URL = 'https://ntngwrtbbgetobinwvxd.supabase.co/functions/v1/send-message';
 
@@ -466,7 +467,6 @@ async function uploadPhoto(file, bucket = 'avatars') {
   }
   return null;
 }
-
 // ==========================================
 // AUTH CONTEXT
 // ==========================================
@@ -477,43 +477,113 @@ function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('churchsmart_user');
-    if (stored) {
-      setUser(JSON.parse(stored));
+    const savedUser = localStorage.getItem('churchsmart_user');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        localStorage.removeItem('churchsmart_user');
+      }
     }
     setLoading(false);
   }, []);
 
   const login = async (email, password) => {
-    if (email && password.length >= 6) {
-      const userData = {
-        id: '1',
-        email,
-        name: email.split('@')[0],
-        role: email.includes('admin') ? 'ADMIN' : 'STAFF',
-        church_id: CHURCH_ID
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/church_users?email=eq.${encodeURIComponent(email)}&is_active=eq.true`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+      
+      const users = await response.json();
+      
+      if (!users || users.length === 0) {
+        return { success: false, error: 'User not found' };
+      }
+
+      const dbUser = users[0];
+
+      if (dbUser.password_hash !== password) {
+        return { success: false, error: 'Invalid password' };
+      }
+
+      const sessionUser = {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.full_name,
+        role: dbUser.role,
+        church_id: dbUser.church_id,
+        phone: dbUser.phone
       };
-      setUser(userData);
-      localStorage.setItem('churchsmart_user', JSON.stringify(userData));
+
+      await fetch(`${SUPABASE_URL}/rest/v1/church_users?id=eq.${dbUser.id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ last_login: new Date().toISOString() })
+      });
+
+      setUser(sessionUser);
+      localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+      
       return { success: true };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false, error: 'Login failed. Please try again.' };
     }
-    return { success: false, error: 'Invalid credentials' };
   };
 
-  const signup = async (name, email, password) => {
-    if (name && email && password.length >= 6) {
-      const userData = {
-        id: Date.now().toString(),
-        email,
-        name,
+  const register = async (userData) => {
+    try {
+      const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/church_users?email=eq.${encodeURIComponent(userData.email)}`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+      
+      const existingUsers = await checkResponse.json();
+      
+      if (existingUsers && existingUsers.length > 0) {
+        return { success: false, error: 'Email already registered' };
+      }
+
+      const newUser = {
+        church_id: CHURCH_ID,
+        email: userData.email,
+        password_hash: userData.password,
+        full_name: userData.full_name,
+        phone: userData.phone || null,
         role: 'STAFF',
-        church_id: CHURCH_ID
+        is_active: true
       };
-      setUser(userData);
-      localStorage.setItem('churchsmart_user', JSON.stringify(userData));
+
+      const createResponse = await fetch(`${SUPABASE_URL}/rest/v1/church_users`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(newUser)
+      });
+
+      if (!createResponse.ok) {
+        return { success: false, error: 'Failed to create account' };
+      }
+
       return { success: true };
+    } catch (error) {
+      console.error('Register error:', error);
+      return { success: false, error: 'Registration failed. Please try again.' };
     }
-    return { success: false, error: 'Please fill all fields correctly' };
   };
 
   const logout = () => {
@@ -522,12 +592,11 @@ function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, register, loading }}>
       {children}
     </AuthContext.Provider>
   );
 }
-
 function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');
@@ -562,126 +631,190 @@ function AppContent() {
   }
 
   if (!user) {
-    return <AuthPages />;
+    return <LoginPage />;
   }
 
   return <Dashboard />;
 }
 
 // ==========================================
-// AUTH PAGES (Login / Signup)
+// LOGIN PAGE - Professional Design
 // ==========================================
-function AuthPages() {
-  const { t, language, changeLanguage } = useLanguage();
-  const [mode, setMode] = useState('login');
-  const [email, setEmail] = useState('admin@firechurch.cm');
-  const [password, setPassword] = useState('password123');
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
+function LoginPage() {
+  const { login, register } = useAuth();
+  const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
-  const { login, signup } = useAuth();
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    full_name: '',
+    phone: '',
+    confirm_password: ''
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
-    let result;
-    if (mode === 'login') {
-      result = await login(email, password);
-    } else if (mode === 'signup') {
-      result = await signup(name, email, password);
-    }
+    if (isLogin) {
+      // Login
+      const result = await login(form.email, form.password);
+      if (!result.success) {
+        setError(result.error);
+      }
+    } else {
+      // Register
+      if (!form.full_name || !form.email || !form.password) {
+        setError('Please fill in all required fields');
+        setLoading(false);
+        return;
+      }
+      if (form.password !== form.confirm_password) {
+        setError('Passwords do not match');
+        setLoading(false);
+        return;
+      }
+      if (form.password.length < 6) {
+        setError('Password must be at least 6 characters');
+        setLoading(false);
+        return;
+      }
 
-    if (!result.success) {
-      setError(result.error);
+      const result = await register(form);
+      if (result.success) {
+        setSuccess('Account created! You can now login.');
+        setIsLogin(true);
+        setForm({ ...form, password: '', confirm_password: '' });
+      } else {
+        setError(result.error);
+      }
     }
     setLoading(false);
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#f9fafb' }}>
-      {/* Language Toggle */}
-      <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10 }}>
-        <button
-          onClick={() => changeLanguage(language === 'en' ? 'fr' : 'en')}
-          style={{ padding: '8px 16px', backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}
-        >
-          {language === 'en' ? '🇫🇷 Français' : '🇬🇧 English'}
-        </button>
-      </div>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6', padding: '20px' }}>
+      <div style={{ width: '100%', maxWidth: '420px' }}>
+        {/* Logo & Header */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{ width: '80px', height: '80px', backgroundColor: '#6366f1', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 10px 40px rgba(99, 102, 241, 0.3)' }}>
+            <span style={{ fontSize: '40px' }}>✝</span>
+          </div>
+          <h1 style={{ margin: '0 0 8px 0', fontSize: '28px', fontWeight: 'bold', color: '#1f2937' }}>ChurchSmart</h1>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '15px' }}>Church Management System</p>
+        </div>
 
-      {/* Left Side - Form */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
-        <div style={{ width: '100%', maxWidth: '400px' }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px' }}>
-            <div style={{ width: '48px', height: '48px', background: 'linear-gradient(135deg, #6366f1, #3b82f6)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '24px', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>✝</div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>ChurchSmart</h1>
-              <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Church Management System</p>
-            </div>
+        {/* Login/Register Card */}
+        <div style={{ backgroundColor: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+          {/* Tabs */}
+          <div style={{ display: 'flex', marginBottom: '24px', backgroundColor: '#f3f4f6', borderRadius: '10px', padding: '4px' }}>
+            <button
+              onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }}
+              style={{
+                flex: 1, padding: '12px', border: 'none', borderRadius: '8px',
+                backgroundColor: isLogin ? 'white' : 'transparent',
+                color: isLogin ? '#6366f1' : '#6b7280',
+                fontWeight: isLogin ? '600' : '400',
+                cursor: 'pointer',
+                boxShadow: isLogin ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }}
+              style={{
+                flex: 1, padding: '12px', border: 'none', borderRadius: '8px',
+                backgroundColor: !isLogin ? 'white' : 'transparent',
+                color: !isLogin ? '#6366f1' : '#6b7280',
+                fontWeight: !isLogin ? '600' : '400',
+                cursor: 'pointer',
+                boxShadow: !isLogin ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              Register
+            </button>
           </div>
 
-          {/* Title */}
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0 0 8px 0' }}>
-            {mode === 'login' ? t('welcome') : mode === 'signup' ? t('createAccount') : t('forgotPassword')}
-          </h2>
-          <p style={{ color: '#6b7280', margin: '0 0 32px 0' }}>
-            {mode === 'login' ? 'Sign in to manage your church' : 'Start managing your church today'}
-          </p>
-
-          {/* Error */}
+          {/* Error/Success Messages */}
           {error && (
-            <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#dc2626', marginBottom: '16px', fontSize: '14px' }}>
-              ⚠️ {error}
+            <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', marginBottom: '20px', color: '#dc2626', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>❌</span> {error}
+            </div>
+          )}
+          {success && (
+            <div style={{ padding: '12px 16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', marginBottom: '20px', color: '#166534', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>✅</span> {success}
             </div>
           )}
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
-            {mode === 'signup' && (
+            {!isLogin && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>{t('name')}</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Full Name *</label>
                 <input
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="John Doe"
-                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
+                  value={form.full_name}
+                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                  placeholder="Enter your full name"
+                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
                 />
               </div>
             )}
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>{t('email')}</label>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Email *</label>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
                 placeholder="you@example.com"
-                style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
               />
             </div>
 
-            {mode !== 'forgot' && (
+            {!isLogin && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Password</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Phone (optional)</label>
                 <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="+237 6XX XXX XXX"
+                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
                 />
               </div>
             )}
 
-            {mode === 'login' && (
-              <div style={{ textAlign: 'right', marginBottom: '24px' }}>
-                <button type="button" onClick={() => setMode('forgot')} style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '14px' }}>
-                  {t('forgotPassword')}
-                </button>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Password *</label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="••••••••"
+                style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
+              />
+            </div>
+
+            {!isLogin && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Confirm Password *</label>
+                <input
+                  type="password"
+                  value={form.confirm_password}
+                  onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
+                  placeholder="••••••••"
+                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
+                />
               </div>
             )}
 
@@ -689,61 +822,35 @@ function AuthPages() {
               type="submit"
               disabled={loading}
               style={{
-                width: '100%',
-                padding: '14px',
-                background: 'linear-gradient(135deg, #6366f1, #3b82f6)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '16px',
-                fontWeight: '600',
+                width: '100%', padding: '14px', backgroundColor: '#6366f1', color: 'white',
+                border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
+                transition: 'all 0.2s',
                 boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
               }}
             >
-              {loading ? '⏳ ...' : mode === 'login' ? `${t('signIn')} →` : mode === 'signup' ? `${t('createAccount')} →` : 'Send Reset Link →'}
+              {loading ? '⏳ Please wait...' : isLogin ? '🔐 Sign In' : '✨ Create Account'}
             </button>
           </form>
 
-          {/* Toggle Mode */}
-          <p style={{ textAlign: 'center', marginTop: '24px', color: '#6b7280' }}>
-            {mode === 'login' ? (
-              <>{t('noAccount')} <button onClick={() => setMode('signup')} style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontWeight: '600' }}>{t('signUp')}</button></>
-            ) : (
-              <>{t('hasAccount')} <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontWeight: '600' }}>{t('signIn')}</button></>
-            )}
-          </p>
-        </div>
-      </div>
-
-      {/* Right Side - Decorative */}
-      <div style={{ flex: 1, background: 'linear-gradient(135deg, #6366f1, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
-        <div style={{ maxWidth: '400px', color: 'white' }}>
-          <h2 style={{ fontSize: '36px', fontWeight: 'bold', margin: '0 0 16px 0' }}>
-            {language === 'en' ? 'Manage your church with ease' : 'Gérez votre église facilement'}
-          </h2>
-          <p style={{ fontSize: '18px', opacity: 0.9, margin: '0 0 32px 0' }}>
-            {language === 'en' 
-              ? 'Track attendance, manage members, record giving, and grow your ministry with ChurchSmart.'
-              : "Suivez la présence, gérez les membres, enregistrez les offrandes et développez votre ministère avec ChurchSmart."}
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            {[
-              { icon: '👥', label: language === 'en' ? 'Member Management' : 'Gestion des Membres' },
-              { icon: '📊', label: language === 'en' ? 'Attendance Tracking' : 'Suivi des Présences' },
-              { icon: '💰', label: language === 'en' ? 'Giving Reports' : 'Rapports Offrandes' },
-              { icon: '🙏', label: language === 'en' ? 'Prayer Requests' : 'Demandes de Prière' },
-              { icon: '📱', label: language === 'en' ? 'SMS Follow-up' : 'Suivi par SMS' },
-              { icon: '❤️', label: language === 'en' ? 'Salvation Tracking' : 'Suivi des Saluts' },
-            ].map((feature, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '10px' }}>
-                <span style={{ fontSize: '24px' }}>{feature.icon}</span>
-                <span style={{ fontWeight: '500' }}>{feature.label}</span>
+          {/* Demo Credentials */}
+          {isLogin && (
+            <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}>Demo Accounts:</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#6b7280' }}>
+                <span>👤 admin@firechurch.cm / admin123</span>
+                <span>👤 staff@firechurch.cm / staff123</span>
+                <span>👤 pastor@firechurch.cm / pastor123</span>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
+
+        {/* Footer */}
+        <p style={{ textAlign: 'center', marginTop: '24px', color: '#9ca3af', fontSize: '13px' }}>
+          © 2026 ChurchSmart • Built for Churches in Cameroon
+        </p>
       </div>
     </div>
   );
@@ -766,6 +873,9 @@ function Dashboard() {
     { id: 'giving', label: t('giving'), icon: '💰' },
     { id: 'salvations', label: t('salvations'), icon: '❤️' },
     { id: 'groups', label: t('groups'), icon: '👨‍👩‍👧‍👦' },
+    { id: 'volunteers', label: 'Volunteers', icon: '🙋‍♂️' },
+    { id: 'messaging', label: 'Messaging', icon: '💬' },
+    { id: 'reports', label: 'Reports', icon: '📊' },
     { id: 'services', label: t('services'), icon: '⛪' },
     { id: 'settings', label: t('settings'), icon: '⚙️' },
   ];
@@ -880,6 +990,9 @@ function Dashboard() {
           {activeTab === 'giving' && <GivingPage />}
           {activeTab === 'salvations' && <SalvationsPage />}
           {activeTab === 'groups' && <GroupsPage />}
+          {activeTab === 'volunteers' && <VolunteersPage />}
+          {activeTab === 'messaging' && <MessagingPage />}
+          {activeTab === 'reports' && <ReportsPage />}
           {activeTab === 'services' && <ServicesPage />}
           {activeTab === 'settings' && <SettingsPage />}
         </main>
@@ -3123,7 +3236,1185 @@ function PrayersPage() {
     </div>
   );
 }
+// ==========================================
+// VOLUNTEERS PAGE
+// ==========================================
+function VolunteersPage() {
+  const { t } = useLanguage();
+  const [volunteers, setVolunteers] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingVolunteer, setEditingVolunteer] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [filterMinistry, setFilterMinistry] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
+  const ministries = ['Worship', 'Children', 'Youth', 'Ushers', 'Media', 'Security', 'Hospitality', 'Prayer', 'Outreach', 'Discipleship', 'Admin', 'Other'];
+  const statuses = ['ACTIVE', 'INACTIVE', 'ON_LEAVE'];
+  const availabilities = ['Sundays', 'Weekends', 'Weekdays', 'All Services', 'Fridays & Sundays', 'Daily', 'As Needed'];
+
+  const [form, setForm] = useState({
+    full_name: '', email: '', phone: '', ministry: 'Worship', role: '',
+    status: 'ACTIVE', availability: 'Sundays', start_date: '', skills: '',
+    notes: '', emergency_contact: '', emergency_phone: '', is_team_leader: false, member_id: ''
+  });
+
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const [volunteersData, membersData] = await Promise.all([
+      supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+    ]);
+    setVolunteers(volunteersData || []);
+    setMembers(membersData || []);
+    setLoading(false);
+  };
+
+  const resetForm = () => {
+    setForm({
+      full_name: '', email: '', phone: '', ministry: 'Worship', role: '',
+      status: 'ACTIVE', availability: 'Sundays', start_date: '', skills: '',
+      notes: '', emergency_contact: '', emergency_phone: '', is_team_leader: false, member_id: ''
+    });
+    setEditingVolunteer(null);
+  };
+
+  const openModal = (volunteer = null) => {
+    if (volunteer) {
+      setEditingVolunteer(volunteer);
+      setForm({
+        full_name: volunteer.full_name || '',
+        email: volunteer.email || '',
+        phone: volunteer.phone || '',
+        ministry: volunteer.ministry || 'Worship',
+        role: volunteer.role || '',
+        status: volunteer.status || 'ACTIVE',
+        availability: volunteer.availability || 'Sundays',
+        start_date: volunteer.start_date || '',
+        skills: volunteer.skills || '',
+        notes: volunteer.notes || '',
+        emergency_contact: volunteer.emergency_contact || '',
+        emergency_phone: volunteer.emergency_phone || '',
+        is_team_leader: volunteer.is_team_leader || false,
+        member_id: volunteer.member_id || ''
+      });
+    } else {
+      resetForm();
+    }
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.full_name || !form.ministry) {
+      alert('Name and ministry are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingVolunteer) {
+        await supabaseUpdate('volunteers', editingVolunteer.id, form);
+      } else {
+        await supabaseInsert('volunteers', form);
+      }
+      setShowModal(false);
+      resetForm();
+      fetchData();
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    await supabaseDelete('volunteers', deleteConfirm.id);
+    setDeleteConfirm(null);
+    fetchData();
+  };
+
+  const handleLinkMember = (memberId) => {
+    const member = members.find(m => m.id === memberId);
+    if (member) {
+      setForm({
+        ...form,
+        member_id: memberId,
+        full_name: `${member.first_name} ${member.last_name}`,
+        email: member.email || form.email,
+        phone: member.phone || form.phone
+      });
+    }
+  };
+
+  // Filter volunteers
+  const filteredVolunteers = volunteers.filter(v => {
+    if (filterMinistry !== 'all' && v.ministry !== filterMinistry) return false;
+    if (filterStatus !== 'all' && v.status !== filterStatus) return false;
+    if (searchTerm && !v.full_name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    return true;
+  });
+
+  // Stats
+  const totalActive = volunteers.filter(v => v.status === 'ACTIVE').length;
+  const totalLeaders = volunteers.filter(v => v.is_team_leader).length;
+  const ministryStats = ministries.map(m => ({
+    ministry: m,
+    count: volunteers.filter(v => v.ministry === m).length
+  })).filter(m => m.count > 0).sort((a, b) => b.count - a.count);
+
+  const statusColors = {
+    'ACTIVE': { bg: '#dcfce7', color: '#166534' },
+    'INACTIVE': { bg: '#fee2e2', color: '#991b1b' },
+    'ON_LEAVE': { bg: '#fef3c7', color: '#92400e' }
+  };
+
+  const ministryColors = {
+    'Worship': '#6366f1', 'Children': '#f59e0b', 'Youth': '#8b5cf6', 'Ushers': '#10b981',
+    'Media': '#3b82f6', 'Security': '#ef4444', 'Hospitality': '#ec4899', 'Prayer': '#14b8a6',
+    'Outreach': '#f97316', 'Discipleship': '#6366f1', 'Admin': '#6b7280', 'Other': '#9ca3af'
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="🙋‍♂️ Volunteers"
+        subtitle={`Manage your ${volunteers.length} volunteers across ${ministryStats.length} ministries`}
+        actions={<Button onClick={() => openModal()}>➕ Add Volunteer</Button>}
+      />
+
+      {/* Stats Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <StatCard label="Total Volunteers" value={volunteers.length} icon="🙋‍♂️" color="#6366f1" />
+        <StatCard label="Active" value={totalActive} icon="✅" color="#10b981" />
+        <StatCard label="Team Leaders" value={totalLeaders} icon="⭐" color="#f59e0b" />
+        <StatCard label="Ministries" value={ministryStats.length} icon="⛪" color="#8b5cf6" />
+      </div>
+
+      {/* Ministry Breakdown */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>📊 Volunteers by Ministry</h3>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {ministryStats.map((m, i) => (
+            <div key={i} style={{ padding: '12px 20px', backgroundColor: `${ministryColors[m.ministry] || '#6b7280'}15`, borderRadius: '10px', borderLeft: `4px solid ${ministryColors[m.ministry] || '#6b7280'}` }}>
+              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: ministryColors[m.ministry] || '#6b7280' }}>{m.count}</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>{m.ministry}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <input
+              type="text"
+              placeholder="🔍 Search volunteers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+            />
+          </div>
+          <select value={filterMinistry} onChange={(e) => setFilterMinistry(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+            <option value="all">All Ministries</option>
+            {ministries.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+            <option value="all">All Statuses</option>
+            {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Volunteers Table */}
+      {loading ? <LoadingSpinner /> : (
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ backgroundColor: '#f9fafb' }}>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Volunteer</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Ministry</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Role</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Availability</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Contact</th>
+                  <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredVolunteers.map((volunteer, index) => (
+                  <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '40px', height: '40px', backgroundColor: `${ministryColors[volunteer.ministry] || '#6b7280'}20`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ministryColors[volunteer.ministry] || '#6b7280', fontWeight: '600', fontSize: '14px' }}>
+                          {volunteer.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {volunteer.full_name}
+                            {volunteer.is_team_leader && <span style={{ fontSize: '14px' }}>⭐</span>}
+                          </p>
+                          {volunteer.email && <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{volunteer.email}</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <span style={{ padding: '4px 12px', backgroundColor: `${ministryColors[volunteer.ministry] || '#6b7280'}20`, color: ministryColors[volunteer.ministry] || '#6b7280', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>
+                        {volunteer.ministry}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px', color: '#374151' }}>{volunteer.role || '—'}</td>
+                    <td style={{ padding: '16px' }}>
+                      <span style={{ padding: '4px 12px', backgroundColor: statusColors[volunteer.status]?.bg || '#f3f4f6', color: statusColors[volunteer.status]?.color || '#6b7280', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>
+                        {volunteer.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px', color: '#6b7280', fontSize: '14px' }}>{volunteer.availability || '—'}</td>
+                    <td style={{ padding: '16px' }}>
+                      {volunteer.phone && <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>📱 {volunteer.phone}</p>}
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={() => openModal(volunteer)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️ Edit</button>
+                        <button onClick={() => setDeleteConfirm(volunteer)} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredVolunteers.length === 0 && (
+                  <tr>
+                    <td colSpan="7" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
+                      <span style={{ fontSize: '48px' }}>🙋‍♂️</span>
+                      <p>No volunteers found</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
+      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingVolunteer ? '✏️ Edit Volunteer' : '➕ Add Volunteer'} width="600px">
+        {/* Link to Member */}
+        <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
+          <label style={{ fontSize: '13px', color: '#166534', display: 'block', marginBottom: '8px' }}>🔗 Link to existing member (optional)</label>
+          <select
+            value={form.member_id}
+            onChange={(e) => handleLinkMember(e.target.value)}
+            style={{ width: '100%', padding: '8px 12px', border: '1px solid #bbf7d0', borderRadius: '8px', fontSize: '14px' }}
+          >
+            <option value="">Select a member...</option>
+            {members.map(m => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>)}
+          </select>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="Full Name *" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required placeholder="Jean-Pierre Mbeki" />
+          <FormInput label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+237 6XX XXX XXX" />
+        </div>
+
+        <FormInput label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@example.com" />
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="Ministry *" type="select" value={form.ministry} onChange={(e) => setForm({ ...form, ministry: e.target.value })} options={ministries.map(m => ({ value: m, label: m }))} />
+          <FormInput label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="e.g., Lead Singer, Teacher" />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="Status" type="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} options={statuses.map(s => ({ value: s, label: s }))} />
+          <FormInput label="Availability" type="select" value={form.availability} onChange={(e) => setForm({ ...form, availability: e.target.value })} options={availabilities.map(a => ({ value: a, label: a }))} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label="Start Date" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '24px' }}>
+            <input type="checkbox" id="teamLeader" checked={form.is_team_leader} onChange={(e) => setForm({ ...form, is_team_leader: e.target.checked })} />
+            <label htmlFor="teamLeader" style={{ fontSize: '14px', cursor: 'pointer' }}>⭐ Team Leader</label>
+          </div>
+        </div>
+
+        <FormInput label="Skills" type="textarea" value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} placeholder="List any relevant skills..." />
+
+        <div style={{ padding: '12px', backgroundColor: '#fef3c7', borderRadius: '10px', marginBottom: '16px' }}>
+          <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '600', color: '#92400e' }}>🚨 Emergency Contact</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <input type="text" placeholder="Contact Name" value={form.emergency_contact} onChange={(e) => setForm({ ...form, emergency_contact: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #fcd34d', borderRadius: '8px', fontSize: '14px' }} />
+            <input type="text" placeholder="Phone Number" value={form.emergency_phone} onChange={(e) => setForm({ ...form, emergency_phone: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #fcd34d', borderRadius: '8px', fontSize: '14px' }} />
+          </div>
+        </div>
+
+        <FormInput label="Notes" type="textarea" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any additional notes..." />
+
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title="🗑️ Delete Volunteer" message={`Are you sure you want to remove "${deleteConfirm?.full_name}" from volunteers?`} />
+    </div>
+  );
+}
+// ==========================================
+// MESSAGING PAGE
+// ==========================================
+function MessagingPage() {
+  const { t } = useLanguage();
+  const [members, setMembers] = useState([]);
+  const [visitors, setVisitors] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [volunteers, setVolunteers] = useState([]);
+  const [messageHistory, setMessageHistory] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [activeTab, setActiveTab] = useState('compose');
+
+  const [message, setMessage] = useState({
+    type: 'SMS',
+    recipientType: 'ALL_MEMBERS',
+    groupId: '',
+    ministryFilter: '',
+    customRecipients: [],
+    subject: '',
+    body: ''
+  });
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRecipients, setSelectedRecipients] = useState([]);
+
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const [membersData, visitorsData, groupsData, volunteersData, messagesData, templatesData] = await Promise.all([
+      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('messages', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'sent_at.desc', limit: 20 }),
+      supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+    ]);
+    setMembers(membersData || []);
+    setVisitors(visitorsData || []);
+    setGroups(groupsData || []);
+    setVolunteers(volunteersData || []);
+    setMessageHistory(messagesData || []);
+    setTemplates(templatesData || []);
+    setLoading(false);
+  };
+
+  // Get recipients based on selection
+  const getRecipients = () => {
+    let recipients = [];
+    switch (message.recipientType) {
+      case 'ALL_MEMBERS':
+        recipients = members.filter(m => m.phone).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'member' }));
+        break;
+      case 'ALL_VISITORS':
+        recipients = visitors.filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'visitor' }));
+        break;
+      case 'ALL_VOLUNTEERS':
+        recipients = volunteers.filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'volunteer' }));
+        break;
+      case 'GROUP':
+        // In real app, would filter by group membership
+        recipients = members.filter(m => m.phone).slice(0, 10).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'member' }));
+        break;
+      case 'MINISTRY':
+        recipients = volunteers.filter(v => v.phone && v.ministry === message.ministryFilter).map(v => ({ name: v.full_name, phone: v.phone, type: 'volunteer' }));
+        break;
+      case 'CUSTOM':
+        recipients = selectedRecipients;
+        break;
+      default:
+        recipients = [];
+    }
+    return recipients;
+  };
+
+  const recipientCount = getRecipients().length;
+
+  // Handle template selection
+  const applyTemplate = (template) => {
+    setMessage({ ...message, body: template.body, subject: template.name });
+  };
+
+  // Handle send
+  const handleSend = async () => {
+    if (!message.body) {
+      alert('Please enter a message');
+      return;
+    }
+    if (recipientCount === 0) {
+      alert('No recipients selected');
+      return;
+    }
+
+    setSending(true);
+    try {
+      // Log the message to history
+      await supabaseInsert('messages', {
+        message_type: message.type,
+        recipient_type: message.recipientType,
+        recipient_count: recipientCount,
+        subject: message.subject,
+        body: message.body,
+        status: 'SENT',
+        sent_by: 'Admin'
+      });
+
+      // In real app, would call Twilio API here
+      alert(`✅ Message sent to ${recipientCount} recipients!`);
+      
+      setMessage({ ...message, body: '', subject: '' });
+      fetchData();
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+    setSending(false);
+  };
+
+  // Add/remove custom recipients
+  const toggleRecipient = (recipient) => {
+    const exists = selectedRecipients.find(r => r.phone === recipient.phone);
+    if (exists) {
+      setSelectedRecipients(selectedRecipients.filter(r => r.phone !== recipient.phone));
+    } else {
+      setSelectedRecipients([...selectedRecipients, recipient]);
+    }
+  };
+
+  // All available contacts for custom selection
+  const allContacts = [
+    ...members.filter(m => m.phone).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'Member' })),
+    ...visitors.filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'Visitor' })),
+    ...volunteers.filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'Volunteer' }))
+  ].filter((c, i, arr) => arr.findIndex(x => x.phone === c.phone) === i); // Remove duplicates
+
+  const filteredContacts = allContacts.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.phone.includes(searchTerm)
+  );
+
+  const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  const ministries = ['Worship', 'Children', 'Youth', 'Ushers', 'Media', 'Security', 'Hospitality', 'Prayer', 'Outreach'];
+
+  return (
+    <div>
+      <PageHeader
+        title="💬 Messaging"
+        subtitle="Send SMS and WhatsApp messages to your congregation"
+      />
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <StatCard label="Total Contacts" value={allContacts.length} icon="👥" color="#6366f1" />
+        <StatCard label="Members w/ Phone" value={members.filter(m => m.phone).length} icon="📱" color="#10b981" />
+        <StatCard label="Messages Sent" value={messageHistory.length} icon="📤" color="#f59e0b" />
+        <StatCard label="This Month" value={messageHistory.filter(m => m.sent_at?.startsWith(new Date().toISOString().slice(0, 7))).length} icon="📅" color="#8b5cf6" />
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+        <button onClick={() => setActiveTab('compose')} style={{ padding: '12px 24px', border: activeTab === 'compose' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'compose' ? '#eef2ff' : 'white', color: activeTab === 'compose' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'compose' ? '600' : '400', cursor: 'pointer' }}>✏️ Compose</button>
+        <button onClick={() => setActiveTab('history')} style={{ padding: '12px 24px', border: activeTab === 'history' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'history' ? '#eef2ff' : 'white', color: activeTab === 'history' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'history' ? '600' : '400', cursor: 'pointer' }}>📜 History</button>
+        <button onClick={() => setActiveTab('templates')} style={{ padding: '12px 24px', border: activeTab === 'templates' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'templates' ? '#eef2ff' : 'white', color: activeTab === 'templates' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'templates' ? '600' : '400', cursor: 'pointer' }}>📝 Templates</button>
+      </div>
+
+      {loading ? <LoadingSpinner /> : (
+        <>
+          {/* COMPOSE TAB */}
+          {activeTab === 'compose' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' }}>
+              {/* Message Form */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>✏️ Compose Message</h3>
+
+                {/* Message Type */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Message Type</label>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={() => setMessage({ ...message, type: 'SMS' })} style={{ flex: 1, padding: '16px', border: message.type === 'SMS' ? '2px solid #10b981' : '1px solid #e5e7eb', borderRadius: '12px', backgroundColor: message.type === 'SMS' ? '#d1fae5' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '24px' }}>📱</span>
+                      <span style={{ fontWeight: message.type === 'SMS' ? '600' : '400', color: message.type === 'SMS' ? '#166534' : '#6b7280' }}>SMS</span>
+                    </button>
+                    <button onClick={() => setMessage({ ...message, type: 'WHATSAPP' })} style={{ flex: 1, padding: '16px', border: message.type === 'WHATSAPP' ? '2px solid #25d366' : '1px solid #e5e7eb', borderRadius: '12px', backgroundColor: message.type === 'WHATSAPP' ? '#dcfce7' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '24px' }}>💬</span>
+                      <span style={{ fontWeight: message.type === 'WHATSAPP' ? '600' : '400', color: message.type === 'WHATSAPP' ? '#166534' : '#6b7280' }}>WhatsApp</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Recipients */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Recipients</label>
+                  <select value={message.recipientType} onChange={(e) => setMessage({ ...message, recipientType: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+                    <option value="ALL_MEMBERS">📋 All Members ({members.filter(m => m.phone).length})</option>
+                    <option value="ALL_VISITORS">🚶 All Visitors ({visitors.filter(v => v.phone).length})</option>
+                    <option value="ALL_VOLUNTEERS">🙋‍♂️ All Volunteers ({volunteers.filter(v => v.phone).length})</option>
+                    <option value="GROUP">👨‍👩‍👧‍👦 Specific Group</option>
+                    <option value="MINISTRY">⛪ Ministry Team</option>
+                    <option value="CUSTOM">✅ Custom Selection</option>
+                  </select>
+                </div>
+
+                {/* Group Selection */}
+                {message.recipientType === 'GROUP' && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <select value={message.groupId} onChange={(e) => setMessage({ ...message, groupId: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+                      <option value="">Select a group...</option>
+                      {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                {/* Ministry Selection */}
+                {message.recipientType === 'MINISTRY' && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <select value={message.ministryFilter} onChange={(e) => setMessage({ ...message, ministryFilter: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+                      <option value="">Select ministry...</option>
+                      {ministries.map(m => <option key={m} value={m}>{m} ({volunteers.filter(v => v.ministry === m && v.phone).length})</option>)}
+                    </select>
+                  </div>
+                )}
+
+                {/* Custom Selection */}
+                {message.recipientType === 'CUSTOM' && (
+                  <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <input type="text" placeholder="🔍 Search contacts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }} />
+                    </div>
+                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {filteredContacts.slice(0, 20).map((contact, i) => {
+                        const isSelected = selectedRecipients.find(r => r.phone === contact.phone);
+                        return (
+                          <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', backgroundColor: isSelected ? '#dbeafe' : 'white', borderRadius: '8px', cursor: 'pointer', border: isSelected ? '1px solid #3b82f6' : '1px solid #e5e7eb' }}>
+                            <input type="checkbox" checked={!!isSelected} onChange={() => toggleRecipient(contact)} />
+                            <span style={{ flex: 1, fontSize: '14px' }}>{contact.name}</span>
+                            <span style={{ fontSize: '11px', padding: '2px 6px', backgroundColor: '#f3f4f6', borderRadius: '4px', color: '#6b7280' }}>{contact.type}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p style={{ margin: '12px 0 0 0', fontSize: '13px', color: '#6b7280' }}>✅ {selectedRecipients.length} selected</p>
+                  </div>
+                )}
+
+                {/* Message Body */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Message</label>
+                  <textarea
+                    value={message.body}
+                    onChange={(e) => setMessage({ ...message, body: e.target.value })}
+                    placeholder="Type your message here..."
+                    style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', minHeight: '150px', resize: 'vertical' }}
+                  />
+                  <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{message.body.length} characters</p>
+                </div>
+
+                {/* Send Button */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <Button onClick={handleSend} disabled={sending || recipientCount === 0}>
+                    {sending ? '⏳ Sending...' : `📤 Send to ${recipientCount} recipients`}
+                  </Button>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                    via {message.type === 'SMS' ? '📱 SMS' : '💬 WhatsApp'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sidebar - Quick Templates */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>📝 Quick Templates</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {templates.slice(0, 5).map((template, i) => (
+                      <button key={i} onClick={() => applyTemplate(template)} style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
+                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{template.name}</p>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.body?.slice(0, 50)}...</p>
+                      </button>
+                    ))}
+                    {templates.length === 0 && <p style={{ color: '#6b7280', fontSize: '14px' }}>No templates yet</p>}
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#fef3c7', borderRadius: '16px', padding: '20px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>💡 Tips</h4>
+                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#92400e', lineHeight: '1.6' }}>
+                    <li>Keep SMS under 160 characters</li>
+                    <li>Use {"{{name}}"} for personalization</li>
+                    <li>Include church name for recognition</li>
+                    <li>Add a call to action</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* HISTORY TAB */}
+          {activeTab === 'history' && (
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📜 Message History</h3>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Recipients</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Message</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {messageHistory.map((msg, i) => (
+                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280' }}>{formatDate(msg.sent_at)}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '4px 10px', backgroundColor: msg.message_type === 'SMS' ? '#dbeafe' : '#dcfce7', color: msg.message_type === 'SMS' ? '#1e40af' : '#166534', borderRadius: '9999px', fontSize: '12px' }}>
+                          {msg.message_type === 'SMS' ? '📱' : '💬'} {msg.message_type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ fontWeight: '500' }}>{msg.recipient_count}</span>
+                        <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '4px' }}>({msg.recipient_type})</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', maxWidth: '300px' }}>
+                        <p style={{ margin: 0, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.body}</p>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '4px 10px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px' }}>✅ {msg.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {messageHistory.length === 0 && (
+                    <tr><td colSpan="5" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No messages sent yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* TEMPLATES TAB */}
+          {activeTab === 'templates' && (
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📝 Message Templates</h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Manage templates in Settings → Automation</p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+                {templates.map((template, i) => (
+                  <div key={i} style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                      <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>{template.name}</h4>
+                      <span style={{ padding: '2px 8px', backgroundColor: template.category === 'BIRTHDAY' ? '#fef3c7' : '#dbeafe', color: template.category === 'BIRTHDAY' ? '#92400e' : '#1e40af', borderRadius: '6px', fontSize: '11px' }}>{template.category}</span>
+                    </div>
+                    <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.5' }}>{template.body}</p>
+                    <Button variant="secondary" onClick={() => { setMessage({ ...message, body: template.body }); setActiveTab('compose'); }}>
+                      Use Template
+                    </Button>
+                  </div>
+                ))}
+                {templates.length === 0 && (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: '#6b7280' }}>
+                    <span style={{ fontSize: '48px' }}>📝</span>
+                    <p>No templates yet. Create them in Settings.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+// ==========================================
+// REPORTS PAGE
+// ==========================================
+function ReportsPage() {
+  const { t } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [activeReport, setActiveReport] = useState('overview');
+  const [dateRange, setDateRange] = useState('month');
+  const [data, setData] = useState({
+    members: [], visitors: [], donations: [], expenses: [], 
+    salvations: [], attendance: [], volunteers: [], groups: []
+  });
+
+  useEffect(() => { fetchAllData(); }, []);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    const [members, visitors, donations, expenses, salvations, attendance, volunteers, groups] = await Promise.all([
+      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('expenses', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+    ]);
+    setData({
+      members: members || [], visitors: visitors || [], donations: donations || [],
+      expenses: expenses || [], salvations: salvations || [], attendance: attendance || [],
+      volunteers: volunteers || [], groups: groups || []
+    });
+    setLoading(false);
+  };
+
+  // Date filtering
+  const getDateFilter = () => {
+    const today = new Date();
+    let startDate;
+    switch (dateRange) {
+      case 'week': startDate = new Date(today.setDate(today.getDate() - 7)); break;
+      case 'month': startDate = new Date(today.setMonth(today.getMonth() - 1)); break;
+      case 'quarter': startDate = new Date(today.setMonth(today.getMonth() - 3)); break;
+      case 'year': startDate = new Date(today.setFullYear(today.getFullYear() - 1)); break;
+      default: startDate = new Date(0);
+    }
+    return startDate.toISOString().split('T')[0];
+  };
+
+  const filterByDate = (items, dateField) => {
+    const startDate = getDateFilter();
+    return items.filter(item => item[dateField] >= startDate);
+  };
+
+  // Calculations
+  const filteredDonations = filterByDate(data.donations, 'donation_date');
+  const filteredExpenses = filterByDate(data.expenses, 'expense_date');
+  const filteredSalvations = filterByDate(data.salvations, 'salvation_date');
+  const filteredVisitors = filterByDate(data.visitors, 'visit_date');
+  const filteredAttendance = filterByDate(data.attendance, 'service_date');
+
+  const totalIncome = filteredDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  const netBalance = totalIncome - totalExpenses;
+  const avgAttendance = filteredAttendance.length > 0 
+    ? Math.round(filteredAttendance.reduce((sum, a) => sum + (a.total_count || 0), 0) / filteredAttendance.length)
+    : 0;
+
+  const formatCurrency = (amount) => `XAF ${(amount || 0).toLocaleString()}`;
+  const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+  // Generate printable report
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Export to CSV
+  const exportCSV = (reportData, filename) => {
+    const headers = Object.keys(reportData[0] || {}).join(',');
+    const rows = reportData.map(row => Object.values(row).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
+  };
+
+  const reportTypes = [
+    { id: 'overview', label: '📊 Overview', icon: '📊' },
+    { id: 'financial', label: '💰 Financial', icon: '💰' },
+    { id: 'attendance', label: '👥 Attendance', icon: '👥' },
+    { id: 'membership', label: '📋 Membership', icon: '📋' },
+    { id: 'salvations', label: '❤️ Salvations', icon: '❤️' },
+    { id: 'volunteers', label: '🙋‍♂️ Volunteers', icon: '🙋‍♂️' },
+  ];
+
+  return (
+    <div>
+      <PageHeader
+        title="📊 Reports"
+        subtitle="Generate and export church reports"
+        actions={
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <Button variant="secondary" onClick={handlePrint}>🖨️ Print</Button>
+            <Button variant="secondary" onClick={() => exportCSV(filteredDonations, 'donations')}>📥 Export CSV</Button>
+          </div>
+        }
+      />
+
+      {/* Date Range Selector */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>📅 Date Range:</span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[
+              { value: 'week', label: 'Last 7 Days' },
+              { value: 'month', label: 'Last 30 Days' },
+              { value: 'quarter', label: 'Last 3 Months' },
+              { value: 'year', label: 'Last Year' },
+              { value: 'all', label: 'All Time' }
+            ].map(option => (
+              <button
+                key={option.value}
+                onClick={() => setDateRange(option.value)}
+                style={{
+                  padding: '8px 16px',
+                  border: dateRange === option.value ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  backgroundColor: dateRange === option.value ? '#eef2ff' : 'white',
+                  color: dateRange === option.value ? '#6366f1' : '#6b7280',
+                  fontWeight: dateRange === option.value ? '600' : '400',
+                  cursor: 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Report Type Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        {reportTypes.map(report => (
+          <button
+            key={report.id}
+            onClick={() => setActiveReport(report.id)}
+            style={{
+              padding: '10px 20px',
+              border: activeReport === report.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
+              borderRadius: '10px',
+              backgroundColor: activeReport === report.id ? '#eef2ff' : 'white',
+              color: activeReport === report.id ? '#6366f1' : '#6b7280',
+              fontWeight: activeReport === report.id ? '600' : '400',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            {report.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? <LoadingSpinner /> : (
+        <div id="report-content">
+          {/* OVERVIEW REPORT */}
+          {activeReport === 'overview' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Summary Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <div style={{ backgroundColor: '#dbeafe', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#1e40af' }}>👥 Total Members</p>
+                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: '#1e40af' }}>{data.members.length}</p>
+                </div>
+                <div style={{ backgroundColor: '#dcfce7', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#166534' }}>💰 Total Income</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#166534' }}>{formatCurrency(totalIncome)}</p>
+                </div>
+                <div style={{ backgroundColor: '#fef3c7', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#92400e' }}>📊 Avg Attendance</p>
+                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: '#92400e' }}>{avgAttendance}</p>
+                </div>
+                <div style={{ backgroundColor: '#fce7f3', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#9d174d' }}>❤️ Salvations</p>
+                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: '#9d174d' }}>{filteredSalvations.length}</p>
+                </div>
+              </div>
+
+              {/* Quick Stats */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📋 Quick Summary</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                  <div>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280' }}>Membership</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Active Members</span><strong>{data.members.filter(m => m.status === 'ACTIVE').length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>New Visitors</span><strong>{filteredVisitors.length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Groups</span><strong>{data.groups.length}</strong></div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280' }}>Financial</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Income</span><strong style={{ color: '#10b981' }}>{formatCurrency(totalIncome)}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Expenses</span><strong style={{ color: '#ef4444' }}>{formatCurrency(totalExpenses)}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Net</span><strong style={{ color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>{formatCurrency(netBalance)}</strong></div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280' }}>Ministry</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Volunteers</span><strong>{data.volunteers.length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Active</span><strong>{data.volunteers.filter(v => v.status === 'ACTIVE').length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Services Recorded</span><strong>{filteredAttendance.length}</strong></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* FINANCIAL REPORT */}
+          {activeReport === 'financial' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Summary */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                <div style={{ backgroundColor: '#dcfce7', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#166534' }}>💵 Total Income</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#166534' }}>{formatCurrency(totalIncome)}</p>
+                </div>
+                <div style={{ backgroundColor: '#fef2f2', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#991b1b' }}>📤 Total Expenses</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#991b1b' }}>{formatCurrency(totalExpenses)}</p>
+                </div>
+                <div style={{ backgroundColor: netBalance >= 0 ? '#dbeafe' : '#fef2f2', borderRadius: '16px', padding: '24px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: netBalance >= 0 ? '#1e40af' : '#991b1b' }}>💰 Net Balance</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: netBalance >= 0 ? '#1e40af' : '#991b1b' }}>{formatCurrency(netBalance)}</p>
+                </div>
+              </div>
+
+              {/* Income by Category */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💵 Income by Category</h3>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>% of Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {['TITHE', 'OFFERING', 'DONATION', 'MISSIONS', 'BUILDING', 'SPECIAL', 'OTHER'].map((cat, i) => {
+                      const amount = filteredDonations.filter(d => d.category === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                      if (amount === 0) return null;
+                      const percentage = totalIncome > 0 ? ((amount / totalIncome) * 100).toFixed(1) : 0;
+                      return (
+                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: '500' }}>{cat}</td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>{formatCurrency(amount)}</td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', color: '#6b7280' }}>{percentage}%</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Recent Transactions */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📜 Recent Transactions</h3>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...filteredDonations.map(d => ({ ...d, type: 'Income', date: d.donation_date })), 
+                      ...filteredExpenses.map(e => ({ ...e, type: 'Expense', date: e.expense_date }))]
+                      .sort((a, b) => new Date(b.date) - new Date(a.date))
+                      .slice(0, 10)
+                      .map((item, i) => (
+                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '12px 16px', fontSize: '14px' }}>{formatDate(item.date)}</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{ padding: '4px 10px', backgroundColor: item.type === 'Income' ? '#dcfce7' : '#fef2f2', color: item.type === 'Income' ? '#166534' : '#991b1b', borderRadius: '9999px', fontSize: '12px' }}>
+                              {item.type}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: '#6b7280' }}>{item.category}</td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: item.type === 'Income' ? '#10b981' : '#ef4444' }}>
+                            {item.type === 'Income' ? '+' : '-'}{formatCurrency(item.amount)}
+                          </td>
+                        </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ATTENDANCE REPORT */}
+          {activeReport === 'attendance' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <StatCard label="Services Recorded" value={filteredAttendance.length} icon="⛪" color="#6366f1" />
+                <StatCard label="Average Attendance" value={avgAttendance} icon="👥" color="#10b981" />
+                <StatCard label="Total Attendance" value={filteredAttendance.reduce((sum, a) => sum + (a.total_count || 0), 0)} icon="📊" color="#f59e0b" />
+                <StatCard label="First Time Visitors" value={filteredAttendance.reduce((sum, a) => sum + (a.first_timers || 0), 0)} icon="🆕" color="#8b5cf6" />
+              </div>
+
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📊 Attendance Records</h3>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Men</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Women</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Children</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Total</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Offering</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAttendance.slice(0, 10).map((record, i) => (
+                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: '500' }}>{formatDate(record.service_date)}</td>
+                        <td style={{ padding: '12px 16px' }}>{record.men_count || 0}</td>
+                        <td style={{ padding: '12px 16px' }}>{record.women_count || 0}</td>
+                        <td style={{ padding: '12px 16px' }}>{record.children_count || 0}</td>
+                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#6366f1' }}>{record.total_count || 0}</td>
+                        <td style={{ padding: '12px 16px', color: '#10b981' }}>{formatCurrency(record.total_offering)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* MEMBERSHIP REPORT */}
+          {activeReport === 'membership' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <StatCard label="Total Members" value={data.members.length} icon="👥" color="#6366f1" />
+                <StatCard label="Active" value={data.members.filter(m => m.status === 'ACTIVE').length} icon="✅" color="#10b981" />
+                <StatCard label="New Visitors" value={filteredVisitors.length} icon="🚶" color="#f59e0b" />
+                <StatCard label="Groups" value={data.groups.length} icon="👨‍👩‍👧‍👦" color="#8b5cf6" />
+              </div>
+
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📋 Members List</h3>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Name</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Phone</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.members.slice(0, 15).map((member, i) => (
+                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: '500' }}>{member.first_name} {member.last_name}</td>
+                        <td style={{ padding: '12px 16px', color: '#6b7280' }}>{member.phone || '—'}</td>
+                        <td style={{ padding: '12px 16px' }}><StatusBadge status={member.status} /></td>
+                        <td style={{ padding: '12px 16px', color: '#6b7280' }}>{formatDate(member.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SALVATIONS REPORT */}
+          {activeReport === 'salvations' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <StatCard label="Total Salvations" value={filteredSalvations.length} icon="❤️" color="#ef4444" />
+                <StatCard label="Pending Follow-up" value={filteredSalvations.filter(s => s.followup_status === 'PENDING').length} icon="⏳" color="#f59e0b" />
+                <StatCard label="Completed" value={filteredSalvations.filter(s => s.followup_status === 'COMPLETED').length} icon="✅" color="#10b981" />
+              </div>
+
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>❤️ Salvation Records</h3>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Name</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Phone</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Follow-up Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSalvations.map((salvation, i) => (
+                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: '500' }}>{salvation.full_name}</td>
+                        <td style={{ padding: '12px 16px', color: '#6b7280' }}>{formatDate(salvation.salvation_date)}</td>
+                        <td style={{ padding: '12px 16px', color: '#6b7280' }}>{salvation.phone || '—'}</td>
+                        <td style={{ padding: '12px 16px' }}><StatusBadge status={salvation.followup_status} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* VOLUNTEERS REPORT */}
+          {activeReport === 'volunteers' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <StatCard label="Total Volunteers" value={data.volunteers.length} icon="🙋‍♂️" color="#6366f1" />
+                <StatCard label="Active" value={data.volunteers.filter(v => v.status === 'ACTIVE').length} icon="✅" color="#10b981" />
+                <StatCard label="Team Leaders" value={data.volunteers.filter(v => v.is_team_leader).length} icon="⭐" color="#f59e0b" />
+              </div>
+
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🙋‍♂️ Volunteers by Ministry</h3>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Ministry</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Count</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Active</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Leaders</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {['Worship', 'Children', 'Youth', 'Ushers', 'Media', 'Security', 'Hospitality', 'Prayer'].map((ministry, i) => {
+                      const ministryVolunteers = data.volunteers.filter(v => v.ministry === ministry);
+                      if (ministryVolunteers.length === 0) return null;
+                      return (
+                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: '500' }}>{ministry}</td>
+                          <td style={{ padding: '12px 16px' }}>{ministryVolunteers.length}</td>
+                          <td style={{ padding: '12px 16px', color: '#10b981' }}>{ministryVolunteers.filter(v => v.status === 'ACTIVE').length}</td>
+                          <td style={{ padding: '12px 16px', color: '#f59e0b' }}>{ministryVolunteers.filter(v => v.is_team_leader).length}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 // ==========================================
 // SERVICES & EVENTS PAGE
 // ==========================================
