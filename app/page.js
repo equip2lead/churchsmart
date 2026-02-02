@@ -5,12 +5,11 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 // ==========================================
 // SUPABASE CONFIG
 // ==========================================
-const SUPABASE_URL = 'https://ntngwrtbbgetobinwvxd.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bmd3cnRiYmdldG9iaW53dnhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTc3NTIsImV4cCI6MjA4NTMzMzc1Mn0.uvMWB2zwd4LYJM1P1jpov5rG83L62Eqbe7Bko9kI_1Q';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ntngwrtbbgetobinwvxd.supabase.co';
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bmd3cnRiYmdldG9iaW53dnhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTc3NTIsImV4cCI6MjA4NTMzMzc1Mn0.uvMWB2zwd4LYJM1P1jpov5rG83L62Eqbe7Bko9kI_1Q';
 const SUPABASE_ANON_KEY = SUPABASE_KEY;
 const CHURCH_ID = '11111111-1111-1111-1111-111111111111';
-const EDGE_FUNCTION_URL = 'https://ntngwrtbbgetobinwvxd.supabase.co/functions/v1/send-message';
-
+const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL || 'https://ntngwrtbbgetobinwvxd.supabase.co/functions/v1/send-message';
 // ==========================================
 // TRANSLATIONS (Bilingual FR/EN)
 // ==========================================
@@ -972,29 +971,6 @@ function LoginPage() {
             </div>
           </form>
 
-          {/* Demo Credentials */}
-          {isLogin && (
-            <div style={{ marginTop: '24px', padding: '16px', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-              <p style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>🔑 {t.demoAccounts}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {[
-                  { role: 'Admin', email: 'admin@firechurch.cm', pass: 'admin123', color: '#dc2626' },
-                  { role: 'Pastor', email: 'pastor@firechurch.cm', pass: 'pastor123', color: '#7c3aed' },
-                  { role: 'Staff', email: 'staff@firechurch.cm', pass: 'staff123', color: '#2563eb' }
-                ].map((demo, i) => (
-                  <button key={i} onClick={() => setForm({ ...form, email: demo.email, password: demo.pass })}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: '1px solid #f3f4f6', borderRadius: '8px', backgroundColor: '#f9fafb', cursor: 'pointer', width: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ padding: '2px 8px', backgroundColor: `${demo.color}15`, color: demo.color, borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>{demo.role}</span>
-                      <span style={{ fontSize: '13px', color: '#6b7280' }}>{demo.email}</span>
-                    </div>
-                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>{t.clickToFill}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div style={{ marginTop: '20px', textAlign: 'center' }}>
             <p style={{ fontSize: '12px', color: '#9ca3af' }}>🔒 {t.secure}</p>
           </div>
@@ -1515,8 +1491,7 @@ function DashboardPage() {
       ]);
 
       // Calculate total donations
-      const totalDonations = (donations || []).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
-      
+      const totalDonations = (Array.isArray(donations) ? donations : []).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);      
       // Calculate weekly giving (last 7 days)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -1525,7 +1500,7 @@ function DashboardPage() {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        const dayTotal = (donations || [])
+        const dayTotal = (Array.isArray(donations) ? donations : [])
           .filter(d => d.donation_date === dateStr)
           .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
         weekData.push({
