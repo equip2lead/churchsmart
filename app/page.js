@@ -538,7 +538,14 @@ function AuthProvider({ children }) {
       return { success: false, error: 'Login failed. Please try again.' };
     }
   };
-
+  const [saving, setSaving] = useState(false);
+  const [activeSection, setActiveSection] = useState('general');
+  const [editingChurch, setEditingChurch] = useState(false);
+  const [churchForm, setChurchForm] = useState({});
+  const [editingAccount, setEditingAccount] = useState(false);
+  const [accountForm, setAccountForm] = useState({});
+  const [passwordForm, setPasswordForm] = useState({ current: '', new_password: '', confirm: '' });
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
   const register = async (userData) => {
     try {
       const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/church_users?email=eq.${encodeURIComponent(userData.email)}`, {
@@ -638,224 +645,364 @@ function AppContent() {
 }
 
 // ==========================================
-// LOGIN PAGE - Professional Design
+// LOGIN PAGE - Split Screen Bilingual + Registration with Church Info
 // ==========================================
 function LoginPage() {
   const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [lang, setLang] = useState('en');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+  const [step, setStep] = useState(1); // Registration steps: 1=user info, 2=church info
+
   const [form, setForm] = useState({
-    email: '',
-    password: '',
-    full_name: '',
-    phone: '',
-    confirm_password: ''
+    email: '', password: '', full_name: '', phone: '', confirm_password: '',
+    church_name: '', church_address: '', church_city: '', church_phone: '', church_email: '',
+    church_pastor: '', church_denomination: '', church_currency: 'XAF'
   });
+
+  const txt = {
+    en: {
+      welcome: 'Welcome back!', signInDesc: 'Sign in to access your church dashboard',
+      createAccount: 'Create your account', getStarted: 'Get started with ChurchSmart today',
+      signIn: 'Sign In', register: 'Register', email: 'Email Address', password: 'Password',
+      fullName: 'Full Name', phone: 'Phone', confirmPassword: 'Confirm Password',
+      rememberMe: 'Remember me', forgotPassword: 'Forgot password?',
+      signingIn: 'Please wait...', signInBtn: 'Sign In →', createBtn: 'Next: Church Info →',
+      demoAccounts: 'Demo Accounts', clickToFill: 'Click to fill →',
+      secure: 'Secure • Encrypted • GDPR Compliant',
+      tagline: 'The all-in-one church management platform built for African churches. Manage your congregation with ease.',
+      churches: 'Churches', membersManaged: 'Members Managed', countries: 'Countries',
+      memberMgmt: 'Member Management', memberDesc: 'Track members, visitors & groups across all locations',
+      finance: 'Financial Tracking', financeDesc: 'Manage tithes, offerings, expenses & generate reports',
+      reports: 'Smart Reports', reportsDesc: 'Real-time analytics for attendance, giving & growth',
+      messaging: 'SMS & WhatsApp', messagingDesc: 'Automated birthday messages & bulk communication',
+      volunteers: 'Volunteer Management', volunteersDesc: 'Organize ministries, schedules & team leaders',
+      multiLoc: 'Multi-Location', multiLocDesc: 'Manage multiple campuses from one dashboard',
+      footer: '© 2026 ChurchSmart • Built with ❤️ for Churches in Africa',
+      // Step 2
+      churchInfo: 'Church Information', churchInfoDesc: 'Tell us about your church',
+      churchName: 'Church Name *', churchAddress: 'Address', churchCity: 'City',
+      churchPhone: 'Church Phone', churchEmail: 'Church Email', pastorName: 'Senior Pastor',
+      denomination: 'Denomination', currency: 'Currency',
+      back: '← Back', finishBtn: 'Create Account →', creating: 'Creating...',
+      step1: 'Your Info', step2: 'Church Info'
+    },
+    fr: {
+      welcome: 'Bon retour!', signInDesc: 'Connectez-vous pour accéder à votre tableau de bord',
+      createAccount: 'Créer votre compte', getStarted: 'Commencez avec ChurchSmart aujourd\'hui',
+      signIn: 'Connexion', register: 'S\'inscrire', email: 'Adresse Email', password: 'Mot de passe',
+      fullName: 'Nom Complet', phone: 'Téléphone', confirmPassword: 'Confirmer le mot de passe',
+      rememberMe: 'Se souvenir de moi', forgotPassword: 'Mot de passe oublié?',
+      signingIn: 'Veuillez patienter...', signInBtn: 'Connexion →', createBtn: 'Suivant: Info Église →',
+      demoAccounts: 'Comptes Démo', clickToFill: 'Cliquer pour remplir →',
+      secure: 'Sécurisé • Chiffré • Conforme RGPD',
+      tagline: 'La plateforme de gestion d\'église tout-en-un conçue pour les églises africaines. Gérez votre congrégation facilement.',
+      churches: 'Églises', membersManaged: 'Membres Gérés', countries: 'Pays',
+      memberMgmt: 'Gestion des Membres', memberDesc: 'Suivre les membres, visiteurs et groupes dans tous les sites',
+      finance: 'Suivi Financier', financeDesc: 'Gérer les dîmes, offrandes, dépenses et rapports',
+      reports: 'Rapports Intelligents', reportsDesc: 'Analyses en temps réel pour la fréquentation et les dons',
+      messaging: 'SMS & WhatsApp', messagingDesc: 'Messages d\'anniversaire automatiques et communication en masse',
+      volunteers: 'Gestion des Bénévoles', volunteersDesc: 'Organiser les ministères, horaires et chefs d\'équipe',
+      multiLoc: 'Multi-Sites', multiLocDesc: 'Gérer plusieurs campus depuis un seul tableau de bord',
+      footer: '© 2026 ChurchSmart • Fait avec ❤️ pour les Églises d\'Afrique',
+      churchInfo: 'Informations de l\'Église', churchInfoDesc: 'Parlez-nous de votre église',
+      churchName: 'Nom de l\'Église *', churchAddress: 'Adresse', churchCity: 'Ville',
+      churchPhone: 'Téléphone de l\'Église', churchEmail: 'Email de l\'Église', pastorName: 'Pasteur Principal',
+      denomination: 'Dénomination', currency: 'Devise',
+      back: '← Retour', finishBtn: 'Créer le Compte →', creating: 'Création...',
+      step1: 'Vos Infos', step2: 'Info Église'
+    }
+  };
+  const t = txt[lang];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
+    setError(''); setSuccess('');
 
     if (isLogin) {
-      // Login
+      setLoading(true);
       const result = await login(form.email, form.password);
-      if (!result.success) {
-        setError(result.error);
-      }
+      if (!result || !result.success) { setError(result?.error || 'Login failed'); }
+      setLoading(false);
     } else {
-      // Register
-      if (!form.full_name || !form.email || !form.password) {
-        setError('Please fill in all required fields');
-        setLoading(false);
-        return;
-      }
-      if (form.password !== form.confirm_password) {
-        setError('Passwords do not match');
-        setLoading(false);
-        return;
-      }
-      if (form.password.length < 6) {
-        setError('Password must be at least 6 characters');
-        setLoading(false);
-        return;
-      }
-
-      const result = await register(form);
-      if (result.success) {
-        setSuccess('Account created! You can now login.');
-        setIsLogin(true);
-        setForm({ ...form, password: '', confirm_password: '' });
+      if (step === 1) {
+        if (!form.full_name || !form.email || !form.password) { setError(lang === 'fr' ? 'Veuillez remplir tous les champs obligatoires' : 'Please fill in all required fields'); return; }
+        if (form.password !== form.confirm_password) { setError(lang === 'fr' ? 'Les mots de passe ne correspondent pas' : 'Passwords do not match'); return; }
+        if (form.password.length < 6) { setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'Password must be at least 6 characters'); return; }
+        setStep(2);
       } else {
-        setError(result.error);
+        if (!form.church_name) { setError(lang === 'fr' ? 'Le nom de l\'église est requis' : 'Church name is required'); return; }
+        setLoading(true);
+        const result = await register(form);
+        if (result.success) {
+          setSuccess(lang === 'fr' ? 'Compte créé! Vous pouvez maintenant vous connecter.' : 'Account created! You can now sign in.');
+          setIsLogin(true); setStep(1);
+          setForm({ ...form, password: '', confirm_password: '' });
+        } else { setError(result.error); }
+        setLoading(false);
       }
     }
-    setLoading(false);
   };
 
+  const features = [
+    { icon: '👥', title: t.memberMgmt, desc: t.memberDesc },
+    { icon: '💰', title: t.finance, desc: t.financeDesc },
+    { icon: '📊', title: t.reports, desc: t.reportsDesc },
+    { icon: '💬', title: t.messaging, desc: t.messagingDesc },
+    { icon: '🙋‍♂️', title: t.volunteers, desc: t.volunteersDesc },
+    { icon: '🌍', title: t.multiLoc, desc: t.multiLocDesc }
+  ];
+
+  const inputStyle = { width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box' };
+  const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' };
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6', padding: '20px' }}>
-      <div style={{ width: '100%', maxWidth: '420px' }}>
-        {/* Logo & Header */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ width: '80px', height: '80px', backgroundColor: '#6366f1', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 10px 40px rgba(99, 102, 241, 0.3)' }}>
-            <span style={{ fontSize: '40px' }}>✝</span>
+    <div style={{ minHeight: '100vh', display: 'flex' }}>
+      {/* LEFT SIDE - Branding */}
+      <div style={{ width: '50%', minHeight: '100vh', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '300px', height: '300px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
+        <div style={{ position: 'absolute', bottom: '-150px', left: '-100px', width: '400px', height: '400px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '50%' }} />
+
+        <div style={{ marginBottom: '40px', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+            <div style={{ width: '56px', height: '56px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+              <span style={{ fontSize: '28px' }}>✝</span>
+            </div>
+            <h1 style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: 'white', letterSpacing: '-0.5px' }}>ChurchSmart</h1>
           </div>
-          <h1 style={{ margin: '0 0 8px 0', fontSize: '28px', fontWeight: 'bold', color: '#1f2937' }}>ChurchSmart</h1>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '15px' }}>Church Management System</p>
+          <p style={{ margin: 0, fontSize: '18px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', maxWidth: '420px' }}>{t.tagline}</p>
         </div>
 
-        {/* Login/Register Card */}
-        <div style={{ backgroundColor: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-          {/* Tabs */}
-          <div style={{ display: 'flex', marginBottom: '24px', backgroundColor: '#f3f4f6', borderRadius: '10px', padding: '4px' }}>
-            <button
-              onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }}
-              style={{
-                flex: 1, padding: '12px', border: 'none', borderRadius: '8px',
-                backgroundColor: isLogin ? 'white' : 'transparent',
-                color: isLogin ? '#6366f1' : '#6b7280',
-                fontWeight: isLogin ? '600' : '400',
-                cursor: 'pointer',
-                boxShadow: isLogin ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                transition: 'all 0.2s'
-              }}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }}
-              style={{
-                flex: 1, padding: '12px', border: 'none', borderRadius: '8px',
-                backgroundColor: !isLogin ? 'white' : 'transparent',
-                color: !isLogin ? '#6366f1' : '#6b7280',
-                fontWeight: !isLogin ? '600' : '400',
-                cursor: 'pointer',
-                boxShadow: !isLogin ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                transition: 'all 0.2s'
-              }}
-            >
-              Register
-            </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', position: 'relative', zIndex: 1 }}>
+          {features.map((feature, i) => (
+            <div key={i} style={{ padding: '18px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '14px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <span style={{ fontSize: '24px' }}>{feature.icon}</span>
+              <h3 style={{ margin: '10px 0 6px 0', fontSize: '14px', fontWeight: '600', color: 'white' }}>{feature.title}</h3>
+              <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>{feature.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '32px', marginTop: '40px', position: 'relative', zIndex: 1 }}>
+          <div><p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: 'white' }}>500+</p><p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>{t.churches}</p></div>
+          <div><p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: 'white' }}>50K+</p><p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>{t.membersManaged}</p></div>
+          <div><p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: 'white' }}>10+</p><p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>{t.countries}</p></div>
+        </div>
+        <p style={{ marginTop: '40px', fontSize: '12px', color: 'rgba(255,255,255,0.5)', position: 'relative', zIndex: 1 }}>{t.footer}</p>
+      </div>
+
+      {/* RIGHT SIDE - Form */}
+      <div style={{ width: '50%', minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', position: 'relative' }}>
+        {/* Language Toggle */}
+        <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '4px', backgroundColor: '#e5e7eb', borderRadius: '8px', padding: '2px' }}>
+          <button onClick={() => setLang('en')} style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', backgroundColor: lang === 'en' ? 'white' : 'transparent', color: lang === 'en' ? '#4f46e5' : '#6b7280', fontWeight: lang === 'en' ? '600' : '400', fontSize: '12px', cursor: 'pointer' }}>🇬🇧 EN</button>
+          <button onClick={() => setLang('fr')} style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', backgroundColor: lang === 'fr' ? 'white' : 'transparent', color: lang === 'fr' ? '#4f46e5' : '#6b7280', fontWeight: lang === 'fr' ? '600' : '400', fontSize: '12px', cursor: 'pointer' }}>🇫🇷 FR</button>
+        </div>
+
+        <div style={{ width: '100%', maxWidth: '420px' }}>
+          <div style={{ marginBottom: '28px' }}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '26px', fontWeight: 'bold', color: '#1f2937' }}>
+              {isLogin ? t.welcome : t.createAccount}
+            </h2>
+            <p style={{ margin: 0, color: '#6b7280', fontSize: '15px' }}>
+              {isLogin ? t.signInDesc : t.getStarted}
+            </p>
           </div>
 
-          {/* Error/Success Messages */}
-          {error && (
-            <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', marginBottom: '20px', color: '#dc2626', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>❌</span> {error}
-            </div>
-          )}
-          {success && (
-            <div style={{ padding: '12px 16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', marginBottom: '20px', color: '#166534', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>✅</span> {success}
+          {/* Tab Toggle */}
+          <div style={{ display: 'flex', marginBottom: '24px', backgroundColor: '#e5e7eb', borderRadius: '12px', padding: '4px' }}>
+            <button onClick={() => { setIsLogin(true); setError(''); setSuccess(''); setStep(1); }}
+              style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: isLogin ? 'white' : 'transparent', color: isLogin ? '#4f46e5' : '#6b7280', fontWeight: isLogin ? '600' : '400', fontSize: '14px', cursor: 'pointer', boxShadow: isLogin ? '0 2px 8px rgba(0,0,0,0.08)' : 'none' }}
+            >{t.signIn}</button>
+            <button onClick={() => { setIsLogin(false); setError(''); setSuccess(''); setStep(1); }}
+              style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: !isLogin ? 'white' : 'transparent', color: !isLogin ? '#4f46e5' : '#6b7280', fontWeight: !isLogin ? '600' : '400', fontSize: '14px', cursor: 'pointer', boxShadow: !isLogin ? '0 2px 8px rgba(0,0,0,0.08)' : 'none' }}
+            >{t.register}</button>
+          </div>
+
+          {/* Registration Step Indicator */}
+          {!isLogin && (
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#4f46e5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>1</span>
+                <span style={{ fontSize: '13px', color: step === 1 ? '#4f46e5' : '#6b7280', fontWeight: step === 1 ? '600' : '400' }}>{t.step1}</span>
+              </div>
+              <div style={{ flex: 1, height: '2px', backgroundColor: step >= 2 ? '#4f46e5' : '#e5e7eb' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: step >= 2 ? '#4f46e5' : '#e5e7eb', color: step >= 2 ? 'white' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>2</span>
+                <span style={{ fontSize: '13px', color: step === 2 ? '#4f46e5' : '#6b7280', fontWeight: step === 2 ? '600' : '400' }}>{t.step2}</span>
+              </div>
             </div>
           )}
 
-          {/* Form */}
+          {error && <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', marginBottom: '16px', color: '#dc2626', fontSize: '14px' }}>❌ {error}</div>}
+          {success && <div style={{ padding: '12px 16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', marginBottom: '16px', color: '#166534', fontSize: '14px' }}>✅ {success}</div>}
+
           <form onSubmit={handleSubmit}>
-            {!isLogin && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Full Name *</label>
-                <input
-                  type="text"
-                  value={form.full_name}
-                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                  placeholder="Enter your full name"
-                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
-                />
-              </div>
+            {/* LOGIN FORM */}
+            {isLogin && (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t.email}</label>
+                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@church.com" style={inputStyle}
+                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t.password}</label>
+                  <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" style={inputStyle}
+                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b7280', cursor: 'pointer' }}>
+                    <input type="checkbox" style={{ width: '16px', height: '16px', accentColor: '#6366f1' }} /> {t.rememberMe}
+                  </label>
+                  <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: '13px', color: '#6366f1', textDecoration: 'none', fontWeight: '500' }}>{t.forgotPassword}</a>
+                </div>
+              </>
             )}
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Email *</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="you@example.com"
-                style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
-              />
+            {/* REGISTER STEP 1 - User Info */}
+            {!isLogin && step === 1 && (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t.fullName} *</label>
+                  <input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Pastor John Doe" style={inputStyle}
+                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t.email} *</label>
+                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@church.com" style={inputStyle}
+                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t.phone}</label>
+                  <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+237 6XX XXX XXX" style={inputStyle}
+                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={labelStyle}>{t.password} *</label>
+                    <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••" style={inputStyle}
+                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t.confirmPassword} *</label>
+                    <input type="password" value={form.confirm_password} onChange={(e) => setForm({ ...form, confirm_password: e.target.value })} placeholder="••••••" style={inputStyle}
+                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* REGISTER STEP 2 - Church Info */}
+            {!isLogin && step === 2 && (
+              <>
+                <div style={{ padding: '14px 16px', backgroundColor: '#eef2ff', borderRadius: '10px', marginBottom: '20px', border: '1px solid #c7d2fe' }}>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#4338ca', fontWeight: '500' }}>⛪ {t.churchInfoDesc}</p>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t.churchName}</label>
+                  <input type="text" value={form.church_name} onChange={(e) => setForm({ ...form, church_name: e.target.value })} placeholder="e.g., Fire of God Ministry" style={inputStyle}
+                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={labelStyle}>{t.churchCity}</label>
+                    <input type="text" value={form.church_city} onChange={(e) => setForm({ ...form, church_city: e.target.value })} placeholder="Douala" style={inputStyle}
+                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t.denomination}</label>
+                    <input type="text" value={form.church_denomination} onChange={(e) => setForm({ ...form, church_denomination: e.target.value })} placeholder="Pentecostal" style={inputStyle}
+                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t.churchAddress}</label>
+                  <input type="text" value={form.church_address} onChange={(e) => setForm({ ...form, church_address: e.target.value })} placeholder="123 Faith Avenue" style={inputStyle}
+                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={labelStyle}>{t.pastorName}</label>
+                    <input type="text" value={form.church_pastor} onChange={(e) => setForm({ ...form, church_pastor: e.target.value })} placeholder="Pastor John" style={inputStyle}
+                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t.currency}</label>
+                    <select value={form.church_currency} onChange={(e) => setForm({ ...form, church_currency: e.target.value })} style={inputStyle}>
+                      <option value="XAF">XAF (CFA Franc)</option>
+                      <option value="NGN">NGN (Naira)</option>
+                      <option value="GHS">GHS (Cedi)</option>
+                      <option value="KES">KES (Shilling)</option>
+                      <option value="USD">USD (Dollar)</option>
+                      <option value="EUR">EUR (Euro)</option>
+                      <option value="GBP">GBP (Pound)</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={labelStyle}>{t.churchPhone}</label>
+                    <input type="tel" value={form.church_phone} onChange={(e) => setForm({ ...form, church_phone: e.target.value })} placeholder="+237..." style={inputStyle}
+                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t.churchEmail}</label>
+                    <input type="email" value={form.church_email} onChange={(e) => setForm({ ...form, church_email: e.target.value })} placeholder="info@church.com" style={inputStyle}
+                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {!isLogin && step === 2 && (
+                <button type="button" onClick={() => setStep(1)}
+                  style={{ flex: 1, padding: '14px', backgroundColor: 'white', color: '#6b7280', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
+                  {t.back}
+                </button>
+              )}
+              <button type="submit" disabled={loading}
+                style={{ flex: 1, padding: '14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)' }}>
+                {loading ? `⏳ ${isLogin ? t.signingIn : t.creating}` : isLogin ? t.signInBtn : step === 1 ? t.createBtn : t.finishBtn}
+              </button>
             </div>
-
-            {!isLogin && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Phone (optional)</label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="+237 6XX XXX XXX"
-                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
-                />
-              </div>
-            )}
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Password *</label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="••••••••"
-                style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
-              />
-            </div>
-
-            {!isLogin && (
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Confirm Password *</label>
-                <input
-                  type="password"
-                  value={form.confirm_password}
-                  onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
-                  placeholder="••••••••"
-                  style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s' }}
-                />
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%', padding: '14px', backgroundColor: '#6366f1', color: 'white',
-                border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1,
-                transition: 'all 0.2s',
-                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
-              }}
-            >
-              {loading ? '⏳ Please wait...' : isLogin ? '🔐 Sign In' : '✨ Create Account'}
-            </button>
           </form>
 
           {/* Demo Credentials */}
           {isLogin && (
-            <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
-              <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}>Demo Accounts:</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#6b7280' }}>
-                <span>👤 admin@firechurch.cm / admin123</span>
-                <span>👤 staff@firechurch.cm / staff123</span>
-                <span>👤 pastor@firechurch.cm / pastor123</span>
+            <div style={{ marginTop: '24px', padding: '16px', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+              <p style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>🔑 {t.demoAccounts}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  { role: 'Admin', email: 'admin@firechurch.cm', pass: 'admin123', color: '#dc2626' },
+                  { role: 'Pastor', email: 'pastor@firechurch.cm', pass: 'pastor123', color: '#7c3aed' },
+                  { role: 'Staff', email: 'staff@firechurch.cm', pass: 'staff123', color: '#2563eb' }
+                ].map((demo, i) => (
+                  <button key={i} onClick={() => setForm({ ...form, email: demo.email, password: demo.pass })}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: '1px solid #f3f4f6', borderRadius: '8px', backgroundColor: '#f9fafb', cursor: 'pointer', width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ padding: '2px 8px', backgroundColor: `${demo.color}15`, color: demo.color, borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}>{demo.role}</span>
+                      <span style={{ fontSize: '13px', color: '#6b7280' }}>{demo.email}</span>
+                    </div>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>{t.clickToFill}</span>
+                  </button>
+                ))}
               </div>
             </div>
           )}
-        </div>
 
-        {/* Footer */}
-        <p style={{ textAlign: 'center', marginTop: '24px', color: '#9ca3af', fontSize: '13px' }}>
-          © 2026 ChurchSmart • Built for Churches in Cameroon
-        </p>
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <p style={{ fontSize: '12px', color: '#9ca3af' }}>🔒 {t.secure}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
 // ==========================================
 // DASHBOARD (Main App after login)
 // ==========================================
@@ -5028,6 +5175,12 @@ function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('general');
+  const [editingChurch, setEditingChurch] = useState(false);
+  const [churchForm, setChurchForm] = useState({});
+  const [editingAccount, setEditingAccount] = useState(false);
+  const [accountForm, setAccountForm] = useState({});
+  const [passwordForm, setPasswordForm] = useState({ current: '', new_password: '', confirm: '' });
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
 
   // Modals
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -5069,6 +5222,67 @@ function SettingsPage() {
     setAutomationSettings(automationData || []);
     setMessageTemplates(templatesData || []);
     setLoading(false);
+  };
+
+  // ============ CHURCH INFO HANDLERS ============
+  const openChurchEdit = () => {
+    setChurchForm({
+      name: church?.name || '', address: church?.address || '', city: church?.city || '',
+      phone: church?.phone || '', email: church?.email || '', currency: church?.currency || 'XAF',
+      pastor_name: church?.pastor_name || '', website: church?.website || '',
+      denomination: church?.denomination || '', description: church?.description || ''
+    });
+    setEditingChurch(true);
+  };
+
+  const handleSaveChurch = async () => {
+    if (!churchForm.name) { alert('Church name is required'); return; }
+    setSaving(true);
+    try {
+      await supabaseUpdate('churches', CHURCH_ID, churchForm);
+      setEditingChurch(false);
+      fetchData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  // ============ ACCOUNT HANDLERS ============
+  const openAccountEdit = () => {
+    setAccountForm({ full_name: user?.name || '', phone: user?.phone || '', email: user?.email || '' });
+    setEditingAccount(true);
+  };
+
+  const handleSaveAccount = async () => {
+    if (!accountForm.full_name) { alert('Name is required'); return; }
+    setSaving(true);
+    try {
+      const userData = JSON.parse(localStorage.getItem('churchsmart_user'));
+      if (userData?.id) {
+        await supabaseUpdate('church_users', userData.id, { full_name: accountForm.full_name, phone: accountForm.phone });
+        const updatedUser = { ...userData, name: accountForm.full_name, phone: accountForm.phone };
+        localStorage.setItem('churchsmart_user', JSON.stringify(updatedUser));
+      }
+      setEditingAccount(false);
+      window.location.reload();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.new_password || !passwordForm.confirm) { alert('Please fill in all password fields'); return; }
+    if (passwordForm.new_password !== passwordForm.confirm) { alert('Passwords do not match'); return; }
+    if (passwordForm.new_password.length < 6) { alert('Password must be at least 6 characters'); return; }
+    setSaving(true);
+    try {
+      const userData = JSON.parse(localStorage.getItem('churchsmart_user'));
+      if (userData?.id) {
+        await supabaseUpdate('church_users', userData.id, { password_hash: passwordForm.new_password });
+      }
+      setShowPasswordChange(false);
+      setPasswordForm({ current: '', new_password: '', confirm: '' });
+      alert('Password updated successfully!');
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
   };
 
   // ============ LOCATION HANDLERS ============
@@ -5265,17 +5479,90 @@ function SettingsPage() {
                 </div>
               </div>
 
-              {/* Church Info */}
+              {/* Church Info - Editable */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>⛪ Church Information</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Church Name</label><p style={{ margin: 0, fontWeight: '500', fontSize: '16px' }}>{church?.name || '—'}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Address</label><p style={{ margin: 0 }}>{church?.address || '—'}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>City</label><p style={{ margin: 0 }}>{church?.city || '—'}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Phone</label><p style={{ margin: 0 }}>{church?.phone || '—'}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Email</label><p style={{ margin: 0 }}>{church?.email || '—'}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Currency</label><p style={{ margin: 0 }}>{church?.currency || 'XAF'}</p></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>⛪ Church Information</h3>
+                  {!editingChurch ? (
+                    <button onClick={openChurchEdit} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#6366f1' }}>✏️ Edit</button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => setEditingChurch(false)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
+                      <button onClick={handleSaveChurch} disabled={saving} style={{ padding: '8px 16px', border: 'none', borderRadius: '8px', backgroundColor: '#4f46e5', color: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>{saving ? '⏳' : '💾 Save'}</button>
+                    </div>
+                  )}
                 </div>
+
+                {!editingChurch ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Church Name</label><p style={{ margin: 0, fontWeight: '500', fontSize: '16px' }}>{church?.name || '—'}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Senior Pastor</label><p style={{ margin: 0 }}>{church?.pastor_name || '—'}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Denomination</label><p style={{ margin: 0 }}>{church?.denomination || '—'}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Address</label><p style={{ margin: 0 }}>{church?.address || '—'}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>City</label><p style={{ margin: 0 }}>{church?.city || '—'}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Phone</label><p style={{ margin: 0 }}>{church?.phone || '—'}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Email</label><p style={{ margin: 0 }}>{church?.email || '—'}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Currency</label><p style={{ margin: 0 }}>{church?.currency || 'XAF'}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Website</label><p style={{ margin: 0 }}>{church?.website || '—'}</p></div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Church Name *</label>
+                        <input type="text" value={churchForm.name} onChange={(e) => setChurchForm({ ...churchForm, name: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Senior Pastor</label>
+                        <input type="text" value={churchForm.pastor_name} onChange={(e) => setChurchForm({ ...churchForm, pastor_name: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Denomination</label>
+                        <input type="text" value={churchForm.denomination} onChange={(e) => setChurchForm({ ...churchForm, denomination: e.target.value })} placeholder="e.g., Pentecostal" style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Currency</label>
+                        <select value={churchForm.currency} onChange={(e) => setChurchForm({ ...churchForm, currency: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}>
+                          <option value="XAF">XAF (CFA Franc)</option>
+                          <option value="NGN">NGN (Naira)</option>
+                          <option value="GHS">GHS (Cedi)</option>
+                          <option value="KES">KES (Shilling)</option>
+                          <option value="USD">USD (Dollar)</option>
+                          <option value="EUR">EUR (Euro)</option>
+                          <option value="GBP">GBP (Pound)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Address</label>
+                      <input type="text" value={churchForm.address} onChange={(e) => setChurchForm({ ...churchForm, address: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>City</label>
+                        <input type="text" value={churchForm.city} onChange={(e) => setChurchForm({ ...churchForm, city: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Phone</label>
+                        <input type="tel" value={churchForm.phone} onChange={(e) => setChurchForm({ ...churchForm, phone: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Email</label>
+                        <input type="email" value={churchForm.email} onChange={(e) => setChurchForm({ ...churchForm, email: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Website</label>
+                      <input type="url" value={churchForm.website} onChange={(e) => setChurchForm({ ...churchForm, website: e.target.value })} placeholder="https://www.yourchurch.com" style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Description</label>
+                      <textarea value={churchForm.description} onChange={(e) => setChurchForm({ ...churchForm, description: e.target.value })} rows={3} placeholder="Brief description of your church..." style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -5600,14 +5887,78 @@ function SettingsPage() {
           {/* ============ ACCOUNT ============ */}
           {activeSection === 'account' && (
             <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Account Info - Editable */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>👤 Your Account</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Name</label><p style={{ margin: 0, fontWeight: '500', fontSize: '16px' }}>{user?.name}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Email</label><p style={{ margin: 0 }}>{user?.email}</p></div>
-                  <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Role</label><p style={{ margin: 0 }}><StatusBadge status={user?.role} /></p></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>👤 Your Account</h3>
+                  {!editingAccount ? (
+                    <button onClick={openAccountEdit} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#6366f1' }}>✏️ Edit Profile</button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => setEditingAccount(false)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
+                      <button onClick={handleSaveAccount} disabled={saving} style={{ padding: '8px 16px', border: 'none', borderRadius: '8px', backgroundColor: '#4f46e5', color: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>{saving ? '⏳' : '💾 Save'}</button>
+                    </div>
+                  )}
                 </div>
+
+                {!editingAccount ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Name</label><p style={{ margin: 0, fontWeight: '500', fontSize: '16px' }}>{user?.name}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Email</label><p style={{ margin: 0 }}>{user?.email}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Phone</label><p style={{ margin: 0 }}>{user?.phone || '—'}</p></div>
+                    <div><label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Role</label><p style={{ margin: 0 }}><StatusBadge status={user?.role} /></p></div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Full Name *</label>
+                      <input type="text" value={accountForm.full_name} onChange={(e) => setAccountForm({ ...accountForm, full_name: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Phone</label>
+                      <input type="tel" value={accountForm.phone} onChange={(e) => setAccountForm({ ...accountForm, phone: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Email (read-only)</label>
+                      <input type="email" value={accountForm.email} disabled style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', color: '#9ca3af', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Role (read-only)</label>
+                      <input type="text" value={user?.role || ''} disabled style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', color: '#9ca3af', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Change Password */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🔐 Change Password</h3>
+                  {!showPasswordChange && (
+                    <button onClick={() => setShowPasswordChange(true)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#6366f1' }}>🔑 Change</button>
+                  )}
+                </div>
+                {showPasswordChange ? (
+                  <div style={{ display: 'grid', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>New Password *</label>
+                      <input type="password" value={passwordForm.new_password} onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })} placeholder="Min 6 characters" style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Confirm New Password *</label>
+                      <input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} placeholder="Repeat password" style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button onClick={() => { setShowPasswordChange(false); setPasswordForm({ current: '', new_password: '', confirm: '' }); }} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
+                      <button onClick={handleChangePassword} disabled={saving} style={{ padding: '8px 16px', border: 'none', borderRadius: '8px', backgroundColor: '#4f46e5', color: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>{saving ? '⏳' : '🔐 Update Password'}</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Click "Change" to update your password</p>
+                )}
+              </div>
+
+              {/* Actions */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🔧 Actions</h3>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -5616,6 +5967,8 @@ function SettingsPage() {
                   <Button variant="danger" onClick={logout}>🚪 Sign Out</Button>
                 </div>
               </div>
+
+              {/* App Info */}
               <div style={{ backgroundColor: '#f9fafb', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
                 <div style={{ fontSize: '48px', marginBottom: '12px' }}>✝</div>
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 'bold' }}>ChurchSmart</h3>
@@ -5624,6 +5977,7 @@ function SettingsPage() {
               </div>
             </div>
           )}
+
         </>
       )}
 
@@ -5695,8 +6049,8 @@ function SettingsPage() {
         </div>
       </Modal>
 
-      {/* Delete Confirmation */}
-      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title="🗑️ Delete" message={`Are you sure you want to delete "${deleteConfirm?.name || deleteConfirm?.title || 'this item'}"?`} />
+{/* Delete Confirmation */}
+<ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title="Delete" message={deleteConfirm ? 'Are you sure you want to delete "' + (deleteConfirm.name || deleteConfirm.title || 'this item') + '"?' : ''} />
     </div>
   );
 }
