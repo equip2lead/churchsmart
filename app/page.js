@@ -615,6 +615,36 @@ export default function ChurchSmartApp() {
   return (
     <LanguageProvider>
       <AuthProvider>
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media (max-width: 768px) {
+            .sidebar {
+              position: fixed !important;
+              left: -280px !important;
+              top: 0 !important;
+              bottom: 0 !important;
+              width: 260px !important;
+              z-index: 50 !important;
+              box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+            .sidebar.open {
+              left: 0 !important;
+            }
+            .mobile-overlay {
+              display: block !important;
+            }
+            .main-content {
+              margin-left: 0 !important;
+            }
+            .header-title { display: none !important; }
+            .desktop-only { display: none !important; }
+            .main-page { padding: 12px !important; }
+            .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+            .table-wrap table { min-width: 600px !important; }
+            .form-grid { grid-template-columns: 1fr !important; }
+            .modal-content { width: 95% !important; padding: 16px !important; }
+          }
+        `}} />
         <AppContent />
       </AuthProvider>
     </LanguageProvider>
@@ -985,8 +1015,7 @@ function Dashboard() {
   const { user, logout } = useAuth();
   const { t, language, changeLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
+  const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth > 768 : true);
   const menuItems = [
     { id: 'dashboard', label: t('dashboard'), icon: '📊' },
     { id: 'members', label: t('members'), icon: '👥' },
@@ -1005,74 +1034,33 @@ function Dashboard() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div className="mobile-overlay" onClick={() => setSidebarOpen(false)} style={{ display: 'none', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 40 }} />
+      )}
+
       {/* Sidebar */}
-      <aside style={{ width: sidebarOpen ? '260px' : '80px', backgroundColor: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', transition: 'width 0.3s', flexShrink: 0 }}>
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} style={{ width: sidebarOpen ? '260px' : '80px', backgroundColor: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', flexShrink: 0 }}>
         {/* Logo */}
         <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '40px', height: '40px', background: 'linear-gradient(135deg, #6366f1, #3b82f6)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '20px', flexShrink: 0 }}>✝</div>
           {sidebarOpen && <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#111827' }}>ChurchSmart</span>}
         </div>
 
-        {/* Menu */}
-        <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
+        {/* Menu Items */}
+        <nav style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
           {menuItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 16px',
-                marginBottom: '4px',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                backgroundColor: activeTab === item.id ? '#eef2ff' : 'transparent',
-                color: activeTab === item.id ? '#6366f1' : '#4b5563',
-                fontWeight: activeTab === item.id ? '600' : '400',
-                fontSize: '14px',
-                textAlign: 'left',
-                transition: 'all 0.2s'
-              }}
-            >
-              <span style={{ fontSize: '20px' }}>{item.icon}</span>
-              {sidebarOpen && <span>{item.label}</span>}
+            <button key={item.id} onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: sidebarOpen ? '10px 16px' : '10px', margin: '2px 0', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', backgroundColor: activeTab === item.id ? '#eef2ff' : 'transparent', color: activeTab === item.id ? '#6366f1' : '#4b5563', fontWeight: activeTab === item.id ? '600' : '400', justifyContent: sidebarOpen ? 'flex-start' : 'center', transition: 'all 0.2s' }}>
+              <span style={{ fontSize: '18px' }}>{item.icon}</span>
+              {sidebarOpen && item.label}
             </button>
           ))}
         </nav>
 
-        {/* User Section */}
-        <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <div style={{ width: '40px', height: '40px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600', flexShrink: 0 }}>
-              {user?.name?.[0]?.toUpperCase() || 'U'}
-            </div>
-            {sidebarOpen && (
-              <div style={{ overflow: 'hidden' }}>
-                <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</p>
-                <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{user?.role}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={logout}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: sidebarOpen ? 'flex-start' : 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              border: '1px solid #fecaca',
-              borderRadius: '8px',
-              backgroundColor: '#fef2f2',
-              color: '#dc2626',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
+        {/* Logout */}
+        <div style={{ padding: '12px', borderTop: '1px solid #e5e7eb' }}>
+          <button onClick={logout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', border: 'none', borderRadius: '10px', cursor: 'pointer', backgroundColor: '#fef2f2', color: '#dc2626', fontSize: '14px', justifyContent: sidebarOpen ? 'flex-start' : 'center' }}>
             🚪 {sidebarOpen && t('signOut')}
           </button>
         </div>
@@ -1081,31 +1069,27 @@ function Dashboard() {
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <header style={{ height: '64px', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <header style={{ height: '64px', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '20px' }}>
-              {sidebarOpen ? '◀' : '▶'}
+              ☰
             </button>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827' }}>FIRE Church International</h1>
-              <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Douala, Cameroon</p>
+            <div className="header-title">
+            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827' }}>ChurchSmart</h1>
+            <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{user?.name || ''}</p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* Language Toggle */}
-            <button
-              onClick={() => changeLanguage(language === 'en' ? 'fr' : 'en')}
-              style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px' }}
-            >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button onClick={() => changeLanguage(language === 'en' ? 'fr' : 'en')} style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px' }}>
               {language === 'en' ? '🇫🇷 FR' : '🇬🇧 EN'}
             </button>
-            <span style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>🟢 Live</span>
-            <button style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer' }}>🔔</button>
+            <span className="desktop-only" style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>🟢 Live</span>
+            <button style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer' }}>🔔</button>
           </div>
         </header>
 
         {/* Page Content */}
-        <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+        <main className="main-page" style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
           {activeTab === 'dashboard' && <DashboardPage />}
           {activeTab === 'members' && <MembersPage />}
           {activeTab === 'visitors' && <VisitorsPage />}
@@ -1124,7 +1108,6 @@ function Dashboard() {
     </div>
   );
 }
-
 // ==========================================
 // REUSABLE COMPONENTS
 // ==========================================
