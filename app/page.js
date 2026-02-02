@@ -8,7 +8,6 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ntngwrtbbgetobinwvxd.supabase.co';
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bmd3cnRiYmdldG9iaW53dnhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTc3NTIsImV4cCI6MjA4NTMzMzc1Mn0.uvMWB2zwd4LYJM1P1jpov5rG83L62Eqbe7Bko9kI_1Q';
 const SUPABASE_ANON_KEY = SUPABASE_KEY;
-const CHURCH_ID = '11111111-1111-1111-1111-111111111111';
 const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL || 'https://ntngwrtbbgetobinwvxd.supabase.co/functions/v1/send-message';
 // ==========================================
 // TRANSLATIONS (Bilingual FR/EN)
@@ -514,9 +513,9 @@ function AuthProvider({ children }) {
         name: dbUser.full_name,
         role: dbUser.role,
         church_id: dbUser.church_id,
-        phone: dbUser.phone
+        phone: dbUser.phone,
+        is_super_admin: dbUser.is_super_admin || false
       };
-
       await fetch(`${SUPABASE_URL}/rest/v1/church_users?id=eq.${dbUser.id}`, {
         method: 'PATCH',
         headers: {
@@ -1001,6 +1000,7 @@ function Dashboard() {
     { id: 'reports', label: 'Reports', icon: '📊' },
     { id: 'services', label: t('services'), icon: '⛪' },
     { id: 'settings', label: t('settings'), icon: '⚙️' },
+    ...(user?.is_super_admin ? [{ id: 'superadmin', label: '🛡️ Super Admin', icon: '🛡️' }] : []),
   ];
 
   return (
@@ -1118,6 +1118,7 @@ function Dashboard() {
           {activeTab === 'reports' && <ReportsPage />}
           {activeTab === 'services' && <ServicesPage />}
           {activeTab === 'settings' && <SettingsPage />}
+          {activeTab === 'superadmin' && <SuperAdminPage />}
         </main>
       </div>
     </div>
@@ -1466,6 +1467,8 @@ function SMSModal({ isOpen, onClose, recipient, onSend }) {
 // ==========================================
 function DashboardPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [stats, setStats] = useState({ members: 0, visitors: 0, salvations: 0, donations: 0 });
   const [upcomingBirthdays, setUpcomingBirthdays] = useState([]);
   const [upcomingItems, setUpcomingItems] = useState([]);
@@ -1770,6 +1773,8 @@ function DashboardPage() {
 // ==========================================
 function MembersPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [members, setMembers] = useState([]);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2069,6 +2074,8 @@ function MembersPage() {
 // ==========================================
 function VisitorsPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -2302,6 +2309,8 @@ function VisitorsPage() {
 // ==========================================
 function AttendancePage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [activeView, setActiveView] = useState('charts');
   const [attendance, setAttendance] = useState([]);
   const [services, setServices] = useState([]);
@@ -2802,6 +2811,8 @@ function AttendancePage() {
 // ==========================================
 function GivingPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [activeTab, setActiveTab] = useState('income');
   const [donations, setDonations] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -3246,6 +3257,8 @@ function GivingPage() {
 // ==========================================
 function SalvationsPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [salvations, setSalvations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -3304,6 +3317,8 @@ function SalvationsPage() {
 // ==========================================
 function GroupsPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -3426,6 +3441,8 @@ function PrayersPage() {
 // ==========================================
 function VolunteersPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [volunteers, setVolunteers] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3753,6 +3770,8 @@ function VolunteersPage() {
 // ==========================================
 function MessagingPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [members, setMembers] = useState([]);
   const [visitors, setVisitors] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -4130,6 +4149,8 @@ function MessagingPage() {
 // ==========================================
 function ReportsPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [activeReport, setActiveReport] = useState('overview');
@@ -4605,6 +4626,8 @@ function ReportsPage() {
 // ==========================================
 function ServicesPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const [activeTab, setActiveTab] = useState('services');
   const [services, setServices] = useState([]);
   const [events, setEvents] = useState([]);
@@ -5134,11 +5157,401 @@ function ServicesPage() {
     </div>
   );
 }
+
+// ==========================================
+// SUPER ADMIN PAGE
+// ==========================================
+function SuperAdminPage() {
+  const { user } = useAuth();
+  const [churches, setChurches] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState('overview');
+  const [selectedChurch, setSelectedChurch] = useState(null);
+  const [churchMembers, setChurchMembers] = useState([]);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editUserForm, setEditUserForm] = useState({});
+  const [showAddChurch, setShowAddChurch] = useState(false);
+  const [newChurchForm, setNewChurchForm] = useState({ name: '', city: '', denomination: '', pastor_name: '', phone: '', email: '', currency: 'XAF', admin_name: '', admin_email: '', admin_password: '' });
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { fetchAllData(); }, []);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      const [churchesData, usersData] = await Promise.all([
+        supabaseQuery('churches'),
+        supabaseQuery('church_users', { select: '*' })
+      ]);
+      setChurches(Array.isArray(churchesData) ? churchesData : []);
+      setAllUsers(Array.isArray(usersData) ? usersData : []);
+    } catch (error) { console.error('Super admin fetch error:', error); }
+    setLoading(false);
+  };
+
+  const viewChurchDetails = async (church) => {
+    setSelectedChurch(church);
+    setActiveView('church-detail');
+    const members = await supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: church.id }] });
+    setChurchMembers(Array.isArray(members) ? members : []);
+  };
+
+  const deleteChurch = async (churchId) => {
+    if (deleteConfirmText !== 'DELETE') {
+      alert('Please type DELETE to confirm');
+      return;
+    }
+    setSaving(true);
+    try {
+      const tables = ['activity_logs', 'attendance_records', 'donations', 'salvations', 'visitors', 'members', 'services', 'events', 'church_locations', 'user_role_assignments', 'church_users'];
+      for (const table of tables) {
+        await fetch(`${SUPABASE_URL}/rest/v1/${table}?church_id=eq.${churchId}`, {
+          method: 'DELETE',
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' }
+        });
+      }
+      await fetch(`${SUPABASE_URL}/rest/v1/churches?id=eq.${churchId}`, {
+        method: 'DELETE',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' }
+      });
+      alert('✅ Church and all data deleted permanently');
+      setDeleteConfirmId(null);
+      setDeleteConfirmText('');
+      setSelectedChurch(null);
+      setActiveView('overview');
+      fetchAllData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  const toggleUserActive = async (userId, currentStatus) => {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/church_users?id=eq.${userId}`, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ is_active: !currentStatus })
+      });
+      fetchAllData();
+    } catch (error) { alert('Error: ' + error.message); }
+  };
+
+  const openEditUser = (u) => {
+    setEditingUser(u.id);
+    setEditUserForm({ full_name: u.full_name || '', email: u.email || '', phone: u.phone || '', role: u.role || 'STAFF', password_hash: '' });
+  };
+
+  const saveEditUser = async (userId) => {
+    setSaving(true);
+    try {
+      const updates = { full_name: editUserForm.full_name, email: editUserForm.email, phone: editUserForm.phone, role: editUserForm.role };
+      if (editUserForm.password_hash) updates.password_hash = editUserForm.password_hash;
+      await fetch(`${SUPABASE_URL}/rest/v1/church_users?id=eq.${userId}`, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(updates)
+      });
+      setEditingUser(null);
+      fetchAllData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  const addNewChurch = async () => {
+    if (!newChurchForm.name || !newChurchForm.admin_email || !newChurchForm.admin_password) {
+      alert('Church name, admin email and password are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const churchRes = await fetch(`${SUPABASE_URL}/rest/v1/churches`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify({ name: newChurchForm.name, city: newChurchForm.city, denomination: newChurchForm.denomination, pastor_name: newChurchForm.pastor_name, phone: newChurchForm.phone, email: newChurchForm.email, currency: newChurchForm.currency })
+      });
+      const newChurch = await churchRes.json();
+      const churchId = newChurch[0]?.id;
+      if (!churchId) { alert('Failed to create church'); setSaving(false); return; }
+
+      await fetch(`${SUPABASE_URL}/rest/v1/church_users`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ church_id: churchId, full_name: newChurchForm.admin_name || 'Admin', email: newChurchForm.admin_email, password_hash: newChurchForm.admin_password, role: 'ADMIN', is_active: true })
+      });
+
+      alert('✅ Church and admin account created!');
+      setShowAddChurch(false);
+      setNewChurchForm({ name: '', city: '', denomination: '', pastor_name: '', phone: '', email: '', currency: 'XAF', admin_name: '', admin_email: '', admin_password: '' });
+      fetchAllData();
+    } catch (error) { alert('Error: ' + error.message); }
+    setSaving(false);
+  };
+
+  if (!user?.is_super_admin) {
+    return <div style={{ padding: '60px', textAlign: 'center' }}><h2>🚫 Access Denied</h2><p>You do not have Super Admin privileges.</p></div>;
+  }
+
+  if (loading) return <LoadingSpinner />;
+
+  const getUsersForChurch = (churchId) => allUsers.filter(u => u.church_id === churchId);
+
+  return (
+      <div>
+        <PageHeader title="🛡️ Super Admin Panel" subtitle="Manage all churches and users on the platform" />
+  
+        {/* Stats Overview */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Total Churches</p>
+            <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#4f46e5' }}>{churches.length}</p>
+          </div>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Total Users</p>
+            <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>{allUsers.length}</p>
+          </div>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Active Users</p>
+            <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#f59e0b' }}>{allUsers.filter(u => u.is_active).length}</p>
+          </div>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Super Admins</p>
+            <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#dc2626' }}>{allUsers.filter(u => u.is_super_admin).length}</p>
+          </div>
+        </div>
+  
+        {/* Navigation */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <button onClick={() => { setActiveView('overview'); setSelectedChurch(null); }} style={{ padding: '10px 20px', border: activeView === 'overview' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeView === 'overview' ? '#eef2ff' : 'white', color: activeView === 'overview' ? '#6366f1' : '#6b7280', fontWeight: activeView === 'overview' ? '600' : '400', cursor: 'pointer', fontSize: '14px' }}>⛪ All Churches</button>
+          <button onClick={() => setActiveView('users')} style={{ padding: '10px 20px', border: activeView === 'users' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeView === 'users' ? '#eef2ff' : 'white', color: activeView === 'users' ? '#6366f1' : '#6b7280', fontWeight: activeView === 'users' ? '600' : '400', cursor: 'pointer', fontSize: '14px' }}>👥 All Users</button>
+          <button onClick={() => setShowAddChurch(true)} style={{ padding: '10px 20px', border: '1px solid #10b981', borderRadius: '10px', backgroundColor: '#ecfdf5', color: '#10b981', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>➕ Add Church</button>
+        </div>
+  
+        {/* Add Church Modal */}
+        {showAddChurch && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '32px', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '20px' }}>➕ Add New Church</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ gridColumn: '1 / -1' }}><label style={{ fontSize: '12px', color: '#6b7280' }}>Church Name *</label><input value={newChurchForm.name} onChange={e => setNewChurchForm({...newChurchForm, name: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>City</label><input value={newChurchForm.city} onChange={e => setNewChurchForm({...newChurchForm, city: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Denomination</label><input value={newChurchForm.denomination} onChange={e => setNewChurchForm({...newChurchForm, denomination: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Pastor Name</label><input value={newChurchForm.pastor_name} onChange={e => setNewChurchForm({...newChurchForm, pastor_name: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Phone</label><input value={newChurchForm.phone} onChange={e => setNewChurchForm({...newChurchForm, phone: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Email</label><input value={newChurchForm.email} onChange={e => setNewChurchForm({...newChurchForm, email: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Currency</label><select value={newChurchForm.currency} onChange={e => setNewChurchForm({...newChurchForm, currency: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}><option value="XAF">XAF (CFA)</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="NGN">NGN</option></select></div>
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #e5e7eb', paddingTop: '16px', marginTop: '8px' }}><h4 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>👤 Admin Account</h4></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Admin Name *</label><input value={newChurchForm.admin_name} onChange={e => setNewChurchForm({...newChurchForm, admin_name: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Admin Email *</label><input value={newChurchForm.admin_email} onChange={e => setNewChurchForm({...newChurchForm, admin_email: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label style={{ fontSize: '12px', color: '#6b7280' }}>Admin Password *</label><input type="password" value={newChurchForm.admin_password} onChange={e => setNewChurchForm({...newChurchForm, admin_password: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} /></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
+                <button onClick={() => setShowAddChurch(false)} style={{ padding: '10px 20px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={addNewChurch} disabled={saving} style={{ padding: '10px 20px', border: 'none', borderRadius: '8px', backgroundColor: '#4f46e5', color: 'white', cursor: 'pointer', fontWeight: '600' }}>{saving ? '⏳ Creating...' : '✅ Create Church'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+  
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmId && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '32px', maxWidth: '450px', width: '90%' }}>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#dc2626' }}>⚠️ Delete Church Permanently</h3>
+              <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>This will permanently delete the church and <strong>ALL</strong> its data including members, visitors, donations, attendance records, and users. <strong>This cannot be undone.</strong></p>
+              <p style={{ margin: '16px 0 8px 0', fontSize: '14px', fontWeight: '600' }}>Type <span style={{ color: '#dc2626', fontFamily: 'monospace', backgroundColor: '#fef2f2', padding: '2px 8px', borderRadius: '4px' }}>DELETE</span> to confirm:</p>
+              <input value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)} placeholder="Type DELETE here" style={{ width: '100%', padding: '10px', border: '2px solid #fca5a5', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', marginBottom: '16px' }} />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button onClick={() => { setDeleteConfirmId(null); setDeleteConfirmText(''); }} style={{ padding: '10px 20px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={() => deleteChurch(deleteConfirmId)} disabled={deleteConfirmText !== 'DELETE' || saving} style={{ padding: '10px 20px', border: 'none', borderRadius: '8px', backgroundColor: deleteConfirmText === 'DELETE' ? '#dc2626' : '#fca5a5', color: 'white', cursor: deleteConfirmText === 'DELETE' ? 'pointer' : 'not-allowed', fontWeight: '600' }}>{saving ? '⏳ Deleting...' : '🗑️ Delete Forever'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+  
+        {/* All Churches View */}
+        {activeView === 'overview' && (
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>⛪ Registered Churches</h3>
+            </div>
+            {churches.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>No churches registered yet. Click "➕ Add Church" to create one.</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Church</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>City</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Users</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Created</th>
+                    <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {churches.map((church, i) => (
+                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <p style={{ margin: 0, fontWeight: '500' }}>{church.name}</p>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{church.denomination || '—'}</p>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280' }}>{church.city || '—'}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '4px 10px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{getUsersForChurch(church.id).length} users</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '13px' }}>{new Date(church.created_at).toLocaleDateString()}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <button onClick={() => viewChurchDetails(church)} style={{ padding: '6px 12px', border: 'none', background: '#eef2ff', borderRadius: '6px', cursor: 'pointer', color: '#4f46e5', fontSize: '12px', fontWeight: '500', marginRight: '6px' }}>👁️ View</button>
+                        <button onClick={() => setDeleteConfirmId(church.id)} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px', fontWeight: '500' }}>🗑️ Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+  
+        {/* All Users View */}
+        {activeView === 'users' && (
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>👥 All Platform Users</h3>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ backgroundColor: '#f9fafb' }}>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>User</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Church</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Role</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Last Login</th>
+                  <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allUsers.map((u, i) => {
+                  const church = churches.find(c => c.id === u.church_id);
+                  return (
+                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        {editingUser === u.id ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <input value={editUserForm.full_name} onChange={e => setEditUserForm({...editUserForm, full_name: e.target.value})} placeholder="Name" style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }} />
+                            <input value={editUserForm.email} onChange={e => setEditUserForm({...editUserForm, email: e.target.value})} placeholder="Email" style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }} />
+                            <input value={editUserForm.phone || ''} onChange={e => setEditUserForm({...editUserForm, phone: e.target.value})} placeholder="Phone" style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }} />
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '36px', height: '36px', backgroundColor: u.is_super_admin ? '#fef3c7' : '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: u.is_super_admin ? '#f59e0b' : '#6366f1', fontWeight: '600' }}>{u.full_name?.[0] || '?'}</div>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: '500' }}>{u.full_name} {u.is_super_admin && '🛡️'}</p>
+                              <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{u.email}</p>
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '13px' }}>{church?.name || '—'}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {editingUser === u.id ? (
+                          <select value={editUserForm.role} onChange={e => setEditUserForm({...editUserForm, role: e.target.value})} style={{ padding: '6px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="PASTOR">PASTOR</option>
+                            <option value="STAFF">STAFF</option>
+                          </select>
+                        ) : (
+                          <span style={{ padding: '4px 10px', backgroundColor: u.role === 'ADMIN' ? '#fef3c7' : u.role === 'PASTOR' ? '#e0e7ff' : '#f3f4f6', color: u.role === 'ADMIN' ? '#92400e' : u.role === 'PASTOR' ? '#4338ca' : '#374151', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{u.role}</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '4px 10px', backgroundColor: u.is_active ? '#dcfce7' : '#fef2f2', color: u.is_active ? '#166534' : '#991b1b', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{u.is_active ? '✅ Active' : '❌ Inactive'}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '13px' }}>{u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        {editingUser === u.id ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                            <input value={editUserForm.password_hash} onChange={e => setEditUserForm({...editUserForm, password_hash: e.target.value})} placeholder="New password (optional)" style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', width: '160px' }} />
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button onClick={() => setEditingUser(null)} style={{ padding: '4px 10px', border: '1px solid #e5e7eb', borderRadius: '6px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
+                              <button onClick={() => saveEditUser(u.id)} disabled={saving} style={{ padding: '4px 10px', border: 'none', borderRadius: '6px', backgroundColor: '#4f46e5', color: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{saving ? '⏳' : '💾 Save'}</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                            <button onClick={() => openEditUser(u)} style={{ padding: '6px 10px', border: 'none', background: '#eef2ff', borderRadius: '6px', cursor: 'pointer', color: '#4f46e5', fontSize: '12px', fontWeight: '500' }}>✏️ Edit</button>
+                            <button onClick={() => toggleUserActive(u.id, u.is_active)} style={{ padding: '6px 10px', border: 'none', background: u.is_active ? '#fef2f2' : '#dcfce7', borderRadius: '6px', cursor: 'pointer', color: u.is_active ? '#dc2626' : '#166534', fontSize: '12px', fontWeight: '500' }}>{u.is_active ? '🚫 Disable' : '✅ Enable'}</button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+  
+        {/* Church Detail View */}
+        {activeView === 'church-detail' && selectedChurch && (
+          <div>
+            <button onClick={() => { setActiveView('overview'); setSelectedChurch(null); }} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px', marginBottom: '16px' }}>← Back to All Churches</button>
+  
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>⛪ {selectedChurch.name}</h3>
+                <button onClick={() => setDeleteConfirmId(selectedChurch.id)} style={{ padding: '8px 16px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', color: '#dc2626', fontSize: '13px', fontWeight: '500' }}>🗑️ Delete Church</button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>City</label><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{selectedChurch.city || '—'}</p></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Denomination</label><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{selectedChurch.denomination || '—'}</p></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Pastor</label><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{selectedChurch.pastor_name || '—'}</p></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Phone</label><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{selectedChurch.phone || '—'}</p></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Email</label><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{selectedChurch.email || '—'}</p></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Members</label><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{churchMembers.length}</p></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Users</label><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{getUsersForChurch(selectedChurch.id).length}</p></div>
+                <div><label style={{ fontSize: '12px', color: '#6b7280' }}>Created</label><p style={{ margin: '4px 0 0 0', fontWeight: '500' }}>{new Date(selectedChurch.created_at).toLocaleDateString()}</p></div>
+              </div>
+            </div>
+  
+            {/* Church Users */}
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>👥 Church Users</h3>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Name</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Email</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Role</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getUsersForChurch(selectedChurch.id).map((u, i) => (
+                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: '500' }}>{u.full_name}</td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280' }}>{u.email}</td>
+                      <td style={{ padding: '12px 16px' }}><span style={{ padding: '4px 10px', backgroundColor: '#e0e7ff', color: '#4338ca', borderRadius: '9999px', fontSize: '12px' }}>{u.role}</span></td>
+                      <td style={{ padding: '12px 16px' }}><span style={{ color: u.is_active ? '#10b981' : '#ef4444' }}>{u.is_active ? '✅ Active' : '❌ Inactive'}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
 // ==========================================
 // SETTINGS PAGE - Complete with All Features
 // ==========================================
 function SettingsPage() {
   const { user, logout } = useAuth();
+  const CHURCH_ID = user?.church_id;
   const { t, language, changeLanguage } = useLanguage();
   const [church, setChurch] = useState(null);
   const [locations, setLocations] = useState([]);
