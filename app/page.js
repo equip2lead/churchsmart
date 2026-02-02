@@ -615,26 +615,11 @@ export default function ChurchSmartApp() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{ __html: `
           @media (max-width: 768px) {
-            .sidebar {
-              position: fixed !important;
-              left: -280px !important;
-              top: 0 !important;
-              bottom: 0 !important;
-              width: 260px !important;
-              z-index: 50 !important;
-              box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-            }
-            .sidebar.open {
-              left: 0 !important;
-            }
-            .mobile-overlay {
-              display: block !important;
-            }
-            .main-content {
-              margin-left: 0 !important;
-            }
+            .sidebar { position: fixed !important; left: -280px !important; top: 0 !important; bottom: 0 !important; width: 260px !important; z-index: 50 !important; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+            .sidebar.open { left: 0 !important; }
+            .mobile-overlay { display: block !important; }
             .header-title { display: none !important; }
             .desktop-only { display: none !important; }
             .main-page { padding: 12px !important; }
@@ -643,6 +628,11 @@ export default function ChurchSmartApp() {
             .table-wrap table { min-width: 600px !important; }
             .form-grid { grid-template-columns: 1fr !important; }
             .modal-content { width: 95% !important; padding: 16px !important; }
+            .login-container { flex-direction: column !important; }
+            .login-branding { display: none !important; }
+            .login-form-side { width: 100% !important; min-width: unset !important; padding: 20px !important; }
+            .login-form-box { max-width: 100% !important; }
+            .login-logo { text-align: center; margin-bottom: 16px; }
           }
         `}} />
         <AppContent />
@@ -787,9 +777,9 @@ function LoginPage() {
   const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex' }}>
+    <div className="login-container" style={{ minHeight: '100vh', display: 'flex' }}>
       {/* LEFT SIDE - Branding */}
-      <div style={{ width: '50%', minHeight: '100vh', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px', position: 'relative', overflow: 'hidden' }}>
+      <div className="login-branding" style={{ width: '50%', minHeight: '100vh', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '300px', height: '300px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
         <div style={{ position: 'absolute', bottom: '-150px', left: '-100px', width: '400px', height: '400px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '50%' }} />
 
@@ -822,14 +812,14 @@ function LoginPage() {
       </div>
 
       {/* RIGHT SIDE - Form */}
-      <div style={{ width: '50%', minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', position: 'relative' }}>
+      <div className="login-form-side" style={{ width: '50%', minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', position: 'relative' }}>
         {/* Language Toggle */}
         <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '4px', backgroundColor: '#e5e7eb', borderRadius: '8px', padding: '2px' }}>
           <button onClick={() => setLang('en')} style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', backgroundColor: lang === 'en' ? 'white' : 'transparent', color: lang === 'en' ? '#4f46e5' : '#6b7280', fontWeight: lang === 'en' ? '600' : '400', fontSize: '12px', cursor: 'pointer' }}>🇬🇧 EN</button>
           <button onClick={() => setLang('fr')} style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', backgroundColor: lang === 'fr' ? 'white' : 'transparent', color: lang === 'fr' ? '#4f46e5' : '#6b7280', fontWeight: lang === 'fr' ? '600' : '400', fontSize: '12px', cursor: 'pointer' }}>🇫🇷 FR</button>
         </div>
 
-        <div style={{ width: '100%', maxWidth: '420px' }}>
+        <div className="login-form-box" style={{ width: '100%', maxWidth: '420px' }}>
           <div style={{ marginBottom: '28px' }}>
             <h2 style={{ margin: '0 0 8px 0', fontSize: '26px', fontWeight: 'bold', color: '#1f2937' }}>
               {isLogin ? t.welcome : t.createAccount}
