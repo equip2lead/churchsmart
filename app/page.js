@@ -785,7 +785,7 @@ function LoginPage() {
 
         <div style={{ marginBottom: '40px', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-           <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '56px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
+           <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '40px', width: 'auto' }} />
           </div>
           <p style={{ margin: 0, fontSize: '18px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', maxWidth: '420px' }}>{t.tagline}</p>
         </div>
