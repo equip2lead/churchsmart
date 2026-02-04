@@ -785,9 +785,7 @@ function LoginPage() {
 
         <div style={{ marginBottom: '40px', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-            <div style={{ width: '56px', height: '56px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
-              <span style={{ fontSize: '28px' }}>✝</span>
-            </div>
+           <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '56px', width: 'auto' }} />
             <h1 style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: 'white', letterSpacing: '-0.5px' }}>ChurchSmart</h1>
           </div>
           <p style={{ margin: 0, fontSize: '18px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', maxWidth: '420px' }}>{t.tagline}</p>
@@ -1033,7 +1031,7 @@ function Dashboard() {
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} style={{ width: sidebarOpen ? '260px' : '80px', backgroundColor: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', flexShrink: 0 }}>
         {/* Logo */}
         <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', background: 'linear-gradient(135deg, #6366f1, #3b82f6)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '20px', flexShrink: 0 }}>✝</div>
+          <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '40px', width: 'auto' }} />
           {sidebarOpen && <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#111827' }}>ChurchSmart</span>}
         </div>
 
