@@ -785,8 +785,7 @@ function LoginPage() {
 
         <div style={{ marginBottom: '40px', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-           <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '56px', width: 'auto' }} />
-            <h1 style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: 'white', letterSpacing: '-0.5px' }}>ChurchSmart</h1>
+           <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '56px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
           </div>
           <p style={{ margin: 0, fontSize: '18px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', maxWidth: '420px' }}>{t.tagline}</p>
         </div>
@@ -1032,7 +1031,6 @@ function Dashboard() {
         {/* Logo */}
         <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '40px', width: 'auto' }} />
-          {sidebarOpen && <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#111827' }}>ChurchSmart</span>}
         </div>
 
         {/* Menu Items */}
