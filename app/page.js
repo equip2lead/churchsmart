@@ -384,6 +384,9 @@ async function supabaseQuery(table, options = {}) {
 }
 
 async function supabaseInsert(table, data) {
+  const savedUser = localStorage.getItem('churchsmart_user');
+  const churchId = savedUser ? JSON.parse(savedUser).church_id : null;
+  const insertData = data.church_id ? data : { ...data, church_id: churchId };
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
     headers: {
@@ -392,7 +395,7 @@ async function supabaseInsert(table, data) {
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'
     },
-    body: JSON.stringify({ ...data, church_id: CHURCH_ID })
+    body: JSON.stringify(insertData)
   });
   return response.json();
 }
