@@ -2358,7 +2358,7 @@ function AttendancePage() {
     const [attendanceData, servicesData, locationsData] = await Promise.all([
       supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc' }),
       supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
     ]);
     setAttendance(attendanceData || []);
     setServices(servicesData || []);
