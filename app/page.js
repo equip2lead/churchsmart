@@ -546,6 +546,7 @@ function AuthProvider({ children }) {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const register = async (userData) => {
     try {
+      // 1. Check if email already exists
       const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/church_users?email=eq.${encodeURIComponent(userData.email)}`, {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
@@ -559,16 +560,46 @@ function AuthProvider({ children }) {
         return { success: false, error: 'Email already registered' };
       }
 
-      const newUser = {
-        church_id: CHURCH_ID,
-        email: userData.email,
-        password_hash: userData.password,
-        full_name: userData.full_name,
-        phone: userData.phone || null,
-        role: 'STAFF',
-        is_active: true
-      };
+      // 2. Create the church first
+      const slug = userData.church_name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
 
+      const churchResponse = await fetch(`${SUPABASE_URL}/rest/v1/churches`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          name: userData.church_name,
+          slug: slug,
+          city: userData.church_city || null,
+          denomination: userData.church_denomination || null,
+          pastor_name: userData.church_pastor || null,
+          phone: userData.church_phone || null,
+          email: userData.church_email || null,
+          currency: userData.church_currency || 'XAF'
+        })
+      });
+
+      if (!churchResponse.ok) {
+        const errText = await churchResponse.text();
+        console.error('Church creation failed:', errText);
+        return { success: false, error: 'Failed to create church. Please try again.' };
+      }
+
+      const newChurch = await churchResponse.json();
+      const churchId = newChurch[0]?.id;
+
+      if (!churchId) {
+        return { success: false, error: 'Failed to create church. Please try again.' };
+      }
+
+      // 3. Create the admin user linked to the new church
       const createResponse = await fetch(`${SUPABASE_URL}/rest/v1/church_users`, {
         method: 'POST',
         headers: {
@@ -577,11 +608,27 @@ function AuthProvider({ children }) {
           'Content-Type': 'application/json',
           'Prefer': 'return=representation'
         },
-        body: JSON.stringify(newUser)
+        body: JSON.stringify({
+          church_id: churchId,
+          email: userData.email,
+          password_hash: userData.password,
+          full_name: userData.full_name,
+          phone: userData.phone || null,
+          role: 'ADMIN',
+          is_active: true
+        })
       });
 
       if (!createResponse.ok) {
-        return { success: false, error: 'Failed to create account' };
+        // Rollback: delete the church if user creation fails
+        await fetch(`${SUPABASE_URL}/rest/v1/churches?id=eq.${churchId}`, {
+          method: 'DELETE',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        return { success: false, error: 'Failed to create account. Please try again.' };
       }
 
       return { success: true };
