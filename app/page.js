@@ -1819,7 +1819,17 @@ function DashboardPage() {
     setLoading(false);
   };
 
-  const formatCurrency = (amount) => `XAF ${(amount || 0).toLocaleString()}`;
+  // Dynamic currency from church settings
+  const [churchCurrency, setChurchCurrency] = useState('XAF');
+  useEffect(() => {
+    const fetchCurrency = async () => {
+      const ch = await supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true });
+      if (ch?.currency) setChurchCurrency(ch.currency);
+    };
+    if (CHURCH_ID) fetchCurrency();
+  }, [CHURCH_ID]);
+
+  const formatCurrency = (amount) => `${churchCurrency} ${(amount || 0).toLocaleString()}`;
   const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
   const formatTime = (timeStr) => timeStr ? timeStr.slice(0, 5) : '';
   const timeAgo = (dateStr) => {
@@ -3051,7 +3061,7 @@ function AttendancePage() {
               <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Services Recorded</p>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b', margin: 0 }}>XAF {filteredAttendance.reduce((sum, a) => sum + (a.total_offering || 0), 0).toLocaleString()}</p>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b', margin: 0 }}>{`XAF ${filteredAttendance.reduce((sum, a) => sum + (a.total_offering || 0), 0).toLocaleString()}`}</p>
               <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Total Offering</p>
             </div>
             <div style={{ textAlign: 'center' }}>
@@ -3316,7 +3326,17 @@ function GivingPage() {
     return member ? `${member.first_name} ${member.last_name}` : 'Anonymous';
   };
 
-  const formatCurrency = (amount) => `XAF ${(parseFloat(amount) || 0).toLocaleString()}`;
+  // Dynamic currency from church settings
+  const [churchCurrency, setChurchCurrency] = useState('XAF');
+  useEffect(() => {
+    const fetchCurrency = async () => {
+      const ch = await supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true });
+      if (ch?.currency) setChurchCurrency(ch.currency);
+    };
+    if (CHURCH_ID) fetchCurrency();
+  }, [CHURCH_ID]);
+
+  const formatCurrency = (amount) => `${churchCurrency} ${(parseFloat(amount) || 0).toLocaleString()}`;
 
   // Pie chart SVG
   const PieChart = ({ data, size = 200 }) => {
@@ -4919,7 +4939,17 @@ function ReportsPage() {
     ? Math.round(filteredAttendance.reduce((sum, a) => sum + (a.total_count || 0), 0) / filteredAttendance.length)
     : 0;
 
-  const formatCurrency = (amount) => `XAF ${(amount || 0).toLocaleString()}`;
+  // Dynamic currency from church settings
+  const [churchCurrency, setChurchCurrency] = useState('XAF');
+  useEffect(() => {
+    const fetchCurrency = async () => {
+      const ch = await supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true });
+      if (ch?.currency) setChurchCurrency(ch.currency);
+    };
+    if (CHURCH_ID) fetchCurrency();
+  }, [CHURCH_ID]);
+
+  const formatCurrency = (amount) => `${churchCurrency} ${(amount || 0).toLocaleString()}`;
   const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
   // Generate printable report
@@ -6331,7 +6361,8 @@ function SettingsPage() {
       name: church?.name || '', address: church?.address || '', city: church?.city || '',
       phone: church?.phone || '', email: church?.email || '', currency: church?.currency || 'XAF',
       pastor_name: church?.pastor_name || '', website: church?.website || '',
-      denomination: church?.denomination || '', description: church?.description || ''
+      denomination: church?.denomination || '', description: church?.description || '',
+      logo_url: church?.logo_url || ''
     });
     setEditingChurch(true);
   };
@@ -6576,6 +6607,66 @@ function SettingsPage() {
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <button onClick={() => changeLanguage('en')} style={{ padding: '12px 24px', border: language === 'en' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: language === 'en' ? '#eef2ff' : 'white', cursor: 'pointer', fontWeight: language === 'en' ? '600' : '400' }}>🇬🇧 English</button>
                   <button onClick={() => changeLanguage('fr')} style={{ padding: '12px 24px', border: language === 'fr' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: language === 'fr' ? '#eef2ff' : 'white', cursor: 'pointer', fontWeight: language === 'fr' ? '600' : '400' }}>🇫🇷 Français</button>
+                </div>
+              </div>
+
+              {/* Church Logo */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🖼️ Church Logo</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                  <div style={{ width: '100px', height: '100px', borderRadius: '16px', border: '2px dashed #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#f9fafb', flexShrink: 0 }}>
+                    {church?.logo_url ? (
+                      <img src={church.logo_url} alt="Church Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <span style={{ fontSize: '36px' }}>⛪</span>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#374151' }}>
+                      Your logo appears on the public registration page, reports, and member-facing content.
+                    </p>
+                    <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#9ca3af' }}>
+                      Recommended: Square image, at least 200×200px. PNG or JPG.
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <input 
+                          type="url" 
+                          placeholder="Paste image URL (e.g., https://your-site.com/logo.png)" 
+                          value={churchForm.logo_url || church?.logo_url || ''} 
+                          onChange={(e) => setChurchForm({ ...churchForm, logo_url: e.target.value })}
+                          style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
+                        />
+                      </div>
+                      <button onClick={async () => {
+                        if (!churchForm.logo_url && !church?.logo_url) { alert('Please enter a logo URL first'); return; }
+                        setSaving(true);
+                        try {
+                          await supabaseUpdate('churches', CHURCH_ID, { logo_url: churchForm.logo_url || null });
+                          fetchData();
+                        } catch (error) { alert('Error: ' + error.message); }
+                        setSaving(false);
+                      }} style={{ padding: '10px 20px', border: 'none', borderRadius: '8px', backgroundColor: '#6366f1', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {saving ? '⏳' : '💾 Save Logo'}
+                      </button>
+                      {church?.logo_url && (
+                        <button onClick={async () => {
+                          setSaving(true);
+                          try {
+                            await supabaseUpdate('churches', CHURCH_ID, { logo_url: null });
+                            setChurchForm({ ...churchForm, logo_url: '' });
+                            fetchData();
+                          } catch (error) { alert('Error: ' + error.message); }
+                          setSaving(false);
+                        }} style={{ padding: '10px 16px', border: '1px solid #fecaca', borderRadius: '8px', backgroundColor: '#fef2f2', color: '#ef4444', fontSize: '13px', cursor: 'pointer' }}>
+                          🗑️ Remove
+                        </button>
+                      )}
+                    </div>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>
+                      💡 Free image hosting: Upload your logo to <a href="https://imgbb.com" target="_blank" rel="noopener" style={{ color: '#6366f1' }}>imgbb.com</a> or <a href="https://postimages.org" target="_blank" rel="noopener" style={{ color: '#6366f1' }}>postimages.org</a> and paste the direct URL here.
+                    </p>
+                  </div>
                 </div>
               </div>
 
