@@ -3890,19 +3890,24 @@ function MessagingPage() {
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState('compose');
 
+  // Audience builder state
+  const [audienceMode, setAudienceMode] = useState('segment'); // 'segment' | 'individual'
+  const [segmentFilters, setSegmentFilters] = useState({
+    category: 'ALL_MEMBERS',
+    location: 'all',
+    status: 'all',
+    ministry: 'all',
+    groupId: 'all'
+  });
+  const [selectedIndividuals, setSelectedIndividuals] = useState([]);
+  const [contactSearch, setContactSearch] = useState('');
+  const [showRecipientPreview, setShowRecipientPreview] = useState(false);
+
   const [message, setMessage] = useState({
     type: 'SMS',
-    recipientType: 'ALL_MEMBERS',
-    groupId: '',
-    ministryFilter: '',
-    locationFilter: 'all',
-    customRecipients: [],
     subject: '',
     body: ''
   });
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRecipients, setSelectedRecipients] = useState([]);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -3913,7 +3918,7 @@ function MessagingPage() {
       supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('messages', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'sent_at.desc', limit: 20 }),
+      supabaseQuery('messages', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'sent_at.desc', limit: 50 }),
       supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
     ]);
@@ -3927,76 +3932,106 @@ function MessagingPage() {
     setLoading(false);
   };
 
-  // Apply location filter
-  const applyLocationFilter = (items) => {
-    if (message.locationFilter === 'all') return items;
-    return items.filter(item => item.location_id === message.locationFilter);
+  const getLocationName = (locationId) => {
+    const loc = locations.find(l => l.id === locationId);
+    return loc ? loc.name : '—';
   };
 
-  // Get recipients based on selection
-  const getRecipients = () => {
-    let recipients = [];
-    switch (message.recipientType) {
-      case 'ALL_MEMBERS':
-        recipients = applyLocationFilter(members).filter(m => m.phone).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'member' }));
-        break;
-      case 'ALL_VISITORS':
-        recipients = applyLocationFilter(visitors).filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'visitor' }));
-        break;
-      case 'ALL_VOLUNTEERS':
-        recipients = applyLocationFilter(volunteers).filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'volunteer' }));
-        break;
-      case 'GROUP':
-        // In real app, would filter by group membership
-        recipients = applyLocationFilter(members).filter(m => m.phone).slice(0, 10).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'member' }));
-        break;
-      case 'MINISTRY':
-        recipients = applyLocationFilter(volunteers).filter(v => v.phone && v.ministry === message.ministryFilter).map(v => ({ name: v.full_name, phone: v.phone, type: 'volunteer' }));
-        break;
-      case 'CUSTOM':
-        recipients = selectedRecipients;
-        break;
-      default:
-        recipients = [];
+  // ── Build unified contact list ──
+  const allContacts = [
+    ...members.filter(m => m.phone).map(m => ({
+      id: m.id, name: `${m.first_name} ${m.last_name}`, phone: m.phone, email: m.email || '',
+      type: 'Member', status: m.status || 'ACTIVE', location_id: m.location_id, ministry: null, group_id: null
+    })),
+    ...visitors.filter(v => v.phone).map(v => ({
+      id: v.id, name: v.full_name, phone: v.phone, email: v.email || '',
+      type: 'Visitor', status: v.followup_status || 'NEW', location_id: v.location_id, ministry: null, group_id: null
+    })),
+    ...volunteers.filter(v => v.phone).map(v => ({
+      id: v.id, name: v.full_name, phone: v.phone, email: v.email || '',
+      type: 'Volunteer', status: v.status || 'ACTIVE', location_id: v.location_id, ministry: v.ministry || null, group_id: null
+    }))
+  ].filter((c, i, arr) => arr.findIndex(x => x.phone === c.phone) === i);
+
+  // ── Segment-based recipients ──
+  const getSegmentRecipients = () => {
+    let pool = [];
+    switch (segmentFilters.category) {
+      case 'ALL_MEMBERS': pool = allContacts.filter(c => c.type === 'Member'); break;
+      case 'ALL_VISITORS': pool = allContacts.filter(c => c.type === 'Visitor'); break;
+      case 'ALL_VOLUNTEERS': pool = allContacts.filter(c => c.type === 'Volunteer'); break;
+      case 'ALL_CONTACTS': pool = [...allContacts]; break;
+      case 'GROUP': pool = allContacts.filter(c => c.type === 'Member'); break; // TODO: real group membership
+      case 'MINISTRY': pool = allContacts.filter(c => c.type === 'Volunteer'); break;
+      default: pool = [...allContacts];
     }
-    return recipients;
+    // Apply location filter
+    if (segmentFilters.location !== 'all') {
+      pool = pool.filter(c => c.location_id === segmentFilters.location);
+    }
+    // Apply status filter
+    if (segmentFilters.status !== 'all') {
+      pool = pool.filter(c => c.status === segmentFilters.status);
+    }
+    // Apply ministry filter
+    if (segmentFilters.category === 'MINISTRY' && segmentFilters.ministry !== 'all') {
+      pool = pool.filter(c => c.ministry === segmentFilters.ministry);
+    }
+    return pool;
   };
 
-  const recipientCount = getRecipients().length;
+  // ── Final recipient list ──
+  const getFinalRecipients = () => {
+    if (audienceMode === 'segment') return getSegmentRecipients();
+    return selectedIndividuals;
+  };
 
-  // Handle template selection
+  const recipientCount = getFinalRecipients().length;
+
+  // ── Individual contact search ──
+  const searchResults = contactSearch.length >= 1
+    ? allContacts.filter(c =>
+        c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+        c.phone.includes(contactSearch) ||
+        c.email.toLowerCase().includes(contactSearch.toLowerCase())
+      ).slice(0, 15)
+    : [];
+
+  const addIndividual = (contact) => {
+    if (!selectedIndividuals.find(s => s.phone === contact.phone)) {
+      setSelectedIndividuals([...selectedIndividuals, contact]);
+    }
+    setContactSearch('');
+  };
+
+  const removeIndividual = (phone) => {
+    setSelectedIndividuals(selectedIndividuals.filter(s => s.phone !== phone));
+  };
+
+  // ── Handle template ──
   const applyTemplate = (template) => {
     setMessage({ ...message, body: template.body, subject: template.name });
   };
 
-  // Handle send
+  // ── Handle send ──
   const handleSend = async () => {
-    if (!message.body) {
-      alert('Please enter a message');
-      return;
-    }
-    if (recipientCount === 0) {
-      alert('No recipients selected');
-      return;
-    }
+    if (!message.body) { alert('Please enter a message'); return; }
+    if (recipientCount === 0) { alert('No recipients selected'); return; }
 
     setSending(true);
     try {
-      // Log the message to history
       await supabaseInsert('messages', {
         message_type: message.type,
-        recipient_type: message.recipientType,
+        recipient_type: audienceMode === 'segment' ? segmentFilters.category : 'INDIVIDUAL',
         recipient_count: recipientCount,
         subject: message.subject,
         body: message.body,
         status: 'SENT',
         sent_by: 'Admin'
       });
-
-      // In real app, would call Twilio API here
-      alert(`✅ Message sent to ${recipientCount} recipients!`);
-      
+      alert(`✅ Message sent to ${recipientCount} recipient${recipientCount !== 1 ? 's' : ''}!`);
       setMessage({ ...message, body: '', subject: '' });
+      if (audienceMode === 'individual') setSelectedIndividuals([]);
       fetchData();
     } catch (error) {
       alert('Error: ' + error.message);
@@ -4004,210 +4039,398 @@ function MessagingPage() {
     setSending(false);
   };
 
-  // Add/remove custom recipients
-  const toggleRecipient = (recipient) => {
-    const exists = selectedRecipients.find(r => r.phone === recipient.phone);
-    if (exists) {
-      setSelectedRecipients(selectedRecipients.filter(r => r.phone !== recipient.phone));
-    } else {
-      setSelectedRecipients([...selectedRecipients, recipient]);
-    }
-  };
-
-  // All available contacts for custom selection
-  const allContacts = [
-    ...members.filter(m => m.phone).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'Member' })),
-    ...visitors.filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'Visitor' })),
-    ...volunteers.filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'Volunteer' }))
-  ].filter((c, i, arr) => arr.findIndex(x => x.phone === c.phone) === i); // Remove duplicates
-
-  const filteredContacts = allContacts.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.phone.includes(searchTerm)
-  );
-
-  const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
   const ministries = ['Worship', 'Children', 'Youth', 'Ushers', 'Media', 'Security', 'Hospitality', 'Prayer', 'Outreach'];
+
+  // SMS segment info
+  const smsSegments = message.body.length <= 160 ? 1 : Math.ceil(message.body.length / 153);
+  const smsCharLimit = smsSegments === 1 ? 160 : smsSegments * 153;
+
+  // Category-specific status options
+  const getStatusOptions = () => {
+    switch (segmentFilters.category) {
+      case 'ALL_MEMBERS': return ['ACTIVE', 'INACTIVE', 'NEW'];
+      case 'ALL_VISITORS': return ['NEW', 'PENDING', 'CONTACTED', 'COMPLETED'];
+      case 'ALL_VOLUNTEERS': return ['ACTIVE', 'INACTIVE', 'ON_LEAVE'];
+      default: return ['ACTIVE', 'INACTIVE'];
+    }
+  };
 
   return (
     <div>
       <PageHeader
-        title="💬 Messaging"
-        subtitle="Send SMS and WhatsApp messages to your congregation"
+        title="💬 Messaging Center"
+        subtitle="Send targeted SMS & WhatsApp messages to your congregation"
       />
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+      {/* Stats Bar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
         <StatCard label="Total Contacts" value={allContacts.length} icon="👥" color="#6366f1" />
-        <StatCard label="Members w/ Phone" value={members.filter(m => m.phone).length} icon="📱" color="#10b981" />
-        <StatCard label="Messages Sent" value={messageHistory.length} icon="📤" color="#f59e0b" />
-        <StatCard label="This Month" value={messageHistory.filter(m => m.sent_at?.startsWith(new Date().toISOString().slice(0, 7))).length} icon="📅" color="#8b5cf6" />
+        <StatCard label="Members" value={allContacts.filter(c => c.type === 'Member').length} icon="📋" color="#10b981" />
+        <StatCard label="Visitors" value={allContacts.filter(c => c.type === 'Visitor').length} icon="🚶" color="#f59e0b" />
+        <StatCard label="Volunteers" value={allContacts.filter(c => c.type === 'Volunteer').length} icon="🙋" color="#8b5cf6" />
+        <StatCard label="Messages Sent" value={messageHistory.length} icon="📤" color="#ef4444" />
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-        <button onClick={() => setActiveTab('compose')} style={{ padding: '12px 24px', border: activeTab === 'compose' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'compose' ? '#eef2ff' : 'white', color: activeTab === 'compose' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'compose' ? '600' : '400', cursor: 'pointer' }}>✏️ Compose</button>
-        <button onClick={() => setActiveTab('history')} style={{ padding: '12px 24px', border: activeTab === 'history' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'history' ? '#eef2ff' : 'white', color: activeTab === 'history' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'history' ? '600' : '400', cursor: 'pointer' }}>📜 History</button>
-        <button onClick={() => setActiveTab('templates')} style={{ padding: '12px 24px', border: activeTab === 'templates' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'templates' ? '#eef2ff' : 'white', color: activeTab === 'templates' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'templates' ? '600' : '400', cursor: 'pointer' }}>📝 Templates</button>
+        {[
+          { id: 'compose', label: '✏️ Compose', icon: '✏️' },
+          { id: 'history', label: '📜 History', icon: '📜' },
+          { id: 'templates', label: '📝 Templates', icon: '📝' }
+        ].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+            padding: '12px 24px', border: activeTab === tab.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
+            borderRadius: '10px', backgroundColor: activeTab === tab.id ? '#eef2ff' : 'white',
+            color: activeTab === tab.id ? '#6366f1' : '#6b7280',
+            fontWeight: activeTab === tab.id ? '600' : '400', cursor: 'pointer', fontSize: '14px'
+          }}>{tab.label}</button>
+        ))}
       </div>
 
       {loading ? <LoadingSpinner /> : (
         <>
-          {/* COMPOSE TAB */}
+          {/* ═══════════════ COMPOSE TAB ═══════════════ */}
           {activeTab === 'compose' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' }}>
-              {/* Message Form */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>✏️ Compose Message</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
 
-                {/* Message Type */}
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Message Type</label>
+              {/* ── LEFT: Message Composer ── */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                {/* Channel Selector */}
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Channel</label>
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => setMessage({ ...message, type: 'SMS' })} style={{ flex: 1, padding: '16px', border: message.type === 'SMS' ? '2px solid #10b981' : '1px solid #e5e7eb', borderRadius: '12px', backgroundColor: message.type === 'SMS' ? '#d1fae5' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '24px' }}>📱</span>
-                      <span style={{ fontWeight: message.type === 'SMS' ? '600' : '400', color: message.type === 'SMS' ? '#166534' : '#6b7280' }}>SMS</span>
-                    </button>
-                    <button onClick={() => setMessage({ ...message, type: 'WHATSAPP' })} style={{ flex: 1, padding: '16px', border: message.type === 'WHATSAPP' ? '2px solid #25d366' : '1px solid #e5e7eb', borderRadius: '12px', backgroundColor: message.type === 'WHATSAPP' ? '#dcfce7' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '24px' }}>💬</span>
-                      <span style={{ fontWeight: message.type === 'WHATSAPP' ? '600' : '400', color: message.type === 'WHATSAPP' ? '#166534' : '#6b7280' }}>WhatsApp</span>
-                    </button>
+                    {[
+                      { id: 'SMS', icon: '📱', label: 'SMS', color: '#10b981' },
+                      { id: 'WHATSAPP', icon: '💬', label: 'WhatsApp', color: '#25d366' },
+                      { id: 'EMAIL', icon: '📧', label: 'Email', color: '#6366f1' }
+                    ].map(ch => (
+                      <button key={ch.id} onClick={() => setMessage({ ...message, type: ch.id })} style={{
+                        flex: 1, padding: '14px', border: message.type === ch.id ? `2px solid ${ch.color}` : '1px solid #e5e7eb',
+                        borderRadius: '12px', backgroundColor: message.type === ch.id ? `${ch.color}15` : 'white',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s'
+                      }}>
+                        <span style={{ fontSize: '20px' }}>{ch.icon}</span>
+                        <span style={{ fontWeight: message.type === ch.id ? '600' : '400', color: message.type === ch.id ? ch.color : '#6b7280', fontSize: '14px' }}>{ch.label}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Recipients */}
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Recipients</label>
-                  <select value={message.recipientType} onChange={(e) => setMessage({ ...message, recipientType: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
-                    <option value="ALL_MEMBERS">📋 All Members ({members.filter(m => m.phone).length})</option>
-                    <option value="ALL_VISITORS">🚶 All Visitors ({visitors.filter(v => v.phone).length})</option>
-                    <option value="ALL_VOLUNTEERS">🙋‍♂️ All Volunteers ({volunteers.filter(v => v.phone).length})</option>
-                    <option value="GROUP">👨‍👩‍👧‍👦 Specific Group</option>
-                    <option value="MINISTRY">⛪ Ministry Team</option>
-                    <option value="CUSTOM">✅ Custom Selection</option>
-                  </select>
+                {/* Audience Builder */}
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Audience</label>
+                    <div style={{ display: 'flex', gap: '4px', backgroundColor: '#f3f4f6', borderRadius: '8px', padding: '3px' }}>
+                      <button onClick={() => setAudienceMode('segment')} style={{
+                        padding: '6px 14px', borderRadius: '6px', border: 'none', fontSize: '13px', cursor: 'pointer',
+                        backgroundColor: audienceMode === 'segment' ? 'white' : 'transparent',
+                        color: audienceMode === 'segment' ? '#6366f1' : '#6b7280',
+                        fontWeight: audienceMode === 'segment' ? '600' : '400',
+                        boxShadow: audienceMode === 'segment' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
+                      }}>📊 Segment</button>
+                      <button onClick={() => setAudienceMode('individual')} style={{
+                        padding: '6px 14px', borderRadius: '6px', border: 'none', fontSize: '13px', cursor: 'pointer',
+                        backgroundColor: audienceMode === 'individual' ? 'white' : 'transparent',
+                        color: audienceMode === 'individual' ? '#6366f1' : '#6b7280',
+                        fontWeight: audienceMode === 'individual' ? '600' : '400',
+                        boxShadow: audienceMode === 'individual' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
+                      }}>👤 Individual</button>
+                    </div>
+                  </div>
+
+                  {/* SEGMENT MODE */}
+                  {audienceMode === 'segment' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {/* Row 1: Category + Location */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Category</label>
+                          <select value={segmentFilters.category} onChange={(e) => setSegmentFilters({ ...segmentFilters, category: e.target.value, ministry: 'all', status: 'all' })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white' }}>
+                            <option value="ALL_CONTACTS">👥 All Contacts</option>
+                            <option value="ALL_MEMBERS">📋 Members</option>
+                            <option value="ALL_VISITORS">🚶 Visitors</option>
+                            <option value="ALL_VOLUNTEERS">🙋 Volunteers</option>
+                            <option value="MINISTRY">⛪ Ministry Team</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Location</label>
+                          <select value={segmentFilters.location} onChange={(e) => setSegmentFilters({ ...segmentFilters, location: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white' }}>
+                            <option value="all">📍 All Locations</option>
+                            {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.is_main_campus ? `🏛️ ${loc.name}` : loc.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Row 2: Status + Ministry (conditional) */}
+                      <div style={{ display: 'grid', gridTemplateColumns: segmentFilters.category === 'MINISTRY' ? '1fr 1fr' : '1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Status</label>
+                          <select value={segmentFilters.status} onChange={(e) => setSegmentFilters({ ...segmentFilters, status: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white' }}>
+                            <option value="all">All Statuses</option>
+                            {getStatusOptions().map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        {segmentFilters.category === 'MINISTRY' && (
+                          <div>
+                            <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Ministry</label>
+                            <select value={segmentFilters.ministry} onChange={(e) => setSegmentFilters({ ...segmentFilters, ministry: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white' }}>
+                              <option value="all">All Ministries</option>
+                              {ministries.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Audience Summary Bar */}
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '12px 16px', backgroundColor: recipientCount > 0 ? '#eef2ff' : '#fef2f2',
+                        borderRadius: '10px', border: `1px solid ${recipientCount > 0 ? '#c7d2fe' : '#fecaca'}`
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '24px', fontWeight: '700', color: recipientCount > 0 ? '#4f46e5' : '#ef4444' }}>{recipientCount}</span>
+                          <span style={{ fontSize: '14px', color: '#6b7280' }}>recipient{recipientCount !== 1 ? 's' : ''} matched</span>
+                        </div>
+                        {recipientCount > 0 && (
+                          <button onClick={() => setShowRecipientPreview(!showRecipientPreview)} style={{
+                            padding: '6px 12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white',
+                            fontSize: '12px', color: '#6366f1', cursor: 'pointer', fontWeight: '500'
+                          }}>{showRecipientPreview ? 'Hide' : 'Preview'} List</button>
+                        )}
+                      </div>
+
+                      {/* Recipient Preview */}
+                      {showRecipientPreview && recipientCount > 0 && (
+                        <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '8px' }}>
+                          {getSegmentRecipients().map((r, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderBottom: i < recipientCount - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: r.type === 'Member' ? '#dbeafe' : r.type === 'Visitor' ? '#fef3c7' : '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
+                                  {r.type === 'Member' ? '📋' : r.type === 'Visitor' ? '🚶' : '🙋'}
+                                </div>
+                                <div>
+                                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '500' }}>{r.name}</p>
+                                  <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af' }}>{r.phone} · {getLocationName(r.location_id)}</p>
+                                </div>
+                              </div>
+                              <span style={{ fontSize: '10px', padding: '2px 8px', backgroundColor: r.type === 'Member' ? '#dbeafe' : r.type === 'Visitor' ? '#fef3c7' : '#dcfce7', borderRadius: '4px', color: '#6b7280', fontWeight: '500' }}>{r.type}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* INDIVIDUAL MODE */}
+                  {audienceMode === 'individual' && (
+                    <div>
+                      {/* Search Box */}
+                      <div style={{ position: 'relative', marginBottom: '12px' }}>
+                        <input
+                          type="text"
+                          placeholder="🔍 Search by name, phone, or email..."
+                          value={contactSearch}
+                          onChange={(e) => setContactSearch(e.target.value)}
+                          style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+                        />
+                        {/* Search Results Dropdown */}
+                        {searchResults.length > 0 && (
+                          <div style={{
+                            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
+                            backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '10px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '250px', overflowY: 'auto', marginTop: '4px'
+                          }}>
+                            {searchResults.map((contact, i) => {
+                              const alreadyAdded = selectedIndividuals.find(s => s.phone === contact.phone);
+                              return (
+                                <button key={i} onClick={() => !alreadyAdded && addIndividual(contact)} disabled={alreadyAdded} style={{
+                                  display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 14px',
+                                  border: 'none', borderBottom: i < searchResults.length - 1 ? '1px solid #f3f4f6' : 'none',
+                                  backgroundColor: alreadyAdded ? '#f9fafb' : 'white', cursor: alreadyAdded ? 'default' : 'pointer',
+                                  textAlign: 'left', opacity: alreadyAdded ? 0.5 : 1
+                                }}>
+                                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: contact.type === 'Member' ? '#dbeafe' : contact.type === 'Visitor' ? '#fef3c7' : '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
+                                    {contact.type === 'Member' ? '📋' : contact.type === 'Visitor' ? '🚶' : '🙋'}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#1f2937' }}>{contact.name}</p>
+                                    <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>{contact.phone} · {getLocationName(contact.location_id)}</p>
+                                  </div>
+                                  <span style={{ fontSize: '10px', padding: '3px 8px', backgroundColor: contact.type === 'Member' ? '#dbeafe' : contact.type === 'Visitor' ? '#fef3c7' : '#dcfce7', borderRadius: '6px', color: '#6b7280', fontWeight: '600', flexShrink: 0 }}>{contact.type}</span>
+                                  {alreadyAdded && <span style={{ fontSize: '11px', color: '#10b981' }}>✓</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Selected Individuals as Chips */}
+                      {selectedIndividuals.length > 0 ? (
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>{selectedIndividuals.length} recipient{selectedIndividuals.length !== 1 ? 's' : ''} selected</span>
+                            <button onClick={() => setSelectedIndividuals([])} style={{ fontSize: '12px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>Clear all</button>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '120px', overflowY: 'auto', padding: '8px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                            {selectedIndividuals.map((person, i) => (
+                              <span key={i} style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                padding: '5px 10px 5px 12px', backgroundColor: 'white',
+                                border: '1px solid #e5e7eb', borderRadius: '20px', fontSize: '13px'
+                              }}>
+                                <span style={{ fontWeight: '500' }}>{person.name}</span>
+                                <span style={{ fontSize: '10px', color: '#9ca3af' }}>{person.type}</span>
+                                <button onClick={() => removeIndividual(person.phone)} style={{
+                                  width: '18px', height: '18px', borderRadius: '50%', border: 'none',
+                                  backgroundColor: '#fee2e2', color: '#ef4444', cursor: 'pointer',
+                                  fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
+                                }}>×</button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '28px' }}>👤</span>
+                          <p style={{ margin: '8px 0 0 0', fontSize: '13px' }}>Search and select individual recipients above</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Location Filter */}
-                {message.recipientType !== 'CUSTOM' && (
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>📍 Filter by Location</label>
-                    <select value={message.locationFilter} onChange={(e) => setMessage({ ...message, locationFilter: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
-                      <option value="all">All Locations ({getRecipients().length} recipients)</option>
-                      {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.is_main_campus ? `🏛️ ${loc.name}` : `🏢 ${loc.name}`}</option>)}
-                    </select>
-                    {message.locationFilter !== 'all' && (
-                      <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6366f1' }}>📍 Sending to {getRecipients().length} recipients at {locations.find(l => l.id === message.locationFilter)?.name || 'selected location'}</p>
-                    )}
-                  </div>
-                )}
+                {/* Message Composer */}
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message</label>
 
-                {/* Group Selection */}
-                {message.recipientType === 'GROUP' && (
-                  <div style={{ marginBottom: '20px' }}>
-                    <select value={message.groupId} onChange={(e) => setMessage({ ...message, groupId: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
-                      <option value="">Select a group...</option>
-                      {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
-                  </div>
-                )}
-
-                {/* Ministry Selection */}
-                {message.recipientType === 'MINISTRY' && (
-                  <div style={{ marginBottom: '20px' }}>
-                    <select value={message.ministryFilter} onChange={(e) => setMessage({ ...message, ministryFilter: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
-                      <option value="">Select ministry...</option>
-                      {ministries.map(m => <option key={m} value={m}>{m} ({volunteers.filter(v => v.ministry === m && v.phone).length})</option>)}
-                    </select>
-                  </div>
-                )}
-
-                {/* Custom Selection */}
-                {message.recipientType === 'CUSTOM' && (
-                  <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                  {/* Subject (for Email) */}
+                  {message.type === 'EMAIL' && (
                     <div style={{ marginBottom: '12px' }}>
-                      <input type="text" placeholder="🔍 Search contacts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }} />
+                      <input type="text" placeholder="Subject line..." value={message.subject} onChange={(e) => setMessage({ ...message, subject: e.target.value })} style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }} />
                     </div>
-                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {filteredContacts.slice(0, 20).map((contact, i) => {
-                        const isSelected = selectedRecipients.find(r => r.phone === contact.phone);
-                        return (
-                          <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', backgroundColor: isSelected ? '#dbeafe' : 'white', borderRadius: '8px', cursor: 'pointer', border: isSelected ? '1px solid #3b82f6' : '1px solid #e5e7eb' }}>
-                            <input type="checkbox" checked={!!isSelected} onChange={() => toggleRecipient(contact)} />
-                            <span style={{ flex: 1, fontSize: '14px' }}>{contact.name}</span>
-                            <span style={{ fontSize: '11px', padding: '2px 6px', backgroundColor: '#f3f4f6', borderRadius: '4px', color: '#6b7280' }}>{contact.type}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    <p style={{ margin: '12px 0 0 0', fontSize: '13px', color: '#6b7280' }}>✅ {selectedRecipients.length} selected</p>
-                  </div>
-                )}
+                  )}
 
-                {/* Message Body */}
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Message</label>
                   <textarea
                     value={message.body}
                     onChange={(e) => setMessage({ ...message, body: e.target.value })}
-                    placeholder="Type your message here..."
-                    style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', minHeight: '150px', resize: 'vertical' }}
+                    placeholder={message.type === 'EMAIL' ? 'Compose your email...' : 'Type your message here...\n\nUse {{name}} for personalization'}
+                    style={{ width: '100%', padding: '14px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', minHeight: message.type === 'EMAIL' ? '200px' : '120px', resize: 'vertical', lineHeight: '1.5' }}
                   />
-                  <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{message.body.length} characters</p>
-                </div>
 
-                {/* Send Button */}
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <Button onClick={handleSend} disabled={sending || recipientCount === 0}>
-                    {sending ? '⏳ Sending...' : `📤 Send to ${recipientCount} recipients`}
-                  </Button>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                    via {message.type === 'SMS' ? '📱 SMS' : '💬 WhatsApp'}
-                  </span>
+                  {/* Character Counter + SMS Segment Info */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#9ca3af' }}>
+                      <span>{message.body.length} characters</span>
+                      {message.type === 'SMS' && <span style={{ color: smsSegments > 1 ? '#f59e0b' : '#9ca3af' }}>· {smsSegments} SMS segment{smsSegments > 1 ? 's' : ''}</span>}
+                    </div>
+                    {message.type === 'SMS' && message.body.length > 140 && (
+                      <span style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px' }}>
+                        ⚠️ Multi-segment SMS costs more
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Send Bar */}
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
+                    <button onClick={handleSend} disabled={sending || recipientCount === 0 || !message.body} style={{
+                      flex: 1, padding: '14px 24px', border: 'none', borderRadius: '10px',
+                      backgroundColor: (sending || recipientCount === 0 || !message.body) ? '#e5e7eb' : '#6366f1',
+                      color: (sending || recipientCount === 0 || !message.body) ? '#9ca3af' : 'white',
+                      fontSize: '15px', fontWeight: '600', cursor: (sending || recipientCount === 0 || !message.body) ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s'
+                    }}>
+                      {sending ? '⏳ Sending...' : `📤 Send ${message.type} to ${recipientCount} recipient${recipientCount !== 1 ? 's' : ''}`}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Sidebar - Quick Templates */}
+              {/* ── RIGHT SIDEBAR ── */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                  <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>📝 Quick Templates</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {templates.slice(0, 5).map((template, i) => (
-                      <button key={i} onClick={() => applyTemplate(template)} style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
-                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{template.name}</p>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.body?.slice(0, 50)}...</p>
+                {/* Quick Segments */}
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quick Audiences</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {[
+                      { label: 'All Members', cat: 'ALL_MEMBERS', status: 'all', icon: '📋' },
+                      { label: 'Active Members', cat: 'ALL_MEMBERS', status: 'ACTIVE', icon: '✅' },
+                      { label: 'All Visitors', cat: 'ALL_VISITORS', status: 'all', icon: '🚶' },
+                      { label: 'New Visitors', cat: 'ALL_VISITORS', status: 'NEW', icon: '🆕' },
+                      { label: 'All Volunteers', cat: 'ALL_VOLUNTEERS', status: 'all', icon: '🙋' },
+                      { label: 'Everyone', cat: 'ALL_CONTACTS', status: 'all', icon: '🌍' },
+                    ].map((preset, i) => (
+                      <button key={i} onClick={() => { setAudienceMode('segment'); setSegmentFilters({ ...segmentFilters, category: preset.cat, status: preset.status, location: 'all', ministry: 'all' }); }} style={{
+                        display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px',
+                        border: (segmentFilters.category === preset.cat && segmentFilters.status === preset.status && audienceMode === 'segment') ? '1px solid #c7d2fe' : '1px solid #f3f4f6',
+                        borderRadius: '8px', cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                        backgroundColor: (segmentFilters.category === preset.cat && segmentFilters.status === preset.status && audienceMode === 'segment') ? '#eef2ff' : 'white',
+                        color: '#374151', fontWeight: '400'
+                      }}>
+                        <span>{preset.icon}</span>
+                        <span style={{ flex: 1 }}>{preset.label}</span>
+                        <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                          {(() => {
+                            let pool = preset.cat === 'ALL_CONTACTS' ? allContacts :
+                              allContacts.filter(c => c.type === (preset.cat === 'ALL_MEMBERS' ? 'Member' : preset.cat === 'ALL_VISITORS' ? 'Visitor' : 'Volunteer'));
+                            if (preset.status !== 'all') pool = pool.filter(c => c.status === preset.status);
+                            return pool.length;
+                          })()}
+                        </span>
                       </button>
                     ))}
-                    {templates.length === 0 && <p style={{ color: '#6b7280', fontSize: '14px' }}>No templates yet</p>}
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: '#fef3c7', borderRadius: '16px', padding: '20px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>💡 Tips</h4>
-                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#92400e', lineHeight: '1.6' }}>
-                    <li>Keep SMS under 160 characters</li>
-                    <li>Use {"{{name}}"} for personalization</li>
-                    <li>Include church name for recognition</li>
-                    <li>Add a call to action</li>
-                  </ul>
+                {/* Templates */}
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Templates</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {templates.slice(0, 5).map((template, i) => (
+                      <button key={i} onClick={() => applyTemplate(template)} style={{
+                        padding: '10px 12px', border: '1px solid #f3f4f6', borderRadius: '8px',
+                        backgroundColor: 'white', cursor: 'pointer', textAlign: 'left'
+                      }}>
+                        <p style={{ margin: 0, fontWeight: '500', fontSize: '13px', color: '#374151' }}>{template.name}</p>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.body?.slice(0, 50)}...</p>
+                      </button>
+                    ))}
+                    {templates.length === 0 && <p style={{ color: '#9ca3af', fontSize: '13px', textAlign: 'center', padding: '12px 0' }}>No templates yet</p>}
+                  </div>
+                </div>
+
+                {/* Tips */}
+                <div style={{ backgroundColor: '#f0fdf4', borderRadius: '16px', padding: '16px', border: '1px solid #bbf7d0' }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '600', color: '#166534' }}>💡 Best Practices</h4>
+                  <div style={{ fontSize: '12px', color: '#166534', lineHeight: '1.8' }}>
+                    <p style={{ margin: '0 0 4px 0' }}>• SMS: Keep under 160 chars (1 segment)</p>
+                    <p style={{ margin: '0 0 4px 0' }}>• Use {"{{name}}"} to personalize</p>
+                    <p style={{ margin: '0 0 4px 0' }}>• Include church name for recognition</p>
+                    <p style={{ margin: '0 0 4px 0' }}>• Add a clear call to action</p>
+                    <p style={{ margin: 0 }}>• Send during business hours</p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* HISTORY TAB */}
+          {/* ═══════════════ HISTORY TAB ═══════════════ */}
           {activeTab === 'history' && (
             <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📜 Message History</h3>
+                <span style={{ fontSize: '13px', color: '#9ca3af' }}>{messageHistory.length} messages</span>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ backgroundColor: '#f9fafb' }}>
                   <tr>
                     <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Recipients</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Channel</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Audience</th>
                     <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Message</th>
                     <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
                   </tr>
@@ -4215,54 +4438,59 @@ function MessagingPage() {
                 <tbody>
                   {messageHistory.map((msg, i) => (
                     <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280' }}>{formatDate(msg.sent_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{formatDate(msg.sent_at)}</td>
                       <td style={{ padding: '12px 16px' }}>
-                        <span style={{ padding: '4px 10px', backgroundColor: msg.message_type === 'SMS' ? '#dbeafe' : '#dcfce7', color: msg.message_type === 'SMS' ? '#1e40af' : '#166534', borderRadius: '9999px', fontSize: '12px' }}>
-                          {msg.message_type === 'SMS' ? '📱' : '💬'} {msg.message_type}
+                        <span style={{ padding: '4px 10px', backgroundColor: msg.message_type === 'SMS' ? '#dbeafe' : msg.message_type === 'EMAIL' ? '#eef2ff' : '#dcfce7', color: msg.message_type === 'SMS' ? '#1e40af' : msg.message_type === 'EMAIL' ? '#4338ca' : '#166534', borderRadius: '9999px', fontSize: '11px', fontWeight: '500' }}>
+                          {msg.message_type === 'SMS' ? '📱' : msg.message_type === 'EMAIL' ? '📧' : '💬'} {msg.message_type}
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
-                        <span style={{ fontWeight: '500' }}>{msg.recipient_count}</span>
-                        <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '4px' }}>({msg.recipient_type})</span>
+                        <span style={{ fontWeight: '600', color: '#374151' }}>{msg.recipient_count}</span>
+                        <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '4px' }}>{msg.recipient_type?.replace('ALL_', '').replace('_', ' ')}</span>
                       </td>
                       <td style={{ padding: '12px 16px', maxWidth: '300px' }}>
-                        <p style={{ margin: 0, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.body}</p>
+                        <p style={{ margin: 0, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#374151' }}>{msg.body}</p>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
-                        <span style={{ padding: '4px 10px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px' }}>✅ {msg.status}</span>
+                        <span style={{ padding: '4px 10px', backgroundColor: msg.status === 'SENT' ? '#dcfce7' : msg.status === 'FAILED' ? '#fef2f2' : '#fef3c7', color: msg.status === 'SENT' ? '#166534' : msg.status === 'FAILED' ? '#991b1b' : '#92400e', borderRadius: '9999px', fontSize: '11px', fontWeight: '500' }}>
+                          {msg.status === 'SENT' ? '✅' : msg.status === 'FAILED' ? '❌' : '⏳'} {msg.status}
+                        </span>
                       </td>
                     </tr>
                   ))}
                   {messageHistory.length === 0 && (
-                    <tr><td colSpan="5" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No messages sent yet</td></tr>
+                    <tr><td colSpan="5" style={{ padding: '48px', textAlign: 'center', color: '#9ca3af' }}>
+                      <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>📭</span>
+                      No messages sent yet
+                    </td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           )}
 
-          {/* TEMPLATES TAB */}
+          {/* ═══════════════ TEMPLATES TAB ═══════════════ */}
           {activeTab === 'templates' && (
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📝 Message Templates</h3>
-                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Manage templates in Settings → Automation</p>
+                <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>Manage templates in Settings → Automation</p>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
                 {templates.map((template, i) => (
-                  <div key={i} style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                  <div key={i} style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                      <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>{template.name}</h4>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#1f2937' }}>{template.name}</h4>
                       <span style={{ padding: '2px 8px', backgroundColor: template.category === 'BIRTHDAY' ? '#fef3c7' : '#dbeafe', color: template.category === 'BIRTHDAY' ? '#92400e' : '#1e40af', borderRadius: '6px', fontSize: '11px' }}>{template.category}</span>
                     </div>
-                    <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.5' }}>{template.body}</p>
-                    <Button variant="secondary" onClick={() => { setMessage({ ...message, body: template.body }); setActiveTab('compose'); }}>
+                    <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>{template.body}</p>
+                    <Button variant="secondary" onClick={() => { applyTemplate(template); setActiveTab('compose'); }}>
                       Use Template
                     </Button>
                   </div>
                 ))}
                 {templates.length === 0 && (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: '#6b7280' }}>
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: '#9ca3af' }}>
                     <span style={{ fontSize: '48px' }}>📝</span>
                     <p>No templates yet. Create them in Settings.</p>
                   </div>
