@@ -5801,7 +5801,6 @@ function SettingsPage() {
         capacity: locationForm.capacity ? parseInt(locationForm.capacity) : null 
       };
       
-      console.log('Saving location data:', data);  // ADD THIS LINE HERE
       
       if (data.is_main_campus && !editingLocation?.is_main_campus) {
         for (const loc of locations.filter(l => l.is_main_campus)) {
