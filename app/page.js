@@ -2096,8 +2096,10 @@ function VisitorsPage() {
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [visitors, setVisitors] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterLocation, setFilterLocation] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [showSMSModal, setShowSMSModal] = useState(false);
   const [selectedVisitor, setSelectedVisitor] = useState(null);
@@ -2109,27 +2111,38 @@ function VisitorsPage() {
     full_name: '', email: '', phone: '', whatsapp: '',
     visit_date: new Date().toISOString().split('T')[0],
     is_first_time: true, how_heard_about_us: '', prayer_request: '',
-    followup_status: 'NOT_STARTED', language_preference: 'FRENCH'
+    followup_status: 'NOT_STARTED', language_preference: 'FRENCH', location_id: ''
   });
 
   useEffect(() => { fetchVisitors(); }, []);
 
   const fetchVisitors = async () => {
     setLoading(true);
-    const data = await supabaseQuery('visitors', {
-      filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }],
-      order: 'visit_date.desc'
-    });
+    const [data, locationsData] = await Promise.all([
+      supabaseQuery('visitors', {
+        filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }],
+        order: 'visit_date.desc'
+      }),
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+    ]);
     setVisitors(data || []);
+    setLocations(locationsData || []);
     setLoading(false);
   };
 
+  const getLocationName = (locationId) => {
+    const location = locations.find(l => l.id === locationId);
+    return location ? location.name : '—';
+  };
+
   const resetForm = () => {
+    const mainCampus = locations.find(l => l.is_main_campus);
     setForm({
       full_name: '', email: '', phone: '', whatsapp: '',
       visit_date: new Date().toISOString().split('T')[0],
       is_first_time: true, how_heard_about_us: '', prayer_request: '',
-      followup_status: 'NOT_STARTED', language_preference: 'FRENCH'
+      followup_status: 'NOT_STARTED', language_preference: 'FRENCH',
+      location_id: mainCampus?.id || ''
     });
     setEditingVisitor(null);
   };
@@ -2147,7 +2160,8 @@ function VisitorsPage() {
         how_heard_about_us: visitor.how_heard_about_us || '',
         prayer_request: visitor.prayer_request || '',
         followup_status: visitor.followup_status || 'NOT_STARTED',
-        language_preference: visitor.language_preference || 'FRENCH'
+        language_preference: visitor.language_preference || 'FRENCH',
+        location_id: visitor.location_id || ''
       });
     } else {
       resetForm();
@@ -2207,15 +2221,17 @@ function VisitorsPage() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const filteredVisitors = visitors.filter(v =>
-    v.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    v.phone?.includes(search)
-  );
+  const filteredVisitors = visitors.filter(v => {
+    if (filterLocation !== 'all' && v.location_id !== filterLocation) return false;
+    return v.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    v.phone?.includes(search);
+  });
 
   const columns = [
     { header: t('name'), key: 'full_name', render: (row) => <span style={{ fontWeight: '500' }}>{row.full_name}</span> },
     { header: t('visitDate'), key: 'visit_date', render: (row) => new Date(row.visit_date).toLocaleDateString() },
     { header: t('phone'), key: 'phone', render: (row) => <span style={{ color: '#6b7280' }}>{row.phone}</span> },
+    { header: '📍 Location', key: 'location', render: (row) => <span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '6px', fontSize: '12px' }}>{getLocationName(row.location_id)}</span> },
     { header: t('howHeard'), key: 'how_heard', render: (row) => <span style={{ color: '#6b7280' }}>{row.how_heard_about_us || '—'}</span> },
     { header: t('status'), key: 'status', render: (row) => <StatusBadge status={row.followup_status} /> },
     { header: t('firstTime'), key: 'first_time', render: (row) => row.is_first_time ? '✅' : '🔄' },
@@ -2276,8 +2292,12 @@ function VisitorsPage() {
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <SearchBar value={search} onChange={setSearch} />
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+            <option value="all">All Locations</option>
+            {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+          </select>
         </div>
         {loading ? <LoadingSpinner /> : (
           <DataTable columns={columns} data={filteredVisitors} onEdit={openModal} onDelete={setDeleteConfirm} onSMS={openSMSModal} />
@@ -2294,7 +2314,9 @@ function VisitorsPage() {
         <FormInput label={t('email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <FormInput label={t('visitDate')} type="date" value={form.visit_date} onChange={(e) => setForm({ ...form, visit_date: e.target.value })} />
-          <FormInput label={t('howHeard')} type="select" value={form.how_heard_about_us} onChange={(e) => setForm({ ...form, how_heard_about_us: e.target.value })} 
+          <FormInput label="📍 Location" type="select" value={form.location_id} onChange={(e) => setForm({ ...form, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
+        </div>
+        <FormInput label={t('howHeard')} type="select" value={form.how_heard_about_us} onChange={(e) => setForm({ ...form, how_heard_about_us: e.target.value })} 
             options={[{ value: 'Friend/Family', label: 'Friend/Family' }, { value: 'Social Media', label: 'Social Media' }, { value: 'Walk-in', label: 'Walk-in' }, { value: 'Flyer/Poster', label: 'Flyer/Poster' }, { value: 'Online Search', label: 'Online Search' }, { value: 'Event', label: 'Event' }]} />
         </div>
         <FormInput label={t('followUpStatus')} type="select" value={form.followup_status} onChange={(e) => setForm({ ...form, followup_status: e.target.value })}
@@ -2836,6 +2858,7 @@ function GivingPage() {
   const [donations, setDonations] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [members, setMembers] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -2843,9 +2866,10 @@ function GivingPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [chartView, setChartView] = useState('monthly');
+  const [filterLocation, setFilterLocation] = useState('all');
 
-  const [donationForm, setDonationForm] = useState({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category: 'TITHE', payment_method: 'CASH', notes: '' });
-  const [expenseForm, setExpenseForm] = useState({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '' });
+  const [donationForm, setDonationForm] = useState({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category: 'TITHE', payment_method: 'CASH', notes: '', location_id: '' });
+  const [expenseForm, setExpenseForm] = useState({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '', location_id: '' });
 
   const categories = ['TITHE', 'OFFERING', 'DONATION', 'MISSIONS', 'BUILDING', 'SPECIAL', 'OTHER'];
   const expenseCategories = ['GENERAL', 'BUILDING', 'UTILITIES', 'SALARIES', 'MISSIONS', 'SUPPLIES', 'TRANSPORT', 'EVENTS', 'OTHER'];
@@ -2855,26 +2879,34 @@ function GivingPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [donationsData, expensesData, membersData] = await Promise.all([
+    const [donationsData, expensesData, membersData, locData] = await Promise.all([
       supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'donation_date.desc' }),
       supabaseQuery('expenses', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'expense_date.desc' }),
-      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
     ]);
     setDonations(donationsData || []);
     setExpenses(expensesData || []);
     setMembers(membersData || []);
+    setLocations(locData || []);
     setLoading(false);
   };
 
+  const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
+
+  // Filtered data
+  const filteredDonations = filterLocation === 'all' ? donations : donations.filter(d => d.location_id === filterLocation);
+  const filteredExpenses = filterLocation === 'all' ? expenses : expenses.filter(e => e.location_id === filterLocation);
+
   // Calculations
-  const totalIncome = donations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  const totalIncome = filteredDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
   const netBalance = totalIncome - totalExpenses;
 
   // Category breakdown for pie chart
   const categoryTotals = categories.map(cat => ({
     category: cat,
-    amount: donations.filter(d => d.category === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+    amount: filteredDonations.filter(d => d.category === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
   })).filter(c => c.amount > 0);
 
   const categoryColors = {
@@ -2889,7 +2921,7 @@ function GivingPage() {
     for (let i = 5; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const monthStr = date.toISOString().slice(0, 7);
-      const monthIncome = donations
+      const monthIncome = filteredDonations
         .filter(d => d.donation_date?.startsWith(monthStr))
         .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
       months.push({
@@ -2904,13 +2936,13 @@ function GivingPage() {
   const maxMonthly = Math.max(...monthlyData.map(m => m.amount), 1);
 
   // Form handlers
-  const resetDonationForm = () => { setDonationForm({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category: 'TITHE', payment_method: 'CASH', notes: '' }); setEditingItem(null); };
-  const resetExpenseForm = () => { setExpenseForm({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '' }); setEditingItem(null); };
+  const resetDonationForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setDonationForm({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category: 'TITHE', payment_method: 'CASH', notes: '', location_id: mainCampus?.id || '' }); setEditingItem(null); };
+  const resetExpenseForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setExpenseForm({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '', location_id: mainCampus?.id || '' }); setEditingItem(null); };
 
   const openDonationModal = (donation = null) => {
     if (donation) {
       setEditingItem(donation);
-      setDonationForm({ member_id: donation.member_id || '', amount: donation.amount || '', donation_date: donation.donation_date || '', category: donation.category || 'TITHE', payment_method: donation.payment_method || 'CASH', notes: donation.notes || '' });
+      setDonationForm({ member_id: donation.member_id || '', amount: donation.amount || '', donation_date: donation.donation_date || '', category: donation.category || 'TITHE', payment_method: donation.payment_method || 'CASH', notes: donation.notes || '', location_id: donation.location_id || '' });
     } else { resetDonationForm(); }
     setShowModal(true);
   };
@@ -2918,7 +2950,7 @@ function GivingPage() {
   const openExpenseModal = (expense = null) => {
     if (expense) {
       setEditingItem(expense);
-      setExpenseForm({ category: expense.category || 'GENERAL', amount: expense.amount || '', description: expense.description || '', expense_date: expense.expense_date || '', payment_method: expense.payment_method || 'CASH', vendor_name: expense.vendor_name || '', notes: expense.notes || '' });
+      setExpenseForm({ category: expense.category || 'GENERAL', amount: expense.amount || '', description: expense.description || '', expense_date: expense.expense_date || '', payment_method: expense.payment_method || 'CASH', vendor_name: expense.vendor_name || '', notes: expense.notes || '', location_id: expense.location_id || '' });
     } else { resetExpenseForm(); }
     setShowExpenseModal(true);
   };
@@ -3011,10 +3043,16 @@ function GivingPage() {
       />
 
       {/* Tab Buttons */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-        <button onClick={() => setActiveTab('income')} style={{ padding: '12px 24px', border: activeTab === 'income' ? '2px solid #10b981' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'income' ? '#d1fae5' : 'white', color: activeTab === 'income' ? '#10b981' : '#6b7280', fontWeight: activeTab === 'income' ? '600' : '400', cursor: 'pointer' }}>💵 Income</button>
-        <button onClick={() => setActiveTab('expenses')} style={{ padding: '12px 24px', border: activeTab === 'expenses' ? '2px solid #ef4444' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'expenses' ? '#fef2f2' : 'white', color: activeTab === 'expenses' ? '#ef4444' : '#6b7280', fontWeight: activeTab === 'expenses' ? '600' : '400', cursor: 'pointer' }}>📤 Expenses</button>
-        <button onClick={() => setActiveTab('report')} style={{ padding: '12px 24px', border: activeTab === 'report' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'report' ? '#eef2ff' : 'white', color: activeTab === 'report' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'report' ? '600' : '400', cursor: 'pointer' }}>📊 Report</button>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => setActiveTab('income')} style={{ padding: '12px 24px', border: activeTab === 'income' ? '2px solid #10b981' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'income' ? '#d1fae5' : 'white', color: activeTab === 'income' ? '#10b981' : '#6b7280', fontWeight: activeTab === 'income' ? '600' : '400', cursor: 'pointer' }}>💵 Income</button>
+          <button onClick={() => setActiveTab('expenses')} style={{ padding: '12px 24px', border: activeTab === 'expenses' ? '2px solid #ef4444' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'expenses' ? '#fef2f2' : 'white', color: activeTab === 'expenses' ? '#ef4444' : '#6b7280', fontWeight: activeTab === 'expenses' ? '600' : '400', cursor: 'pointer' }}>📤 Expenses</button>
+          <button onClick={() => setActiveTab('report')} style={{ padding: '12px 24px', border: activeTab === 'report' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'report' ? '#eef2ff' : 'white', color: activeTab === 'report' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'report' ? '600' : '400', cursor: 'pointer' }}>📊 Report</button>
+        </div>
+        <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+          <option value="all">All Locations</option>
+          {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+        </select>
       </div>
 
       {/* Stats Cards */}
@@ -3022,7 +3060,7 @@ function GivingPage() {
         <StatCard label="Total Income" value={formatCurrency(totalIncome)} icon="💵" color="#10b981" />
         <StatCard label="Total Expenses" value={formatCurrency(totalExpenses)} icon="📤" color="#ef4444" />
         <StatCard label="Net Balance" value={formatCurrency(netBalance)} icon="💰" color={netBalance >= 0 ? '#10b981' : '#ef4444'} />
-        <StatCard label="This Month" value={formatCurrency(donations.filter(d => d.donation_date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0))} icon="📅" color="#6366f1" />
+        <StatCard label="This Month" value={formatCurrency(filteredDonations.filter(d => d.donation_date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0))} icon="📅" color="#6366f1" />
       </div>
 
       {loading ? <LoadingSpinner /> : (
@@ -3084,7 +3122,7 @@ function GivingPage() {
               <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
                 <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💵 Recent Donations</h3>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>{donations.length} records</span>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>{filteredDonations.length} records</span>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -3093,19 +3131,21 @@ function GivingPage() {
                         <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
                         <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Donor</th>
                         <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
                         <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
                         <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Method</th>
                         <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {donations.slice(0, 10).map((donation, i) => (
+                      {filteredDonations.slice(0, 10).map((donation, i) => (
                         <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px' }}>{donation.donation_date}</td>
                           <td style={{ padding: '12px 16px', fontWeight: '500' }}>{getMemberName(donation.member_id)}</td>
                           <td style={{ padding: '12px 16px' }}>
                             <span style={{ padding: '4px 10px', backgroundColor: `${categoryColors[donation.category]}20`, color: categoryColors[donation.category], borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{donation.category}</span>
                           </td>
+                          <td style={{ padding: '12px 16px' }}><span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '6px', fontSize: '12px' }}>📍 {getLocationName(donation.location_id)}</span></td>
                           <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: '#10b981' }}>{formatCurrency(donation.amount)}</td>
                           <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{donation.payment_method}</td>
                           <td style={{ padding: '12px 16px', textAlign: 'right' }}>
@@ -3126,7 +3166,7 @@ function GivingPage() {
             <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
               <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📤 Expenses</h3>
-                <span style={{ fontSize: '14px', color: '#6b7280' }}>{expenses.length} records</span>
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>{filteredExpenses.length} records</span>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -3135,19 +3175,21 @@ function GivingPage() {
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Description</th>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
                       <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Vendor</th>
                       <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {expenses.map((expense, i) => (
+                    {filteredExpenses.map((expense, i) => (
                       <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '12px 16px', fontSize: '14px' }}>{expense.expense_date}</td>
                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{expense.description}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{ padding: '4px 10px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '9999px', fontSize: '12px' }}>{expense.category}</span>
                         </td>
+                        <td style={{ padding: '12px 16px' }}><span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '6px', fontSize: '12px' }}>📍 {getLocationName(expense.location_id)}</span></td>
                         <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: '#ef4444' }}>{formatCurrency(expense.amount)}</td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{expense.vendor_name || '—'}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'right' }}>
@@ -3156,7 +3198,7 @@ function GivingPage() {
                         </td>
                       </tr>
                     ))}
-                    {expenses.length === 0 && <tr><td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No expenses recorded</td></tr>}
+                    {filteredExpenses.length === 0 && <tr><td colSpan="7" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No expenses recorded</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -3198,8 +3240,8 @@ function GivingPage() {
                   </thead>
                   <tbody>
                     {categories.map((cat, i) => {
-                      const income = donations.filter(d => d.category === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
-                      const expense = expenses.filter(e => e.category === cat).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+                      const income = filteredDonations.filter(d => d.category === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                      const expense = filteredExpenses.filter(e => e.category === cat).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
                       const net = income - expense;
                       if (income === 0 && expense === 0) return null;
                       return (
@@ -3244,6 +3286,7 @@ function GivingPage() {
         <FormInput label="Date" type="date" value={donationForm.donation_date} onChange={(e) => setDonationForm({ ...donationForm, donation_date: e.target.value })} />
         <FormInput label="Category" type="select" value={donationForm.category} onChange={(e) => setDonationForm({ ...donationForm, category: e.target.value })} options={categories.map(c => ({ value: c, label: c }))} />
         <FormInput label="Payment Method" type="select" value={donationForm.payment_method} onChange={(e) => setDonationForm({ ...donationForm, payment_method: e.target.value })} options={paymentMethods.map(m => ({ value: m, label: m.replace('_', ' ') }))} />
+        <FormInput label="📍 Location" type="select" value={donationForm.location_id} onChange={(e) => setDonationForm({ ...donationForm, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
         <FormInput label="Notes" type="textarea" value={donationForm.notes} onChange={(e) => setDonationForm({ ...donationForm, notes: e.target.value })} />
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => { setShowModal(false); resetDonationForm(); }}>Cancel</Button>
@@ -3259,6 +3302,7 @@ function GivingPage() {
         <FormInput label="Category" type="select" value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })} options={expenseCategories.map(c => ({ value: c, label: c }))} />
         <FormInput label="Vendor Name" value={expenseForm.vendor_name} onChange={(e) => setExpenseForm({ ...expenseForm, vendor_name: e.target.value })} placeholder="Supplier name" />
         <FormInput label="Payment Method" type="select" value={expenseForm.payment_method} onChange={(e) => setExpenseForm({ ...expenseForm, payment_method: e.target.value })} options={paymentMethods.map(m => ({ value: m, label: m.replace('_', ' ') }))} />
+        <FormInput label="📍 Location" type="select" value={expenseForm.location_id} onChange={(e) => setExpenseForm({ ...expenseForm, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
         <FormInput label="Notes" type="textarea" value={expenseForm.notes} onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })} />
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => { setShowExpenseModal(false); resetExpenseForm(); }}>Cancel</Button>
@@ -3279,24 +3323,30 @@ function SalvationsPage() {
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [salvations, setSalvations] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '' });
+  const [filterLocation, setFilterLocation] = useState('all');
+  const [form, setForm] = useState({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: '' });
 
   useEffect(() => { fetchSalvations(); }, []);
-  const fetchSalvations = async () => { setLoading(true); const data = await supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc' }); setSalvations(data || []); setLoading(false); };
-  const resetForm = () => { setForm({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '' }); setEditingRecord(null); };
-  const openModal = (record = null) => { if (record) { setEditingRecord(record); setForm({ full_name: record.full_name || '', phone: record.phone || '', email: record.email || '', gender: record.gender || '', age_group: record.age_group || '', salvation_date: record.salvation_date || '', followup_status: record.followup_status || 'PENDING', followup_notes: record.followup_notes || '' }); } else { resetForm(); } setShowModal(true); };
+  const fetchSalvations = async () => { setLoading(true); const [data, locData] = await Promise.all([supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc' }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setSalvations(data || []); setLocations(locData || []); setLoading(false); };
+  const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
+  const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: mainCampus?.id || '' }); setEditingRecord(null); };
+  const openModal = (record = null) => { if (record) { setEditingRecord(record); setForm({ full_name: record.full_name || '', phone: record.phone || '', email: record.email || '', gender: record.gender || '', age_group: record.age_group || '', salvation_date: record.salvation_date || '', followup_status: record.followup_status || 'PENDING', followup_notes: record.followup_notes || '', location_id: record.location_id || '' }); } else { resetForm(); } setShowModal(true); };
   const handleSave = async () => { if (!form.full_name) { alert('Name required'); return; } setSaving(true); try { if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, form); } else { await supabaseInsert('salvations', form); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { alert('Error: ' + error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('salvations', deleteConfirm.id); setDeleteConfirm(null); fetchSalvations(); };
+
+  const filteredSalvations = salvations.filter(s => filterLocation === 'all' || s.location_id === filterLocation);
 
   const columns = [
     { header: t('name'), key: 'name', render: (row) => <span style={{ fontWeight: '500' }}>{row.full_name}</span> },
     { header: t('date'), key: 'date', render: (row) => new Date(row.salvation_date).toLocaleDateString() },
     { header: t('phone'), key: 'phone', render: (row) => <span style={{ color: '#6b7280' }}>{row.phone || '—'}</span> },
+    { header: '📍 Location', key: 'location', render: (row) => <span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '6px', fontSize: '12px' }}>{getLocationName(row.location_id)}</span> },
     { header: t('status'), key: 'status', render: (row) => <StatusBadge status={row.followup_status} /> },
   ];
 
@@ -3304,11 +3354,19 @@ function SalvationsPage() {
     <div>
       <PageHeader title={`❤️ ${t('salvations')}`} subtitle={`${salvations.length} souls won`} actions={<Button onClick={() => openModal()}>➕ {t('recordSalvation')}</Button>} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard label={t('total')} value={salvations.length} icon="❤️" color="#ef4444" />
-        <StatCard label="This Month" value={salvations.filter(s => new Date(s.salvation_date) > new Date(Date.now() - 30*24*60*60*1000)).length} icon="📅" color="#6366f1" />
-        <StatCard label="Pending" value={salvations.filter(s => s.followup_status === 'PENDING').length} icon="⏰" color="#f59e0b" />
+        <StatCard label={t('total')} value={filteredSalvations.length} icon="❤️" color="#ef4444" />
+        <StatCard label="This Month" value={filteredSalvations.filter(s => new Date(s.salvation_date) > new Date(Date.now() - 30*24*60*60*1000)).length} icon="📅" color="#6366f1" />
+        <StatCard label="Pending" value={filteredSalvations.filter(s => s.followup_status === 'PENDING').length} icon="⏰" color="#f59e0b" />
       </div>
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>{loading ? <LoadingSpinner /> : <DataTable columns={columns} data={salvations} onEdit={openModal} onDelete={setDeleteConfirm} />}</div>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '14px', color: '#6b7280' }}>Showing {filteredSalvations.length} of {salvations.length}</span>
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+            <option value="all">All Locations</option>
+            {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+          </select>
+        </div>
+        {loading ? <LoadingSpinner /> : <DataTable columns={columns} data={filteredSalvations} onEdit={openModal} onDelete={setDeleteConfirm} />}</div>
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingRecord ? `✏️ ${t('edit')}` : `➕ ${t('recordSalvation')}`}>
         <FormInput label={t('name')} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -3323,6 +3381,7 @@ function SalvationsPage() {
           <FormInput label={t('date')} type="date" value={form.salvation_date} onChange={(e) => setForm({ ...form, salvation_date: e.target.value })} required />
           <FormInput label={t('status')} type="select" value={form.followup_status} onChange={(e) => setForm({ ...form, followup_status: e.target.value })} options={[{ value: 'PENDING', label: 'Pending' }, { value: 'IN_PROGRESS', label: t('inProgress') }, { value: 'COMPLETED', label: t('completed') }]} />
         </div>
+        <FormInput label="📍 Location" type="select" value={form.location_id} onChange={(e) => setForm({ ...form, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
         <FormInput label={t('followUpNotes')} type="textarea" value={form.followup_notes} onChange={(e) => setForm({ ...form, followup_notes: e.target.value })} />
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>{t('cancel')}</Button><Button onClick={handleSave} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button></div>
       </Modal>
@@ -3339,31 +3398,42 @@ function GroupsPage() {
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [groups, setGroups] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true });
+  const [filterLocation, setFilterLocation] = useState('all');
+  const [form, setForm] = useState({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: '' });
 
   useEffect(() => { fetchGroups(); }, []);
-  const fetchGroups = async () => { setLoading(true); const data = await supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }); setGroups(data || []); setLoading(false); };
-  const resetForm = () => { setForm({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true }); setEditingGroup(null); };
-  const openModal = (group = null) => { if (group) { setEditingGroup(group); setForm({ name: group.name || '', description: group.description || '', group_type: group.group_type || 'CELL', meeting_day: group.meeting_day || 'WEDNESDAY', meeting_time: group.meeting_time || '18:00', is_active: group.is_active ?? true }); } else { resetForm(); } setShowModal(true); };
+  const fetchGroups = async () => { setLoading(true); const [data, locData] = await Promise.all([supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setGroups(data || []); setLocations(locData || []); setLoading(false); };
+  const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
+  const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: mainCampus?.id || '' }); setEditingGroup(null); };
+  const openModal = (group = null) => { if (group) { setEditingGroup(group); setForm({ name: group.name || '', description: group.description || '', group_type: group.group_type || 'CELL', meeting_day: group.meeting_day || 'WEDNESDAY', meeting_time: group.meeting_time || '18:00', is_active: group.is_active ?? true, location_id: group.location_id || '' }); } else { resetForm(); } setShowModal(true); };
   const handleSave = async () => { if (!form.name) { alert('Name required'); return; } setSaving(true); try { if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, form); } else { await supabaseInsert('groups', form); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { alert('Error: ' + error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('groups', deleteConfirm.id); setDeleteConfirm(null); fetchGroups(); };
+
+  const filteredGroups = groups.filter(g => filterLocation === 'all' || g.location_id === filterLocation);
 
   return (
     <div>
       <PageHeader title={`👨‍👩‍👧‍👦 ${t('groups')}`} subtitle={`${groups.length} ${t('groups')}`} actions={<Button onClick={() => openModal()}>➕ {t('createGroup')}</Button>} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard label={t('total')} value={groups.length} icon="👥" />
-        <StatCard label={t('active')} value={groups.filter(g => g.is_active).length} icon="✅" color="#10b981" />
-        <StatCard label={t('cellGroup')} value={groups.filter(g => g.group_type === 'CELL').length} icon="🏠" color="#6366f1" />
+        <StatCard label={t('total')} value={filteredGroups.length} icon="👥" />
+        <StatCard label={t('active')} value={filteredGroups.filter(g => g.is_active).length} icon="✅" color="#10b981" />
+        <StatCard label={t('cellGroup')} value={filteredGroups.filter(g => g.group_type === 'CELL').length} icon="🏠" color="#6366f1" />
+      </div>
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+        <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+          <option value="all">All Locations</option>
+          {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+        </select>
       </div>
       {loading ? <LoadingSpinner /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-          {groups.map((group) => (
+          {filteredGroups.map((group) => (
             <div key={group.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div style={{ width: '48px', height: '48px', backgroundColor: '#e0e7ff', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>👥</div>
@@ -3371,7 +3441,7 @@ function GroupsPage() {
               </div>
               <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>{group.name}</h3>
               <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280' }}>{group.description || 'No description'}</p>
-              <div style={{ display: 'flex', gap: '8px' }}><StatusBadge status={group.group_type} />{group.is_active && <span style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px' }}>{t('active')}</span>}</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}><StatusBadge status={group.group_type} />{group.is_active && <span style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px' }}>{t('active')}</span>}{group.location_id && <span style={{ padding: '4px 12px', backgroundColor: '#e0e7ff', color: '#4338ca', borderRadius: '9999px', fontSize: '12px' }}>📍 {getLocationName(group.location_id)}</span>}</div>
               <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e5e7eb', fontSize: '14px', color: '#6b7280' }}>📅 {group.meeting_day} {group.meeting_time && `at ${group.meeting_time}`}</div>
             </div>
           ))}
@@ -3385,6 +3455,7 @@ function GroupsPage() {
           <FormInput label={t('meetingDay')} type="select" value={form.meeting_day} onChange={(e) => setForm({ ...form, meeting_day: e.target.value })} options={[{ value: 'SUNDAY', label: t('sunday') }, { value: 'MONDAY', label: t('monday') }, { value: 'TUESDAY', label: t('tuesday') }, { value: 'WEDNESDAY', label: t('wednesday') }, { value: 'THURSDAY', label: t('thursday') }, { value: 'FRIDAY', label: t('friday') }, { value: 'SATURDAY', label: t('saturday') }]} />
         </div>
         <FormInput label={t('meetingTime')} type="time" value={form.meeting_time} onChange={(e) => setForm({ ...form, meeting_time: e.target.value })} />
+        <FormInput label="📍 Location" type="select" value={form.location_id} onChange={(e) => setForm({ ...form, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /><span>{t('active')}</span></label>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>{t('cancel')}</Button><Button onClick={handleSave} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button></div>
       </Modal>
@@ -3464,6 +3535,7 @@ function VolunteersPage() {
   const CHURCH_ID = user?.church_id;
   const [volunteers, setVolunteers] = useState([]);
   const [members, setMembers] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingVolunteer, setEditingVolunteer] = useState(null);
@@ -3471,6 +3543,7 @@ function VolunteersPage() {
   const [saving, setSaving] = useState(false);
   const [filterMinistry, setFilterMinistry] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterLocation, setFilterLocation] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const ministries = ['Worship', 'Children', 'Youth', 'Ushers', 'Media', 'Security', 'Hospitality', 'Prayer', 'Outreach', 'Discipleship', 'Admin', 'Other'];
@@ -3480,27 +3553,33 @@ function VolunteersPage() {
   const [form, setForm] = useState({
     full_name: '', email: '', phone: '', ministry: 'Worship', role: '',
     status: 'ACTIVE', availability: 'Sundays', start_date: '', skills: '',
-    notes: '', emergency_contact: '', emergency_phone: '', is_team_leader: false, member_id: ''
+    notes: '', emergency_contact: '', emergency_phone: '', is_team_leader: false, member_id: '', location_id: ''
   });
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     setLoading(true);
-    const [volunteersData, membersData] = await Promise.all([
+    const [volunteersData, membersData, locData] = await Promise.all([
       supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
     ]);
     setVolunteers(volunteersData || []);
     setMembers(membersData || []);
+    setLocations(locData || []);
     setLoading(false);
   };
 
+  const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
+
   const resetForm = () => {
+    const mainCampus = locations.find(l => l.is_main_campus);
     setForm({
       full_name: '', email: '', phone: '', ministry: 'Worship', role: '',
       status: 'ACTIVE', availability: 'Sundays', start_date: '', skills: '',
-      notes: '', emergency_contact: '', emergency_phone: '', is_team_leader: false, member_id: ''
+      notes: '', emergency_contact: '', emergency_phone: '', is_team_leader: false, member_id: '',
+      location_id: mainCampus?.id || ''
     });
     setEditingVolunteer(null);
   };
@@ -3522,7 +3601,8 @@ function VolunteersPage() {
         emergency_contact: volunteer.emergency_contact || '',
         emergency_phone: volunteer.emergency_phone || '',
         is_team_leader: volunteer.is_team_leader || false,
-        member_id: volunteer.member_id || ''
+        member_id: volunteer.member_id || '',
+        location_id: volunteer.location_id || ''
       });
     } else {
       resetForm();
@@ -3575,6 +3655,7 @@ function VolunteersPage() {
   const filteredVolunteers = volunteers.filter(v => {
     if (filterMinistry !== 'all' && v.ministry !== filterMinistry) return false;
     if (filterStatus !== 'all' && v.status !== filterStatus) return false;
+    if (filterLocation !== 'all' && v.location_id !== filterLocation) return false;
     if (searchTerm && !v.full_name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
   });
@@ -3648,6 +3729,10 @@ function VolunteersPage() {
             <option value="all">All Statuses</option>
             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+            <option value="all">All Locations</option>
+            {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+          </select>
         </div>
       </div>
 
@@ -3663,6 +3748,7 @@ function VolunteersPage() {
                   <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Role</th>
                   <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
                   <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Availability</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
                   <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Contact</th>
                   <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
                 </tr>
@@ -3696,6 +3782,7 @@ function VolunteersPage() {
                       </span>
                     </td>
                     <td style={{ padding: '16px', color: '#6b7280', fontSize: '14px' }}>{volunteer.availability || '—'}</td>
+                    <td style={{ padding: '16px' }}><span style={{ padding: '2px 8px', backgroundColor: '#e0e7ff', color: '#4338ca', borderRadius: '6px', fontSize: '12px' }}>📍 {getLocationName(volunteer.location_id)}</span></td>
                     <td style={{ padding: '16px' }}>
                       {volunteer.phone && <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>📱 {volunteer.phone}</p>}
                     </td>
@@ -3762,6 +3849,8 @@ function VolunteersPage() {
         </div>
 
         <FormInput label="Skills" type="textarea" value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} placeholder="List any relevant skills..." />
+
+        <FormInput label="📍 Location" type="select" value={form.location_id} onChange={(e) => setForm({ ...form, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
 
         <div style={{ padding: '12px', backgroundColor: '#fef3c7', borderRadius: '10px', marginBottom: '16px' }}>
           <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '600', color: '#92400e' }}>🚨 Emergency Contact</p>
