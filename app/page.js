@@ -3883,6 +3883,7 @@ function MessagingPage() {
   const [visitors, setVisitors] = useState([]);
   const [groups, setGroups] = useState([]);
   const [volunteers, setVolunteers] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [messageHistory, setMessageHistory] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3894,6 +3895,7 @@ function MessagingPage() {
     recipientType: 'ALL_MEMBERS',
     groupId: '',
     ministryFilter: '',
+    locationFilter: 'all',
     customRecipients: [],
     subject: '',
     body: ''
@@ -3906,13 +3908,14 @@ function MessagingPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [membersData, visitorsData, groupsData, volunteersData, messagesData, templatesData] = await Promise.all([
+    const [membersData, visitorsData, groupsData, volunteersData, messagesData, templatesData, locationsData] = await Promise.all([
       supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('messages', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'sent_at.desc', limit: 20 }),
-      supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
     ]);
     setMembers(membersData || []);
     setVisitors(visitorsData || []);
@@ -3920,7 +3923,14 @@ function MessagingPage() {
     setVolunteers(volunteersData || []);
     setMessageHistory(messagesData || []);
     setTemplates(templatesData || []);
+    setLocations(locationsData || []);
     setLoading(false);
+  };
+
+  // Apply location filter
+  const applyLocationFilter = (items) => {
+    if (message.locationFilter === 'all') return items;
+    return items.filter(item => item.location_id === message.locationFilter);
   };
 
   // Get recipients based on selection
@@ -3928,20 +3938,20 @@ function MessagingPage() {
     let recipients = [];
     switch (message.recipientType) {
       case 'ALL_MEMBERS':
-        recipients = members.filter(m => m.phone).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'member' }));
+        recipients = applyLocationFilter(members).filter(m => m.phone).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'member' }));
         break;
       case 'ALL_VISITORS':
-        recipients = visitors.filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'visitor' }));
+        recipients = applyLocationFilter(visitors).filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'visitor' }));
         break;
       case 'ALL_VOLUNTEERS':
-        recipients = volunteers.filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'volunteer' }));
+        recipients = applyLocationFilter(volunteers).filter(v => v.phone).map(v => ({ name: v.full_name, phone: v.phone, type: 'volunteer' }));
         break;
       case 'GROUP':
         // In real app, would filter by group membership
-        recipients = members.filter(m => m.phone).slice(0, 10).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'member' }));
+        recipients = applyLocationFilter(members).filter(m => m.phone).slice(0, 10).map(m => ({ name: `${m.first_name} ${m.last_name}`, phone: m.phone, type: 'member' }));
         break;
       case 'MINISTRY':
-        recipients = volunteers.filter(v => v.phone && v.ministry === message.ministryFilter).map(v => ({ name: v.full_name, phone: v.phone, type: 'volunteer' }));
+        recipients = applyLocationFilter(volunteers).filter(v => v.phone && v.ministry === message.ministryFilter).map(v => ({ name: v.full_name, phone: v.phone, type: 'volunteer' }));
         break;
       case 'CUSTOM':
         recipients = selectedRecipients;
@@ -4078,6 +4088,20 @@ function MessagingPage() {
                     <option value="CUSTOM">✅ Custom Selection</option>
                   </select>
                 </div>
+
+                {/* Location Filter */}
+                {message.recipientType !== 'CUSTOM' && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>📍 Filter by Location</label>
+                    <select value={message.locationFilter} onChange={(e) => setMessage({ ...message, locationFilter: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+                      <option value="all">All Locations ({getRecipients().length} recipients)</option>
+                      {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.is_main_campus ? `🏛️ ${loc.name}` : `🏢 ${loc.name}`}</option>)}
+                    </select>
+                    {message.locationFilter !== 'all' && (
+                      <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6366f1' }}>📍 Sending to {getRecipients().length} recipients at {locations.find(l => l.id === message.locationFilter)?.name || 'selected location'}</p>
+                    )}
+                  </div>
+                )}
 
                 {/* Group Selection */}
                 {message.recipientType === 'GROUP' && (
@@ -4262,6 +4286,8 @@ function ReportsPage() {
   const [generating, setGenerating] = useState(false);
   const [activeReport, setActiveReport] = useState('overview');
   const [dateRange, setDateRange] = useState('month');
+  const [filterLocation, setFilterLocation] = useState('all');
+  const [locations, setLocations] = useState([]);
   const [data, setData] = useState({
     members: [], visitors: [], donations: [], expenses: [], 
     salvations: [], attendance: [], volunteers: [], groups: []
@@ -4271,7 +4297,7 @@ function ReportsPage() {
 
   const fetchAllData = async () => {
     setLoading(true);
-    const [members, visitors, donations, expenses, salvations, attendance, volunteers, groups] = await Promise.all([
+    const [members, visitors, donations, expenses, salvations, attendance, volunteers, groups, locationsData] = await Promise.all([
       supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
@@ -4279,14 +4305,27 @@ function ReportsPage() {
       supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
     ]);
     setData({
       members: members || [], visitors: visitors || [], donations: donations || [],
       expenses: expenses || [], salvations: salvations || [], attendance: attendance || [],
       volunteers: volunteers || [], groups: groups || []
     });
+    setLocations(locationsData || []);
     setLoading(false);
+  };
+
+  const getLocationName = (locationId) => {
+    const location = locations.find(l => l.id === locationId);
+    return location ? location.name : 'Unknown';
+  };
+
+  // Apply location filter to any dataset
+  const filterByLocation = (items) => {
+    if (filterLocation === 'all') return items;
+    return items.filter(item => item.location_id === filterLocation);
   };
 
   // Date filtering
@@ -4308,12 +4347,15 @@ function ReportsPage() {
     return items.filter(item => item[dateField] >= startDate);
   };
 
-  // Calculations
-  const filteredDonations = filterByDate(data.donations, 'donation_date');
-  const filteredExpenses = filterByDate(data.expenses, 'expense_date');
-  const filteredSalvations = filterByDate(data.salvations, 'salvation_date');
-  const filteredVisitors = filterByDate(data.visitors, 'visit_date');
-  const filteredAttendance = filterByDate(data.attendance, 'service_date');
+  // Calculations - apply both location and date filters
+  const filteredDonations = filterByDate(filterByLocation(data.donations), 'donation_date');
+  const filteredExpenses = filterByDate(filterByLocation(data.expenses), 'expense_date');
+  const filteredSalvations = filterByDate(filterByLocation(data.salvations), 'salvation_date');
+  const filteredVisitors = filterByDate(filterByLocation(data.visitors), 'visit_date');
+  const filteredAttendance = filterByDate(filterByLocation(data.attendance), 'service_date');
+  const filteredMembers = filterByLocation(data.members);
+  const filteredVolunteers = filterByLocation(data.volunteers);
+  const filteredGroups = filterByLocation(data.groups);
 
   const totalIncome = filteredDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
@@ -4365,7 +4407,7 @@ function ReportsPage() {
         }
       />
 
-      {/* Date Range Selector */}
+      {/* Date Range & Location Selector */}
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>📅 Date Range:</span>
@@ -4394,6 +4436,13 @@ function ReportsPage() {
                 {option.label}
               </button>
             ))}
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>📍 Location:</span>
+            <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}>
+              <option value="all">All Locations</option>
+              {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.is_main_campus ? `🏛️ ${loc.name}` : loc.name}</option>)}
+            </select>
           </div>
         </div>
       </div>
@@ -4429,7 +4478,7 @@ function ReportsPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                 <div style={{ backgroundColor: '#dbeafe', borderRadius: '16px', padding: '24px' }}>
                   <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#1e40af' }}>👥 Total Members</p>
-                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: '#1e40af' }}>{data.members.length}</p>
+                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: '#1e40af' }}>{filteredMembers.length}</p>
                 </div>
                 <div style={{ backgroundColor: '#dcfce7', borderRadius: '16px', padding: '24px' }}>
                   <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#166534' }}>💰 Total Income</p>
@@ -4452,9 +4501,9 @@ function ReportsPage() {
                   <div>
                     <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280' }}>Membership</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Active Members</span><strong>{data.members.filter(m => m.status === 'ACTIVE').length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Active Members</span><strong>{filteredMembers.filter(m => m.status === 'ACTIVE').length}</strong></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>New Visitors</span><strong>{filteredVisitors.length}</strong></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Groups</span><strong>{data.groups.length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Groups</span><strong>{filteredGroups.length}</strong></div>
                     </div>
                   </div>
                   <div>
@@ -4468,8 +4517,8 @@ function ReportsPage() {
                   <div>
                     <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280' }}>Ministry</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Volunteers</span><strong>{data.volunteers.length}</strong></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Active</span><strong>{data.volunteers.filter(v => v.status === 'ACTIVE').length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Volunteers</span><strong>{filteredVolunteers.length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Active</span><strong>{filteredVolunteers.filter(v => v.status === 'ACTIVE').length}</strong></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Services Recorded</span><strong>{filteredAttendance.length}</strong></div>
                     </div>
                   </div>
@@ -4612,10 +4661,10 @@ function ReportsPage() {
           {activeReport === 'membership' && (
             <div style={{ display: 'grid', gap: '24px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                <StatCard label="Total Members" value={data.members.length} icon="👥" color="#6366f1" />
-                <StatCard label="Active" value={data.members.filter(m => m.status === 'ACTIVE').length} icon="✅" color="#10b981" />
+                <StatCard label="Total Members" value={filteredMembers.length} icon="👥" color="#6366f1" />
+                <StatCard label="Active" value={filteredMembers.filter(m => m.status === 'ACTIVE').length} icon="✅" color="#10b981" />
                 <StatCard label="New Visitors" value={filteredVisitors.length} icon="🚶" color="#f59e0b" />
-                <StatCard label="Groups" value={data.groups.length} icon="👨‍👩‍👧‍👦" color="#8b5cf6" />
+                <StatCard label="Groups" value={filteredGroups.length} icon="👨‍👩‍👧‍👦" color="#8b5cf6" />
               </div>
 
               <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
@@ -4627,15 +4676,17 @@ function ReportsPage() {
                     <tr>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Name</th>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Phone</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Joined</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.members.slice(0, 15).map((member, i) => (
+                    {filteredMembers.slice(0, 15).map((member, i) => (
                       <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{member.first_name} {member.last_name}</td>
                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{member.phone || '—'}</td>
+                        <td style={{ padding: '12px 16px', color: '#6b7280' }}>{getLocationName(member.location_id)}</td>
                         <td style={{ padding: '12px 16px' }}><StatusBadge status={member.status} /></td>
                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{formatDate(member.created_at)}</td>
                       </tr>
@@ -4687,9 +4738,9 @@ function ReportsPage() {
           {activeReport === 'volunteers' && (
             <div style={{ display: 'grid', gap: '24px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                <StatCard label="Total Volunteers" value={data.volunteers.length} icon="🙋‍♂️" color="#6366f1" />
-                <StatCard label="Active" value={data.volunteers.filter(v => v.status === 'ACTIVE').length} icon="✅" color="#10b981" />
-                <StatCard label="Team Leaders" value={data.volunteers.filter(v => v.is_team_leader).length} icon="⭐" color="#f59e0b" />
+                <StatCard label="Total Volunteers" value={filteredVolunteers.length} icon="🙋‍♂️" color="#6366f1" />
+                <StatCard label="Active" value={filteredVolunteers.filter(v => v.status === 'ACTIVE').length} icon="✅" color="#10b981" />
+                <StatCard label="Team Leaders" value={filteredVolunteers.filter(v => v.is_team_leader).length} icon="⭐" color="#f59e0b" />
               </div>
 
               <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
@@ -4707,7 +4758,7 @@ function ReportsPage() {
                   </thead>
                   <tbody>
                     {['Worship', 'Children', 'Youth', 'Ushers', 'Media', 'Security', 'Hospitality', 'Prayer'].map((ministry, i) => {
-                      const ministryVolunteers = data.volunteers.filter(v => v.ministry === ministry);
+                      const ministryVolunteers = filteredVolunteers.filter(v => v.ministry === ministry);
                       if (ministryVolunteers.length === 0) return null;
                       return (
                         <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
