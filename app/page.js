@@ -694,6 +694,21 @@ export default function ChurchSmartApp() {
 function AppContent() {
   const { user, loading } = useAuth();
 
+  // ── Public Join Page: detect ?join=CHURCH_ID ──
+  const [joinChurchId, setJoinChurchId] = useState(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const joinId = params.get('join');
+      if (joinId) setJoinChurchId(joinId);
+    }
+  }, []);
+
+  // Render public join form (no auth required)
+  if (joinChurchId) {
+    return <PublicJoinPage churchId={joinChurchId} />;
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
@@ -710,6 +725,227 @@ function AppContent() {
   }
 
   return <Dashboard />;
+}
+
+// ==========================================
+// PUBLIC JOIN PAGE - Self-Service Member Registration
+// ==========================================
+function PublicJoinPage({ churchId }) {
+  const [form, setForm] = useState({
+    first_name: '', last_name: '', email: '', phone: '', whatsapp: '', date_of_birth: '',
+    gender: 'MALE', address: '', city: '', emergency_contact: '', emergency_phone: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [churchName, setChurchName] = useState('');
+  const [churchLogo, setChurchLogo] = useState('');
+  const [locations, setLocations] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState('');
+
+  // Fetch church info + locations
+  useEffect(() => {
+    const fetchChurchInfo = async () => {
+      try {
+        const churchData = await supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: churchId }] });
+        if (churchData && churchData.length > 0) {
+          setChurchName(churchData[0].name || 'Our Church');
+          setChurchLogo(churchData[0].logo_url || '');
+        }
+        const locsData = await supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }] });
+        if (locsData && locsData.length > 0) {
+          setLocations(locsData);
+          const mainCampus = locsData.find(l => l.is_main_campus);
+          setSelectedLocation(mainCampus?.id || locsData[0]?.id || '');
+        }
+      } catch (err) { console.error('Error fetching church info:', err); }
+    };
+    fetchChurchInfo();
+  }, [churchId]);
+
+  const handleSubmit = async () => {
+    if (!form.first_name || !form.last_name) {
+      setError('First name and last name are required.');
+      return;
+    }
+    if (!form.phone && !form.email) {
+      setError('Please provide at least a phone number or email address.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    try {
+      await supabaseInsert('members', {
+        church_id: churchId,
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        email: form.email.trim() || null,
+        phone: form.phone.trim() || null,
+        whatsapp: form.whatsapp.trim() || null,
+        date_of_birth: form.date_of_birth || null,
+        gender: form.gender,
+        address: form.address.trim() || null,
+        city: form.city.trim() || null,
+        emergency_contact: form.emergency_contact.trim() || null,
+        emergency_phone: form.emergency_phone.trim() || null,
+        status: 'NEW',
+        location_id: selectedLocation || null,
+        membership_date: new Date().toISOString().split('T')[0],
+        notes: 'Self-registered via connect link'
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+    }
+    setSubmitting(false);
+  };
+
+  // Success screen
+  if (submitted) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '24px', padding: '48px', maxWidth: '480px', width: '100%', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>✅</div>
+          <h1 style={{ margin: '0 0 12px 0', fontSize: '28px', fontWeight: '700', color: '#166534' }}>Welcome!</h1>
+          <p style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#374151' }}>Thank you, <strong>{form.first_name}</strong>!</p>
+          <p style={{ margin: '0 0 24px 0', fontSize: '15px', color: '#6b7280', lineHeight: '1.6' }}>
+            Your information has been submitted to <strong>{churchName || 'the church'}</strong>. 
+            A church leader will be in touch with you soon.
+          </p>
+          <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>You can close this page now.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ maxWidth: '520px', width: '100%' }}>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          {churchLogo ? (
+            <img src={churchLogo} alt={churchName} style={{ height: '60px', marginBottom: '16px', objectFit: 'contain' }} />
+          ) : (
+            <div style={{ fontSize: '48px', marginBottom: '8px' }}>⛪</div>
+          )}
+          <h1 style={{ margin: '0 0 8px 0', fontSize: '26px', fontWeight: '700', color: '#1f2937' }}>{churchName || 'Welcome'}</h1>
+          <p style={{ margin: 0, fontSize: '15px', color: '#6b7280' }}>Please fill in your details to join our community</p>
+        </div>
+
+        {/* Form Card */}
+        <div style={{ backgroundColor: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+
+          {error && (
+            <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', marginBottom: '20px', fontSize: '14px', color: '#991b1b' }}>
+              ⚠️ {error}
+            </div>
+          )}
+
+          {/* Name Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>First Name *</label>
+              <input type="text" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} placeholder="John" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Last Name *</label>
+              <input type="text" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} placeholder="Doe" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+            </div>
+          </div>
+
+          {/* Phone + WhatsApp Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>📱 Phone Number *</label>
+              <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+237 6XX XXX XXX" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>💬 WhatsApp</label>
+              <input type="tel" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="Same or different number" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+            </div>
+          </div>
+
+          {/* Email */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Email</label>
+            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@example.com" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+          </div>
+
+          {/* Gender + DOB Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Gender</label>
+              <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', backgroundColor: 'white' }}>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Date of Birth</label>
+              <input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px' }} />
+            </div>
+          </div>
+
+          {/* Address + City Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Address</label>
+              <input type="text" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street address" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>City</label>
+              <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Yaoundé" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+            </div>
+          </div>
+
+          {/* Emergency Contact Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>🆘 Emergency Contact</label>
+              <input type="text" value={form.emergency_contact} onChange={(e) => setForm({ ...form, emergency_contact: e.target.value })} placeholder="Contact name" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>📞 Emergency Phone</label>
+              <input type="tel" value={form.emergency_phone} onChange={(e) => setForm({ ...form, emergency_phone: e.target.value })} placeholder="+237 6XX XXX XXX" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+            </div>
+          </div>
+
+          {/* Location (if multiple) */}
+          {locations.length > 1 && (
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>📍 Campus / Location</label>
+              <select value={selectedLocation} onChange={(e) => setSelectedLocation(e.target.value)} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', backgroundColor: 'white' }}>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.is_main_campus ? `${loc.name} (Main Campus)` : loc.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <button onClick={handleSubmit} disabled={submitting} style={{
+            width: '100%', padding: '14px', border: 'none', borderRadius: '12px',
+            backgroundColor: submitting ? '#a5b4fc' : '#6366f1', color: 'white',
+            fontSize: '16px', fontWeight: '600', cursor: submitting ? 'wait' : 'pointer',
+            transition: 'all 0.2s', marginTop: '4px'
+          }}>
+            {submitting ? '⏳ Submitting...' : '✅ Submit My Information'}
+          </button>
+
+          <p style={{ margin: '16px 0 0 0', fontSize: '12px', color: '#9ca3af', textAlign: 'center', lineHeight: '1.5' }}>
+            Your information is securely stored and only accessible to church leadership.
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div style={{ textAlign: 'center', marginTop: '24px' }}>
+          <p style={{ fontSize: '12px', color: '#9ca3af' }}>Powered by <span style={{ fontWeight: '600', color: '#6366f1' }}>ChurchSmart</span></p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ==========================================
@@ -1916,12 +2152,29 @@ function MembersPage() {
 
   const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
+  // ── Invite Link ──
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const inviteLink = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}?join=${CHURCH_ID}` : '';
+
+  const copyInviteLink = () => {
+    navigator.clipboard.writeText(inviteLink).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
+    });
+  };
+
   return (
     <div>
       <PageHeader
         title={`👥 ${t('members')}`}
         subtitle={`Manage your ${members.length} church members across ${locations.length} locations`}
-        actions={<Button onClick={() => openModal()}>➕ {t('addMember')}</Button>}
+        actions={
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Button variant="secondary" onClick={() => setShowInviteModal(true)}>🔗 Invite Link</Button>
+            <Button onClick={() => openModal()}>➕ {t('addMember')}</Button>
+          </div>
+        }
       />
 
       {/* Stats Cards */}
@@ -2052,7 +2305,81 @@ function MembersPage() {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Invite Link Modal */}
+      <Modal isOpen={showInviteModal} onClose={() => { setShowInviteModal(false); setLinkCopied(false); }} title="🔗 Member Self-Registration Link" width="560px">
+        <div style={{ padding: '8px 0' }}>
+          {/* Explanation */}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '16px', backgroundColor: '#eef2ff', borderRadius: '12px', marginBottom: '20px' }}>
+            <span style={{ fontSize: '24px' }}>💡</span>
+            <div>
+              <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#4338ca' }}>How it works</p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#6366f1', lineHeight: '1.5' }}>
+                Share this link with your congregation. They fill in their own details on a simple form — no login needed. 
+                New entries appear in your Members list with status <strong style={{ backgroundColor: '#fef3c7', padding: '1px 6px', borderRadius: '4px', color: '#92400e' }}>NEW</strong> for your review.
+              </p>
+            </div>
+          </div>
+
+          {/* Link Display + Copy */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Registration URL</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input type="text" readOnly value={inviteLink} style={{ flex: 1, padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', backgroundColor: '#f9fafb', color: '#374151', outline: 'none', fontFamily: 'monospace' }} onClick={(e) => e.target.select()} />
+              <button onClick={copyInviteLink} style={{
+                padding: '12px 20px', border: 'none', borderRadius: '10px',
+                backgroundColor: linkCopied ? '#dcfce7' : '#6366f1',
+                color: linkCopied ? '#166534' : 'white',
+                fontSize: '14px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s',
+                minWidth: '100px'
+              }}>
+                {linkCopied ? '✅ Copied!' : '📋 Copy'}
+              </button>
+            </div>
+          </div>
+
+          {/* QR Code Section */}
+          <div style={{ textAlign: 'center', marginBottom: '20px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>📱 QR Code — Display on screen during service</p>
+            <div style={{ display: 'inline-block', padding: '12px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(inviteLink)}&color=4338ca`} 
+                alt="QR Code" 
+                style={{ width: '180px', height: '180px', display: 'block' }} 
+              />
+            </div>
+            <p style={{ margin: '12px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>Members can scan this with their phone camera</p>
+          </div>
+
+          {/* Share Options */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Share via</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+              <button onClick={() => { window.open(`https://wa.me/?text=${encodeURIComponent(`Join our church community! Register your details here: ${inviteLink}`)}`, '_blank'); }} style={{ padding: '12px', border: '1px solid #25d366', borderRadius: '10px', backgroundColor: '#f0fdf4', color: '#166534', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                💬 WhatsApp
+              </button>
+              <button onClick={() => { window.open(`sms:?body=${encodeURIComponent(`Join our church! Register here: ${inviteLink}`)}`, '_blank'); }} style={{ padding: '12px', border: '1px solid #6366f1', borderRadius: '10px', backgroundColor: '#eef2ff', color: '#4338ca', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                📱 SMS
+              </button>
+              <button onClick={() => { window.open(`mailto:?subject=${encodeURIComponent('Join Our Church')}&body=${encodeURIComponent(`We'd love to have you! Register your details here: ${inviteLink}`)}`, '_blank'); }} style={{ padding: '12px', border: '1px solid #f59e0b', borderRadius: '10px', backgroundColor: '#fef3c7', color: '#92400e', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                📧 Email
+              </button>
+            </div>
+          </div>
+
+          {/* Pro Tips */}
+          <div style={{ padding: '14px 16px', backgroundColor: '#f0f9ff', borderRadius: '10px', border: '1px solid #bae6fd' }}>
+            <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: '600', color: '#0369a1' }}>💡 Pro Tips</p>
+            <div style={{ fontSize: '12px', color: '#0369a1', lineHeight: '1.7' }}>
+              <p style={{ margin: 0 }}>• Display the QR code on projector during announcements</p>
+              <p style={{ margin: 0 }}>• Send the link in your church WhatsApp group</p>
+              <p style={{ margin: 0 }}>• Print it on your Sunday bulletin or connection card</p>
+              <p style={{ margin: 0 }}>• New members appear with status "NEW" for follow-up</p>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add/Edit Member Modal */}
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingMember ? '✏️ Edit Member' : '➕ Add Member'} width="600px">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <FormInput label="First Name *" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required />
