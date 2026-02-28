@@ -1287,8 +1287,24 @@ function LoginPage() {
 function Dashboard() {
   const { user, logout } = useAuth();
   const { t, language, changeLanguage } = useLanguage();
+  const CHURCH_ID = user?.church_id;
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth > 768 : true);
+  const [churchLogo, setChurchLogo] = useState('');
+  const [churchName, setChurchName] = useState('');
+
+  // Fetch church branding
+  useEffect(() => {
+    const fetchBranding = async () => {
+      if (!CHURCH_ID) return;
+      const ch = await supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true });
+      if (ch) {
+        setChurchLogo(ch.logo_url || '');
+        setChurchName(ch.name || '');
+      }
+    };
+    fetchBranding();
+  }, [CHURCH_ID]);
   const menuItems = [
     { id: 'dashboard', label: t('dashboard'), icon: '📊' },
     { id: 'members', label: t('members'), icon: '👥' },
@@ -1316,7 +1332,14 @@ function Dashboard() {
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} style={{ width: sidebarOpen ? '260px' : '80px', backgroundColor: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', flexShrink: 0 }}>
         {/* Logo */}
         <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '40px', width: 'auto' }} />
+          {churchLogo ? (
+            <img src={churchLogo} alt={churchName || 'Church'} style={{ height: '40px', width: 'auto', maxWidth: sidebarOpen ? '180px' : '40px', objectFit: 'contain' }} />
+          ) : (
+            <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '40px', width: 'auto' }} />
+          )}
+          {sidebarOpen && churchLogo && churchName && (
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{churchName}</span>
+          )}
         </div>
 
         {/* Menu Items */}
@@ -6613,59 +6636,111 @@ function SettingsPage() {
               {/* Church Logo */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🖼️ Church Logo</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                  <div style={{ width: '100px', height: '100px', borderRadius: '16px', border: '2px dashed #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#f9fafb', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
+                  {/* Logo Preview */}
+                  <div style={{ width: '120px', height: '120px', borderRadius: '16px', border: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#f9fafb', flexShrink: 0, position: 'relative' }}>
                     {church?.logo_url ? (
-                      <img src={church.logo_url} alt="Church Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <img src={church.logo_url} alt="Church Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '8px' }} />
                     ) : (
-                      <span style={{ fontSize: '36px' }}>⛪</span>
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ fontSize: '36px', display: 'block' }}>⛪</span>
+                        <span style={{ fontSize: '11px', color: '#9ca3af' }}>No logo</span>
+                      </div>
                     )}
                   </div>
+
+                  {/* Upload Controls */}
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#374151' }}>
-                      Your logo appears on the public registration page, reports, and member-facing content.
+                    <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                      Upload your church logo
                     </p>
-                    <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#9ca3af' }}>
-                      Recommended: Square image, at least 200×200px. PNG or JPG.
+                    <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#9ca3af' }}>
+                      Your logo appears on the member registration page, sidebar, and reports. PNG, JPG, or SVG recommended. Max 2MB.
                     </p>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <input 
-                          type="url" 
-                          placeholder="Paste image URL (e.g., https://your-site.com/logo.png)" 
-                          value={churchForm.logo_url || church?.logo_url || ''} 
-                          onChange={(e) => setChurchForm({ ...churchForm, logo_url: e.target.value })}
-                          style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
+
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      {/* File Upload Button */}
+                      <label style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '8px',
+                        padding: '10px 20px', backgroundColor: '#6366f1', color: 'white',
+                        borderRadius: '10px', fontSize: '14px', fontWeight: '600',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}>
+                        📤 {saving ? 'Uploading...' : 'Choose File'}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                          style={{ display: 'none' }}
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+
+                            // Validate file size (2MB max)
+                            if (file.size > 2 * 1024 * 1024) {
+                              alert('File is too large. Maximum size is 2MB.');
+                              return;
+                            }
+
+                            // Validate file type
+                            if (!['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'].includes(file.type)) {
+                              alert('Please upload a PNG, JPG, SVG, or WebP image.');
+                              return;
+                            }
+
+                            setSaving(true);
+                            try {
+                              // Upload to Supabase Storage
+                              const publicUrl = await uploadPhoto(file, 'church-logos');
+                              
+                              if (publicUrl) {
+                                // Save URL to church record
+                                await supabaseUpdate('churches', CHURCH_ID, { logo_url: publicUrl });
+                                fetchData();
+                              } else {
+                                // Fallback: try avatars bucket if church-logos doesn't exist
+                                const fallbackUrl = await uploadPhoto(file, 'avatars');
+                                if (fallbackUrl) {
+                                  await supabaseUpdate('churches', CHURCH_ID, { logo_url: fallbackUrl });
+                                  fetchData();
+                                } else {
+                                  alert('Upload failed. Please ensure the storage bucket exists in Supabase. Go to Supabase Dashboard → Storage → Create bucket "church-logos" (set as public).');
+                                }
+                              }
+                            } catch (error) {
+                              alert('Upload error: ' + error.message);
+                            }
+                            setSaving(false);
+                            e.target.value = ''; // Reset file input
+                          }}
                         />
-                      </div>
-                      <button onClick={async () => {
-                        if (!churchForm.logo_url && !church?.logo_url) { alert('Please enter a logo URL first'); return; }
-                        setSaving(true);
-                        try {
-                          await supabaseUpdate('churches', CHURCH_ID, { logo_url: churchForm.logo_url || null });
-                          fetchData();
-                        } catch (error) { alert('Error: ' + error.message); }
-                        setSaving(false);
-                      }} style={{ padding: '10px 20px', border: 'none', borderRadius: '8px', backgroundColor: '#6366f1', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        {saving ? '⏳' : '💾 Save Logo'}
-                      </button>
+                      </label>
+
+                      {/* Remove Logo Button */}
                       {church?.logo_url && (
                         <button onClick={async () => {
+                          if (!confirm('Remove church logo?')) return;
                           setSaving(true);
                           try {
                             await supabaseUpdate('churches', CHURCH_ID, { logo_url: null });
-                            setChurchForm({ ...churchForm, logo_url: '' });
                             fetchData();
                           } catch (error) { alert('Error: ' + error.message); }
                           setSaving(false);
-                        }} style={{ padding: '10px 16px', border: '1px solid #fecaca', borderRadius: '8px', backgroundColor: '#fef2f2', color: '#ef4444', fontSize: '13px', cursor: 'pointer' }}>
-                          🗑️ Remove
+                        }} style={{
+                          padding: '10px 20px', border: '1px solid #fecaca', borderRadius: '10px',
+                          backgroundColor: '#fef2f2', color: '#ef4444', fontSize: '14px',
+                          cursor: 'pointer', fontWeight: '500'
+                        }}>
+                          🗑️ Remove Logo
                         </button>
                       )}
                     </div>
-                    <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>
-                      💡 Free image hosting: Upload your logo to <a href="https://imgbb.com" target="_blank" rel="noopener" style={{ color: '#6366f1' }}>imgbb.com</a> or <a href="https://postimages.org" target="_blank" rel="noopener" style={{ color: '#6366f1' }}>postimages.org</a> and paste the direct URL here.
-                    </p>
+
+                    {/* Storage Setup Tip */}
+                    <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: '#f0f9ff', borderRadius: '10px', border: '1px solid #bae6fd' }}>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#0369a1', lineHeight: '1.6' }}>
+                        💡 <strong>First-time setup:</strong> In your Supabase Dashboard, go to <strong>Storage → New Bucket</strong>, name it <strong>church-logos</strong>, and enable <strong>Public bucket</strong>. This only needs to be done once.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
