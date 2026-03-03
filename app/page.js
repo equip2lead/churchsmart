@@ -694,13 +694,31 @@ export default function ChurchSmartApp() {
 function AppContent() {
   const { user, loading } = useAuth();
 
-  // ── Public Join Page: detect ?join=CHURCH_ID ──
+  // ── Public Join Page: detect ?join=CHURCH_ID or ?connect=SLUG ──
   const [joinChurchId, setJoinChurchId] = useState(null);
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const joinId = params.get('join');
-      if (joinId) setJoinChurchId(joinId);
+      const connectSlug = params.get('connect');
+      if (joinId) {
+        setJoinChurchId(joinId);
+      } else if (connectSlug) {
+        // Resolve slug to church ID
+        (async () => {
+          try {
+            const churches = await supabaseQuery('churches', { filters: [{ column: 'slug', operator: 'eq', value: connectSlug }] });
+            if (churches && churches.length > 0) {
+              setJoinChurchId(churches[0].id);
+            } else {
+              // Try case-insensitive match
+              const allChurches = await supabaseQuery('churches', {});
+              const match = allChurches?.find(c => c.slug?.toLowerCase() === connectSlug.toLowerCase());
+              if (match) setJoinChurchId(match.id);
+            }
+          } catch (err) { console.error('Error resolving slug:', err); }
+        })();
+      }
     }
   }, []);
 
@@ -733,7 +751,7 @@ function AppContent() {
 function PublicJoinPage({ churchId }) {
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', phone: '', whatsapp: '', date_of_birth: '',
-    gender: 'MALE', address: '', city: '', emergency_contact: '', emergency_phone: ''
+    gender: 'MALE', address: '', city: '', emergency_contact: '', emergency_phone: '', photo_url: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -789,6 +807,7 @@ function PublicJoinPage({ churchId }) {
         city: form.city.trim() || null,
         emergency_contact: form.emergency_contact.trim() || null,
         emergency_phone: form.emergency_phone.trim() || null,
+        photo_url: form.photo_url || null,
         status: 'NEW',
         location_id: selectedLocation || null,
         membership_date: new Date().toISOString().split('T')[0],
@@ -842,6 +861,41 @@ function PublicJoinPage({ churchId }) {
               ⚠️ {error}
             </div>
           )}
+
+          {/* Photo Upload (optional) */}
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#f3f4f6', margin: '0 auto 10px' }}>
+              {form.photo_url ? (
+                <img src={form.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ fontSize: '28px' }}>📷</span>
+              )}
+            </div>
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px', backgroundColor: form.photo_url ? '#dcfce7' : '#f3f4f6',
+              border: '1px solid #e5e7eb', borderRadius: '20px', fontSize: '13px',
+              color: form.photo_url ? '#166534' : '#6b7280', cursor: 'pointer', fontWeight: '500'
+            }}>
+              {form.photo_url ? '✅ Photo added' : '📷 Add Photo (optional)'}
+              <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  if (file.size > 2 * 1024 * 1024) { setError('Photo must be under 2MB'); return; }
+                  try {
+                    const url = await uploadPhoto(file, 'member-photos');
+                    if (url) setForm({ ...form, photo_url: url });
+                    else {
+                      const fallback = await uploadPhoto(file, 'avatars');
+                      if (fallback) setForm({ ...form, photo_url: fallback });
+                    }
+                  } catch (err) { /* silently fail for optional field */ }
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          </div>
 
           {/* Name Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
@@ -2098,7 +2152,7 @@ function MembersPage() {
     setForm({
       first_name: '', last_name: '', email: '', phone: '', date_of_birth: '',
       gender: 'MALE', address: '', city: '', status: 'ACTIVE', membership_date: new Date().toISOString().split('T')[0],
-      location_id: mainCampus?.id || '', notes: ''
+      location_id: mainCampus?.id || '', notes: '', photo_url: ''
     });
     setEditingMember(null);
   };
@@ -2111,7 +2165,7 @@ function MembersPage() {
         email: member.email || '', phone: member.phone || '', date_of_birth: member.date_of_birth || '',
         gender: member.gender || 'MALE', address: member.address || '', city: member.city || '',
         status: member.status || 'ACTIVE', membership_date: member.membership_date || '',
-        location_id: member.location_id || '', notes: member.notes || ''
+        location_id: member.location_id || '', notes: member.notes || '', photo_url: member.photo_url || ''
       });
     } else {
       resetForm();
@@ -2188,7 +2242,20 @@ function MembersPage() {
   // ── Invite Link ──
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const inviteLink = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}?join=${CHURCH_ID}` : '';
+  const [churchSlug, setChurchSlug] = useState('');
+
+  // Fetch church slug for clean invite URL
+  useEffect(() => {
+    const fetchSlug = async () => {
+      if (!CHURCH_ID) return;
+      const ch = await supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true });
+      if (ch?.slug) setChurchSlug(ch.slug);
+    };
+    fetchSlug();
+  }, [CHURCH_ID]);
+
+  const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+  const inviteLink = churchSlug ? `${baseUrl}?connect=${churchSlug}` : `${baseUrl}?join=${CHURCH_ID}`;
 
   const copyInviteLink = () => {
     navigator.clipboard.writeText(inviteLink).then(() => {
@@ -2290,8 +2357,12 @@ function MembersPage() {
                   <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ width: '40px', height: '40px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600' }}>
-                          {member.first_name?.[0]}{member.last_name?.[0]}
+                        <div style={{ width: '40px', height: '40px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600', overflow: 'hidden', flexShrink: 0 }}>
+                          {member.photo_url ? (
+                            <img src={member.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <>{member.first_name?.[0]}{member.last_name?.[0]}</>
+                          )}
                         </div>
                         <div>
                           <p style={{ margin: 0, fontWeight: '500' }}>{member.first_name} {member.last_name}</p>
@@ -2414,6 +2485,60 @@ function MembersPage() {
 
       {/* Add/Edit Member Modal */}
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingMember ? '✏️ Edit Member' : '➕ Add Member'} width="600px">
+        {/* Photo Upload */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+          <div style={{ width: '72px', height: '72px', borderRadius: '50%', border: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#e0e7ff', flexShrink: 0 }}>
+            {form.photo_url ? (
+              <img src={form.photo_url} alt="Member" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span style={{ fontSize: '24px', fontWeight: '600', color: '#6366f1' }}>
+                {form.first_name?.[0] || '?'}{form.last_name?.[0] || ''}
+              </span>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '500', color: '#374151' }}>📷 Member Photo</p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <label style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '7px 14px', backgroundColor: '#6366f1', color: 'white',
+                borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                📤 Upload
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    if (file.size > 2 * 1024 * 1024) { alert('Max file size is 2MB'); return; }
+                    setSaving(true);
+                    try {
+                      const url = await uploadPhoto(file, 'member-photos');
+                      if (url) {
+                        setForm({ ...form, photo_url: url });
+                      } else {
+                        const fallback = await uploadPhoto(file, 'avatars');
+                        if (fallback) setForm({ ...form, photo_url: fallback });
+                        else alert('Upload failed. Create a "member-photos" bucket in Supabase Storage (public).');
+                      }
+                    } catch (err) { alert('Upload error: ' + err.message); }
+                    setSaving(false);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+              {form.photo_url && (
+                <button onClick={() => setForm({ ...form, photo_url: '' })} style={{ padding: '7px 14px', border: '1px solid #fecaca', borderRadius: '8px', backgroundColor: '#fef2f2', color: '#ef4444', fontSize: '13px', cursor: 'pointer' }}>
+                  ✕ Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <FormInput label="First Name *" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required />
           <FormInput label="Last Name *" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required />
