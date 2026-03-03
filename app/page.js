@@ -22,7 +22,7 @@ const translations = {
     giving: 'Giving',
     salvations: 'Salvations',
     groups: 'Groups',
-    prayers: 'Prayer Requests',
+
     services: 'Services',
     settings: 'Settings',
     search: 'Search...',
@@ -144,16 +144,6 @@ const translations = {
     meetingDay: 'Meeting Day',
     meetingTime: 'Meeting Time',
     
-    // Prayers
-    newRequest: 'New Request',
-    prayerTitle: 'Title',
-    description: 'Description',
-    requesterName: 'Your Name',
-    prayForThis: 'Pray for this',
-    new: 'New',
-    praying: 'Praying',
-    answered: 'Answered',
-    
     // Auto Follow-up Messages
     day1Message: 'Thank you for visiting FIRE Church! We were blessed to have you. God bless you! 🙏',
     day3Message: 'Hello! We hope you enjoyed your visit to FIRE Church. We would love to see you again this Sunday! 🙏',
@@ -177,7 +167,7 @@ const translations = {
     giving: 'Offrandes',
     salvations: 'Saluts',
     groups: 'Groupes',
-    prayers: 'Demandes de Prière',
+
     services: 'Cultes',
     settings: 'Paramètres',
     search: 'Rechercher...',
@@ -298,16 +288,6 @@ const translations = {
     ministry: 'Ministère',
     meetingDay: 'Jour de Réunion',
     meetingTime: 'Heure de Réunion',
-    
-    // Prayers
-    newRequest: 'Nouvelle Demande',
-    prayerTitle: 'Titre',
-    description: 'Description',
-    requesterName: 'Votre Nom',
-    prayForThis: 'Prier pour ceci',
-    new: 'Nouveau',
-    praying: 'En Prière',
-    answered: 'Exaucé',
     
     // Auto Follow-up Messages
     day1Message: 'Merci pour votre visite à FIRE Church! Nous avons été bénis de vous avoir. Que Dieu vous bénisse! 🙏',
@@ -1487,8 +1467,6 @@ function StatusBadge({ status }) {
     'BECAME_MEMBER': { bg: '#d1fae5', text: '#065f46' },
     'PENDING': { bg: '#fef9c3', text: '#854d0e' },
     'NEW': { bg: '#dbeafe', text: '#1e40af' },
-    'PRAYING': { bg: '#fef3c7', text: '#92400e' },
-    'ANSWERED': { bg: '#dcfce7', text: '#166534' },
     'TITHE': { bg: '#e0e7ff', text: '#4338ca' },
     'OFFERING': { bg: '#fef3c7', text: '#92400e' },
     'MISSIONS': { bg: '#d1fae5', text: '#065f46' },
@@ -3958,68 +3936,6 @@ function GroupsPage() {
   );
 }
 
-// ==========================================
-// PRAYERS PAGE
-// ==========================================
-function PrayersPage() {
-  const { t } = useLanguage();
-  const [prayers, setPrayers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingPrayer, setEditingPrayer] = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', requester_name: '', category: 'General', privacy: 'PUBLIC', status: 'NEW' });
-
-  useEffect(() => { fetchPrayers(); }, []);
-  const fetchPrayers = async () => { setLoading(true); const data = await supabaseQuery('prayer_requests', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc' }); setPrayers(data || []); setLoading(false); };
-  const resetForm = () => { setForm({ title: '', description: '', requester_name: '', category: 'General', privacy: 'PUBLIC', status: 'NEW' }); setEditingPrayer(null); };
-  const openModal = (prayer = null) => { if (prayer) { setEditingPrayer(prayer); setForm({ title: prayer.title || '', description: prayer.description || '', requester_name: prayer.requester_name || '', category: prayer.category || 'General', privacy: prayer.privacy || 'PUBLIC', status: prayer.status || 'NEW' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.title) { alert('Title required'); return; } setSaving(true); try { if (editingPrayer) { await supabaseUpdate('prayer_requests', editingPrayer.id, form); } else { await supabaseInsert('prayer_requests', form); } setShowModal(false); resetForm(); fetchPrayers(); } catch (error) { alert('Error: ' + error.message); } setSaving(false); };
-  const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('prayer_requests', deleteConfirm.id); setDeleteConfirm(null); fetchPrayers(); };
-  const incrementPrayer = async (prayer) => { await supabaseUpdate('prayer_requests', prayer.id, { prayer_count: (prayer.prayer_count || 0) + 1 }); fetchPrayers(); };
-
-  return (
-    <div>
-      <PageHeader title={`🙏 ${t('prayers')}`} subtitle={`${prayers.length} requests`} actions={<Button onClick={() => openModal()}>➕ {t('newRequest')}</Button>} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard label={t('total')} value={prayers.length} icon="🙏" />
-        <StatCard label={t('new')} value={prayers.filter(p => p.status === 'NEW').length} icon="🆕" color="#3b82f6" />
-        <StatCard label={t('praying')} value={prayers.filter(p => p.status === 'PRAYING').length} icon="✨" color="#f59e0b" />
-        <StatCard label={t('answered')} value={prayers.filter(p => p.status === 'ANSWERED').length} icon="✅" color="#10b981" />
-      </div>
-      {loading ? <LoadingSpinner /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-          {prayers.map((prayer) => (
-            <div key={prayer.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <StatusBadge status={prayer.status} />
-                <div style={{ display: 'flex', gap: '8px' }}><button onClick={() => openModal(prayer)} style={{ padding: '6px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️</button><button onClick={() => setDeleteConfirm(prayer)} style={{ padding: '6px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>🗑️</button></div>
-              </div>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>{prayer.title}</h3>
-              <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.5' }}>{prayer.description || 'No description'}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
-                <span style={{ fontSize: '14px', color: '#6b7280' }}>{prayer.requester_name || 'Anonymous'}</span>
-                <button onClick={() => incrementPrayer(prayer)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', border: 'none', background: '#fef3c7', color: '#92400e', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>🙏 {prayer.prayer_count || 0}</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingPrayer ? `✏️ ${t('edit')}` : `➕ ${t('newRequest')}`}>
-        <FormInput label={t('prayerTitle')} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-        <FormInput label={t('description')} type="textarea" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <FormInput label={t('requesterName')} value={form.requester_name} onChange={(e) => setForm({ ...form, requester_name: e.target.value })} placeholder="Optional" />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={t('category')} type="select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} options={[{ value: 'General', label: 'General' }, { value: 'Health', label: 'Health' }, { value: 'Family', label: 'Family' }, { value: 'Financial', label: 'Financial' }]} />
-          <FormInput label={t('status')} type="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} options={[{ value: 'NEW', label: t('new') }, { value: 'PRAYING', label: t('praying') }, { value: 'ANSWERED', label: t('answered') }]} />
-        </div>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>{t('cancel')}</Button><Button onClick={handleSave} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button></div>
-      </Modal>
-      <ConfirmDialog isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={handleDelete} title={`🗑️ ${t('delete')}`} message={`Delete "${deleteConfirm?.title}"?`} />
-    </div>
-  );
-}
 // ==========================================
 // VOLUNTEERS PAGE
 // ==========================================
@@ -6717,7 +6633,6 @@ function SettingsPage() {
     { key: 'giving', label: '💰 Giving/Finance' },
     { key: 'salvations', label: '❤️ Salvations' },
     { key: 'groups', label: '👨‍👩‍👧‍👦 Groups' },
-    { key: 'prayers', label: '🙏 Prayer Requests' },
     { key: 'services', label: '⛪ Services & Events' },
     { key: 'settings', label: '⚙️ Settings' },
   ];
