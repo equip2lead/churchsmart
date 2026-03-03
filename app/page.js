@@ -2233,6 +2233,16 @@ function DashboardPage() {
         actions={<Button onClick={fetchData} variant="secondary">🔄 Refresh</Button>}
       />
 
+      {/* Location Filter */}
+      {locations.length > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 20px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', color: '#4b5563', backgroundColor: 'white', cursor: 'pointer', fontWeight: '500' }}>
+            <option value="all">📍 {t('allLocations')}</option>
+            {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.is_main_campus ? `⭐ ${loc.name}` : loc.name}</option>)}
+          </select>
+        </div>
+      )}
+
       {loading ? <LoadingSpinner /> : (
         <>
           {/* Stats Cards */}
