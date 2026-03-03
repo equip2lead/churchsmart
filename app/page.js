@@ -4318,7 +4318,7 @@ function SalvationsPage() {
   const handleSave = async () => { if (!form.full_name) { toast.warning('Name required'); return; } setSaving(true); try { if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, form); } else { await supabaseInsert('salvations', form); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { toast.error(error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('salvations', deleteConfirm.id); setDeleteConfirm(null); fetchSalvations(); };
 
-  const filteredSalvations = salvations.filter(s => filterLocation === 'all' || s.location_id === filterLocation);
+  const filteredSalvations = salvations.filter(function(s) { var loc = filterLocation === 'all' || s.location_id === filterLocation; var search = !searchTerm || (s.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (s.phone || '').includes(searchTerm) || (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()); return loc && search; });
 
   const columns = [
     { header: t('name'), key: 'name', render: (row) => <span style={{ fontWeight: '500' }}>{row.full_name}</span> },
@@ -4339,10 +4339,16 @@ function SalvationsPage() {
       <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '14px', color: '#6b7280' }}>Showing {filteredSalvations.length} of {salvations.length}</span>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}>🔍</span>
+              <input value={searchTerm} onChange={function(e) { setSearchTerm(e.target.value); }} placeholder="Search salvations..." style={{ padding: '8px 12px 8px 36px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', width: '220px', backgroundColor: '#f9fafb' }} />
+            </div>
           <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
             <option value="all">All Locations</option>
             {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
           </select>
+          </div>
         </div>
         {loading ? <LoadingSpinner /> : <DataTable columns={columns} data={filteredSalvations} onEdit={openModal} onDelete={setDeleteConfirm} />}</div>
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingRecord ? `✏️ ${t('edit')}` : `➕ ${t('recordSalvation')}`}>
