@@ -5559,20 +5559,87 @@ function ReportsPage() {
 
   // Generate printable report
   const handlePrint = () => {
+    // Add print styles dynamically
+    const printStyle = document.createElement('style');
+    printStyle.id = 'churchsmart-print-styles';
+    printStyle.textContent = `
+      @media print {
+        body * { visibility: hidden; }
+        #report-content, #report-content * { visibility: visible; }
+        #report-content { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+        .sidebar, aside, nav, button, select { display: none !important; }
+        @page { margin: 1cm; }
+      }
+    `;
+    document.head.appendChild(printStyle);
     window.print();
+    setTimeout(() => { const el = document.getElementById('churchsmart-print-styles'); if (el) el.remove(); }, 1000);
   };
 
-  // Export to CSV
-  const exportCSV = (reportData, filename) => {
-    const headers = Object.keys(reportData[0] || {}).join(',');
-    const rows = reportData.map(row => Object.values(row).join(',')).join('\n');
-    const csv = `${headers}\n${rows}`;
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.csv`;
-    a.click();
+  // Export CSV — context-aware based on active report tab
+  const getExportData = () => {
+    switch (activeReport) {
+      case 'financial':
+        return {
+          data: [...filteredDonations.map(d => ({ Date: d.donation_date, Type: 'Income', Category: d.category, Donor: d.donor_name || '', Amount: d.amount, Method: d.payment_method || '' })),
+                 ...filteredExpenses.map(e => ({ Date: e.expense_date, Type: 'Expense', Category: e.category, Description: e.description || '', Amount: e.amount, Method: '' }))].sort((a, b) => (b.Date || '').localeCompare(a.Date || '')),
+          filename: 'financial-report'
+        };
+      case 'attendance':
+        return {
+          data: filteredAttendance.map(a => ({ Date: a.service_date, Men: a.men_count || 0, Women: a.women_count || 0, Children: a.children_count || 0, Total: a.total_count || 0, Offering: a.total_offering || 0 })),
+          filename: 'attendance-report'
+        };
+      case 'membership':
+        return {
+          data: filteredMembers.map(m => ({ 'First Name': m.first_name, 'Last Name': m.last_name, Phone: m.phone || '', Email: m.email || '', Status: m.status || '', Gender: m.gender || '', 'Membership Date': m.membership_date || '', City: m.city || '' })),
+          filename: 'membership-report'
+        };
+      case 'salvations':
+        return {
+          data: filteredSalvations.map(s => ({ Name: s.full_name, Date: s.salvation_date, Phone: s.phone || '', 'Follow-up': s.followup_status || '', Notes: s.notes || '' })),
+          filename: 'salvations-report'
+        };
+      case 'volunteers':
+        return {
+          data: filteredVolunteers.map(v => ({ Name: v.member_name || `${v.first_name || ''} ${v.last_name || ''}`.trim(), Ministry: v.ministry || '', Status: v.status || '', Leader: v.is_team_leader ? 'Yes' : 'No' })),
+          filename: 'volunteers-report'
+        };
+      default: // overview — export a combined summary
+        return {
+          data: [...filteredDonations.map(d => ({ Date: d.donation_date, Type: 'Income', Category: d.category, Amount: d.amount })),
+                 ...filteredExpenses.map(e => ({ Date: e.expense_date, Type: 'Expense', Category: e.category, Amount: e.amount }))].sort((a, b) => (b.Date || '').localeCompare(a.Date || '')),
+          filename: 'church-overview-report'
+        };
+    }
+  };
+
+  const handleExportCSV = () => {
+    const { data: exportData, filename } = getExportData();
+    if (!exportData || exportData.length === 0) {
+      toast.warning('No data to export for this report');
+      return;
+    }
+    const BOM = '\uFEFF';
+    const headers = Object.keys(exportData[0]);
+    const headerRow = headers.map(h => `"${h}"`).join(',');
+    const rows = exportData.map(row => headers.map(h => {
+      let val = row[h] ?? '';
+      val = String(val).replace(/"/g, '""');
+      return `"${val}"`;
+    }).join(','));
+    const csv = BOM + [headerRow, ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    toast.success('CSV exported!');
   };
 
   const reportTypes = [
@@ -5592,7 +5659,7 @@ function ReportsPage() {
         actions={
           <div style={{ display: 'flex', gap: '12px' }}>
             <Button variant="secondary" onClick={handlePrint}>🖨️ Print</Button>
-            <Button variant="secondary" onClick={() => exportCSV(filteredDonations, 'donations')}>📥 Export CSV</Button>
+            <Button variant="secondary" onClick={handleExportCSV}>📥 Export CSV</Button>
           </div>
         }
       />
