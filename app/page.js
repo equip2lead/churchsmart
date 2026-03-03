@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 
 // ==========================================
 // SUPABASE CONFIG
@@ -541,68 +541,115 @@ function useLanguage() {
 }
 
 // ==========================================
-// SUPABASE API HELPERS
+// SECURITY UTILITIES
+// ==========================================
+const ALLOWED_TABLES = [
+  'churches', 'church_users', 'church_locations', 'members', 'visitors',
+  'attendance_records', 'donations', 'expenses', 'salvations', 'services',
+  'events', 'groups', 'volunteers', 'activity_logs', 'message_logs',
+  'message_templates', 'automation_settings', 'user_roles', 'user_role_assignments',
+  'super_admin_log'
+];
+
+function sanitizeInput(val) {
+  if (val === null || val === undefined) return val;
+  if (typeof val === 'number' || typeof val === 'boolean') return val;
+  if (typeof val !== 'string') return String(val);
+  return val
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/<iframe\b[^>]*>/gi, '')
+    .replace(/<object\b[^>]*>/gi, '')
+    .replace(/<embed\b[^>]*>/gi, '')
+    .trim();
+}
+
+function sanitizeObject(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const cleaned = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+      cleaned[key] = sanitizeObject(val);
+    } else {
+      cleaned[key] = sanitizeInput(val);
+    }
+  }
+  return cleaned;
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidTable(table) {
+  return ALLOWED_TABLES.includes(table);
+}
+
+function isValidFilterValue(val) {
+  if (typeof val !== 'string') return true;
+  const dangerous = /[;'"\\]|--|\bor\b\s+\d|\band\b\s+\d|\bdrop\b|\bunion\b/i;
+  return !dangerous.test(val);
+}
+
+// ==========================================
+// SUPABASE API HELPERS (hardened)
 // ==========================================
 async function supabaseQuery(table, options = {}) {
+  if (!isValidTable(table)) { console.error('Invalid table:', table); return []; }
   const { select = '*', filters = [], order, limit, single = false } = options;
   let url = `${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
   
-  filters.forEach(f => {
-    url += `&${f.column}=${f.operator}.${f.value}`;
-  });
+  for (const f of filters) {
+    if (!isValidFilterValue(String(f.value))) { console.error('Suspicious filter blocked'); return []; }
+    url += `&${encodeURIComponent(f.column)}=${f.operator}.${encodeURIComponent(f.value)}`;
+  }
   
-  if (order) url += `&order=${order}`;
-  if (limit) url += `&limit=${limit}`;
+  if (order) url += `&order=${encodeURIComponent(order)}`;
+  if (limit) url += `&limit=${parseInt(limit, 10) || 50}`;
   
   const response = await fetch(url, {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-    }
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
   });
   
+  if (!response.ok) { console.error(`Query ${table} failed:`, response.status); return single ? null : []; }
   const data = await response.json();
+  if (Array.isArray(data) && data.length > 0 && data[0]?.message) { console.error('Supabase error:', data[0].message); return single ? null : []; }
   return single ? data[0] : data;
 }
 
 async function supabaseInsert(table, data) {
+  if (!isValidTable(table)) { console.error('Invalid table:', table); return null; }
   const savedUser = localStorage.getItem('churchsmart_user');
   const churchId = savedUser ? JSON.parse(savedUser).church_id : null;
-  const insertData = data.church_id ? data : { ...data, church_id: churchId };
+  const sanitized = sanitizeObject(data);
+  const insertData = sanitized.church_id ? sanitized : { ...sanitized, church_id: churchId };
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
     body: JSON.stringify(insertData)
   });
+  if (!response.ok) { const err = await response.text(); throw new Error(`Insert failed: ${err}`); }
   return response.json();
 }
 
 async function supabaseUpdate(table, id, data) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+  if (!isValidTable(table)) { console.error('Invalid table:', table); return null; }
+  const sanitized = sanitizeObject(data);
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
-    body: JSON.stringify(data)
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    body: JSON.stringify(sanitized)
   });
+  if (!response.ok) { const err = await response.text(); throw new Error(`Update failed: ${err}`); }
   return response.json();
 }
 
 async function supabaseDelete(table, id) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+  if (!isValidTable(table)) { console.error('Invalid table:', table); return false; }
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-    }
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
   });
   return response.ok;
 }
@@ -728,6 +775,7 @@ function PermissionsProvider({ children }) {
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const loginAttempts = useRef({ count: 0, lastAttempt: 0, lockedUntil: 0 });
 
   useEffect(() => {
     const savedUser = localStorage.getItem('churchsmart_user');
@@ -743,7 +791,19 @@ function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/church_users?email=eq.${encodeURIComponent(email)}&is_active=eq.true`, {
+      // Rate limiting
+      const now = Date.now();
+      const attempts = loginAttempts.current;
+      if (attempts.lockedUntil > now) {
+        const waitSec = Math.ceil((attempts.lockedUntil - now) / 1000);
+        return { success: false, error: `Too many attempts. Try again in ${waitSec}s` };
+      }
+
+      // Validate inputs
+      if (!email || !password) return { success: false, error: 'Email and password are required' };
+      if (!isValidEmail(email)) return { success: false, error: 'Invalid email format' };
+
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/church_users?email=eq.${encodeURIComponent(email.trim().toLowerCase())}&is_active=eq.true`, {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
@@ -753,14 +813,23 @@ function AuthProvider({ children }) {
       const users = await response.json();
       
       if (!users || users.length === 0) {
-        return { success: false, error: 'User not found' };
+        attempts.count++;
+        attempts.lastAttempt = Date.now();
+        if (attempts.count >= 5) { attempts.lockedUntil = Date.now() + 60000; attempts.count = 0; } // Lock 60s after 5 fails
+        return { success: false, error: 'Invalid email or password' };
       }
 
       const dbUser = users[0];
 
       if (dbUser.password_hash !== password) {
-        return { success: false, error: 'Invalid password' };
+        attempts.count++;
+        attempts.lastAttempt = Date.now();
+        if (attempts.count >= 5) { attempts.lockedUntil = Date.now() + 60000; attempts.count = 0; }
+        return { success: false, error: 'Invalid email or password' };
       }
+
+      // Success — reset rate limiter
+      attempts.count = 0; attempts.lockedUntil = 0;
 
       const sessionUser = {
         id: dbUser.id,
@@ -1529,8 +1598,10 @@ function LoginPage() {
     } else {
       if (step === 1) {
         if (!form.full_name || !form.email || !form.password) { setError(lang === 'fr' ? 'Veuillez remplir tous les champs obligatoires' : 'Please fill in all required fields'); return; }
+        if (!isValidEmail(form.email)) { setError(lang === 'fr' ? 'Format d\'email invalide' : 'Invalid email format'); return; }
         if (form.password !== form.confirm_password) { setError(lang === 'fr' ? 'Les mots de passe ne correspondent pas' : 'Passwords do not match'); return; }
-        if (form.password.length < 6) { setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'Password must be at least 6 characters'); return; }
+        if (form.password.length < 8) { setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 8 caractères' : 'Password must be at least 8 characters'); return; }
+        if (!/[A-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError(lang === 'fr' ? 'Le mot de passe doit contenir une majuscule et un chiffre' : 'Password must include an uppercase letter and a number'); return; }
         setStep(2);
       } else {
         if (!form.church_name) { setError(lang === 'fr' ? 'Le nom de l\'église est requis' : 'Church name is required'); return; }
