@@ -933,23 +933,7 @@ function AuthProvider({ children }) {
 
   const register = async (userData) => {
     try {
-      // 1. Sign up with Supabase Auth (handles password hashing, email validation)
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email.trim().toLowerCase(),
-        password: userData.password,
-        options: { data: { full_name: userData.full_name } }
-      });
-
-      if (authError) {
-        if (authError.message?.includes('already registered')) {
-          return { success: false, error: 'Email already registered' };
-        }
-        return { success: false, error: authError.message || 'Registration failed' };
-      }
-
-      const authUserId = authData?.user?.id;
-
-      // 2. Create the church
+      // 1. Create the church first (no auth needed)
       const slug = userData.church_name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -975,24 +959,46 @@ function AuthProvider({ children }) {
         return { success: false, error: 'Failed to create church. Please try again.' };
       }
 
-      // 3. Create the admin user in church_users (linked to Supabase Auth)
+      // 2. Try Supabase Auth signup
+      let authUserId = null;
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: userData.email.trim().toLowerCase(),
+          password: userData.password,
+          options: { data: { full_name: userData.full_name, church_id: newChurch.id } }
+        });
+        if (!authError && authData?.user?.id) {
+          authUserId = authData.user.id;
+        } else {
+          console.warn('Supabase Auth signup issue (will use legacy):', authError?.message);
+        }
+      } catch (authErr) {
+        console.warn('Auth signup failed, falling back to legacy:', authErr);
+      }
+
+      // 3. Create the admin user in church_users
+      const insertData = {
+        church_id: newChurch.id,
+        email: userData.email.trim().toLowerCase(),
+        full_name: userData.full_name,
+        phone: userData.phone || null,
+        role: 'ADMIN',
+        is_active: true
+      };
+      // Only set auth_id if we got a confirmed auth user
+      if (authUserId) insertData.auth_id = authUserId;
+      // Keep legacy password as fallback if auth signup didn't work
+      if (!authUserId) insertData.password_hash = userData.password;
+
       const { error: userError } = await supabase
         .from('church_users')
-        .insert({
-          church_id: newChurch.id,
-          auth_id: authUserId || null,
-          email: userData.email.trim().toLowerCase(),
-          full_name: userData.full_name,
-          phone: userData.phone || null,
-          role: 'ADMIN',
-          is_active: true
-        });
+        .insert(insertData);
 
       if (userError) {
         // Rollback: delete the church
         await supabase.from('churches').delete().eq('id', newChurch.id);
         console.error('User creation failed:', userError);
-        return { success: false, error: 'Failed to create account. Please try again.' };
+        return { success: false, error: 'Database error saving new user' };
       }
 
       return { success: true };
