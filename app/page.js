@@ -157,6 +157,94 @@ const translations = {
     thursday: 'Thursday',
     friday: 'Friday',
     saturday: 'Saturday',
+
+    // Volunteers
+    volunteers: 'Volunteers',
+    addVolunteer: 'Add Volunteer',
+    editVolunteer: 'Edit Volunteer',
+    
+    // Messaging
+    messaging: 'Messaging',
+    sendMessage: 'Send Message',
+    recipients: 'Recipients',
+    allMembers: 'All Members',
+    allVisitors: 'All Visitors',
+    selectRecipients: 'Select Recipients',
+    messageType: 'Message Type',
+    compose: 'Compose',
+    sent: 'Sent',
+    
+    // Services
+    addService: 'Add Service',
+    editService: 'Edit Service',
+    serviceName: 'Service Name',
+    serviceType: 'Service Type',
+    startTime: 'Start Time',
+    endTime: 'End Time',
+    
+    // Reports
+    reports: 'Reports',
+    exportCSV: 'Export CSV',
+    membershipReport: 'Membership Report',
+    attendanceReport: 'Attendance Report',
+    givingReport: 'Giving Report',
+    
+    // Settings
+    churchName: 'Church Name',
+    currency: 'Currency',
+    timezone: 'Timezone',
+    uploadLogo: 'Upload Logo',
+    inviteLink: 'Invite Link',
+    
+    // Pagination
+    showMore: 'Show More',
+    showLess: 'Show Less',
+    showing: 'Showing',
+    of: 'of',
+    records: 'records',
+    loadMore: 'Load More',
+    noResults: 'No results found',
+    
+    // Toast/Notifications
+    savedSuccessfully: 'Saved successfully!',
+    deletedSuccessfully: 'Deleted successfully!',
+    errorOccurred: 'An error occurred',
+    requiredField: 'This field is required',
+    
+    // Visitor to Member
+    convertToMember: 'Convert to Member',
+    convertConfirm: 'Convert this visitor to a member?',
+    convertSuccess: 'Visitor converted to member!',
+    
+    // Dashboard extras
+    upcomingBirthdays: 'Upcoming Birthdays',
+    upcomingEvents: 'Upcoming Events',
+    recentSalvations: 'Recent Salvations',
+    weeklyGiving: 'Weekly Giving',
+    quickActions: 'Quick Actions',
+    recentVisitors: 'Recent Visitors',
+    allLocations: 'All Locations',
+    
+    // Common UI
+    address: 'Address',
+    city: 'City',
+    notes: 'Notes',
+    description: 'Description',
+    location: 'Location',
+    type: 'Type',
+    filter: 'Filter',
+    all: 'All',
+    close: 'Close',
+    back: 'Back',
+    next: 'Next',
+    previous: 'Previous',
+    noData: 'No data available',
+    confirmDelete: 'Are you sure you want to delete this?',
+    
+    // Super Admin
+    superAdmin: 'Super Admin',
+    churches: 'Churches',
+    addChurch: 'Add Church',
   },
   fr: {
     // General
@@ -302,6 +390,94 @@ const translations = {
     thursday: 'Jeudi',
     friday: 'Vendredi',
     saturday: 'Samedi',
+
+    // Volunteers
+    volunteers: 'Bénévoles',
+    addVolunteer: 'Ajouter Bénévole',
+    editVolunteer: 'Modifier Bénévole',
+    
+    // Messaging
+    messaging: 'Messagerie',
+    sendMessage: 'Envoyer Message',
+    recipients: 'Destinataires',
+    allMembers: 'Tous les Membres',
+    allVisitors: 'Tous les Visiteurs',
+    selectRecipients: 'Sélectionner Destinataires',
+    messageType: 'Type de Message',
+    compose: 'Composer',
+    sent: 'Envoyé',
+    
+    // Services
+    addService: 'Ajouter Culte',
+    editService: 'Modifier Culte',
+    serviceName: 'Nom du Culte',
+    serviceType: 'Type de Culte',
+    startTime: 'Heure de Début',
+    endTime: 'Heure de Fin',
+    
+    // Reports
+    reports: 'Rapports',
+    exportCSV: 'Exporter CSV',
+    membershipReport: 'Rapport des Membres',
+    attendanceReport: 'Rapport de Présence',
+    givingReport: 'Rapport des Offrandes',
+    
+    // Settings
+    churchName: 'Nom de l'Église',
+    currency: 'Devise',
+    timezone: 'Fuseau Horaire',
+    uploadLogo: 'Télécharger Logo',
+    inviteLink: 'Lien d'Invitation',
+    
+    // Pagination
+    showMore: 'Voir Plus',
+    showLess: 'Voir Moins',
+    showing: 'Affichage',
+    of: 'de',
+    records: 'enregistrements',
+    loadMore: 'Charger Plus',
+    noResults: 'Aucun résultat trouvé',
+    
+    // Toast/Notifications
+    savedSuccessfully: 'Enregistré avec succès!',
+    deletedSuccessfully: 'Supprimé avec succès!',
+    errorOccurred: 'Une erreur est survenue',
+    requiredField: 'Ce champ est obligatoire',
+    
+    // Visitor to Member
+    convertToMember: 'Convertir en Membre',
+    convertConfirm: 'Convertir ce visiteur en membre?',
+    convertSuccess: 'Visiteur converti en membre!',
+    
+    // Dashboard extras
+    upcomingBirthdays: 'Anniversaires à Venir',
+    upcomingEvents: 'Événements à Venir',
+    recentSalvations: 'Saluts Récents',
+    weeklyGiving: 'Offrandes Hebdomadaires',
+    quickActions: 'Actions Rapides',
+    recentVisitors: 'Visiteurs Récents',
+    allLocations: 'Tous les Campus',
+    
+    // Common UI
+    address: 'Adresse',
+    city: 'Ville',
+    notes: 'Notes',
+    description: 'Description',
+    location: 'Emplacement',
+    type: 'Type',
+    filter: 'Filtrer',
+    all: 'Tous',
+    close: 'Fermer',
+    back: 'Retour',
+    next: 'Suivant',
+    previous: 'Précédent',
+    noData: 'Aucune donnée disponible',
+    confirmDelete: 'Êtes-vous sûr de vouloir supprimer ceci?',
+    
+    // Super Admin
+    superAdmin: 'Super Admin',
+    churches: 'Églises',
+    addChurch: 'Ajouter Église',
   }
 };
 
@@ -643,6 +819,7 @@ function useAuth() {
 // ==========================================
 export default function ChurchSmartApp() {
   return (
+    <ToastProvider>
     <LanguageProvider>
       <AuthProvider>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -668,6 +845,7 @@ export default function ChurchSmartApp() {
         <AppContent />
       </AuthProvider>
     </LanguageProvider>
+    </ToastProvider>
   );
 }
 
@@ -723,6 +901,97 @@ function AppContent() {
   }
 
   return <Dashboard />;
+}
+
+
+
+// Add toast animation style
+if (typeof document !== 'undefined' && !document.getElementById('toast-styles')) {
+  const style = document.createElement('style');
+  style.id = 'toast-styles';
+  style.textContent = '@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }';
+  document.head.appendChild(style);
+}
+
+// ==========================================
+// TOAST NOTIFICATION SYSTEM
+// ==========================================
+const ToastContext = createContext();
+function useToast() { return useContext(ToastContext); }
+
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  
+  const addToast = (message, type = 'success', duration = 3000) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
+  };
+  
+  const toast = {
+    success: (msg) => addToast(msg, 'success'),
+    error: (msg) => addToast(msg, 'error', 5000),
+    info: (msg) => addToast(msg, 'info'),
+    warning: (msg) => addToast(msg, 'warning', 4000),
+  };
+  
+  return React.createElement(ToastContext.Provider, { value: toast },
+    children,
+    React.createElement('div', {
+      style: { position: 'fixed', top: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', gap: '8px', pointerEvents: 'none' }
+    }, toasts.map(t => React.createElement('div', {
+      key: t.id,
+      style: {
+        padding: '12px 20px', borderRadius: '12px', fontSize: '14px', fontWeight: '500',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'auto', minWidth: '250px', maxWidth: '400px',
+        animation: 'slideIn 0.3s ease-out',
+        backgroundColor: t.type === 'success' ? '#dcfce7' : t.type === 'error' ? '#fef2f2' : t.type === 'warning' ? '#fef3c7' : '#dbeafe',
+        color: t.type === 'success' ? '#166534' : t.type === 'error' ? '#991b1b' : t.type === 'warning' ? '#92400e' : '#1e40af',
+        border: `1px solid ${t.type === 'success' ? '#bbf7d0' : t.type === 'error' ? '#fecaca' : t.type === 'warning' ? '#fde68a' : '#bfdbfe'}`,
+        display: 'flex', alignItems: 'center', gap: '8px'
+      }
+    },
+      t.type === 'success' ? '✅ ' : t.type === 'error' ? '❌ ' : t.type === 'warning' ? '⚠️ ' : 'ℹ️ ',
+      t.message
+    )))
+  );
+}
+
+
+// ==========================================
+// PAGINATION COMPONENT
+// ==========================================
+function PaginatedList({ items, pageSize = 50, renderItem, emptyMessage }) {
+  const { t } = useLanguage();
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(items.length / pageSize);
+  const startIdx = (currentPage - 1) * pageSize;
+  const paginatedItems = items.slice(startIdx, startIdx + pageSize);
+  
+  useEffect(() => { setCurrentPage(1); }, [items.length]);
+  
+  if (items.length === 0) return React.createElement('div', { style: { textAlign: 'center', padding: '40px', color: '#9ca3af', fontSize: '15px' } }, emptyMessage || t('noResults'));
+  
+  return React.createElement('div', null,
+    renderItem(paginatedItems),
+    items.length > pageSize && React.createElement('div', {
+      style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '20px', marginTop: '16px' }
+    },
+      React.createElement('button', {
+        onClick: () => setCurrentPage(p => Math.max(1, p - 1)),
+        disabled: currentPage === 1,
+        style: { padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: currentPage === 1 ? '#f9fafb' : 'white', color: currentPage === 1 ? '#d1d5db' : '#4b5563', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '14px' }
+      }, '← ' + t('previous')),
+      React.createElement('span', { style: { fontSize: '14px', color: '#6b7280' } },
+        `${t('showing')} ${startIdx + 1}-${Math.min(startIdx + pageSize, items.length)} ${t('of')} ${items.length}`
+      ),
+      React.createElement('button', {
+        onClick: () => setCurrentPage(p => Math.min(totalPages, p + 1)),
+        disabled: currentPage === totalPages,
+        style: { padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: currentPage === totalPages ? '#f9fafb' : 'white', color: currentPage === totalPages ? '#d1d5db' : '#4b5563', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '14px' }
+      }, t('next') + ' →')
+    )
+  );
 }
 
 // ==========================================
@@ -987,6 +1256,7 @@ function PublicJoinPage({ churchId }) {
 // ==========================================
 function LoginPage() {
   const { login, register } = useAuth();
+  const toast = useToast();
   const [isLogin, setIsLogin] = useState(true);
   const [lang, setLang] = useState('en');
   const [loading, setLoading] = useState(false);
@@ -1777,6 +2047,7 @@ function SMSModal({ isOpen, onClose, recipient, onSend }) {
 // ==========================================
 function DashboardPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [stats, setStats] = useState({ members: 0, visitors: 0, salvations: 0, donations: 0 });
@@ -1787,13 +2058,15 @@ function DashboardPage() {
   const [recentSalvations, setRecentSalvations] = useState([]);
   const [weeklyGiving, setWeeklyGiving] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [locations, setLocations] = useState([]);
+  const [filterLocation, setFilterLocation] = useState('all');
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [filterLocation]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [members, visitors, salvations, donations, services, events, activityLogs] = await Promise.all([
+      const [members, visitors, salvations, donations, services, events, activityLogs, locationsData] = await Promise.all([
         supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'visit_date.desc', limit: 5 }),
         supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc', limit: 5 }),
@@ -1801,10 +2074,18 @@ function DashboardPage() {
         supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'event_date.asc' }),
         supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 5 }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
       ]);
+      setLocations(locationsData || []);
 
+      // Apply location filter
+      const filteredMembers = filterLocation === 'all' ? (members || []) : (members || []).filter(m => m.location_id === filterLocation);
+      const filteredVisitors = filterLocation === 'all' ? (Array.isArray(visitors) ? visitors : []) : (Array.isArray(visitors) ? visitors : []).filter(v => v.location_id === filterLocation);
+      const filteredSalvations = filterLocation === 'all' ? (Array.isArray(salvations) ? salvations : []) : (Array.isArray(salvations) ? salvations : []).filter(s => s.location_id === filterLocation);
+      const filteredDonations = filterLocation === 'all' ? (Array.isArray(donations) ? donations : []) : (Array.isArray(donations) ? donations : []).filter(d => d.location_id === filterLocation);
+      
       // Calculate total donations
-      const totalDonations = (Array.isArray(donations) ? donations : []).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);      
+      const totalDonations = filteredDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);      
       // Calculate weekly giving (last 7 days)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -1813,7 +2094,7 @@ function DashboardPage() {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        const dayTotal = (Array.isArray(donations) ? donations : [])
+        const dayTotal = filteredDonations
           .filter(d => d.donation_date === dateStr)
           .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
         weekData.push({
@@ -1825,7 +2106,7 @@ function DashboardPage() {
       setWeeklyGiving(weekData);
       
       // Get upcoming birthdays (next 30 days)
-      const birthdayMembers = (members || []).filter(m => {
+      const birthdayMembers = filteredMembers.filter(m => {
         if (!m.date_of_birth) return false;
         const dob = new Date(m.date_of_birth);
         const thisYearBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
@@ -1868,8 +2149,8 @@ function DashboardPage() {
       setUpcomingBirthdays(birthdayMembers);
       setUpcomingItems(combined);
       setRecentActivity(activityLogs || []);
-      setRecentVisitors(visitors || []);
-      setRecentSalvations(salvations || []);
+      setRecentVisitors(filteredVisitors);
+      setRecentSalvations(filteredSalvations);
     } catch (error) { console.error('Error:', error); }
     setLoading(false);
   };
@@ -2093,6 +2374,7 @@ function DashboardPage() {
 // ==========================================
 function MembersPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [members, setMembers] = useState([]);
@@ -2153,7 +2435,7 @@ function MembersPage() {
 
   const handleSave = async () => {
     if (!form.first_name || !form.last_name) {
-      alert('First name and last name are required');
+      toast.warning('First name and last name are required');
       return;
     }
     setSaving(true);
@@ -2168,7 +2450,7 @@ function MembersPage() {
       resetForm();
       fetchData();
     } catch (error) {
-      alert('Error: ' + error.message);
+      toast.error(error.message);
     }
     setSaving(false);
   };
@@ -2491,7 +2773,7 @@ function MembersPage() {
                   onChange={async (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
-                    if (file.size > 2 * 1024 * 1024) { alert('Max file size is 2MB'); return; }
+                    if (file.size > 2 * 1024 * 1024) { toast.info('Max file size is 2MB'); return; }
                     setSaving(true);
                     try {
                       const url = await uploadPhoto(file, 'member-photos');
@@ -2500,9 +2782,9 @@ function MembersPage() {
                       } else {
                         const fallback = await uploadPhoto(file, 'avatars');
                         if (fallback) setForm({ ...form, photo_url: fallback });
-                        else alert('Upload failed. Create a "member-photos" bucket in Supabase Storage (public).');
+                        else toast.error('Upload failed. Create a "member-photos" bucket in Supabase Storage (public).');
                       }
-                    } catch (err) { alert('Upload error: ' + err.message); }
+                    } catch (err) { toast.info('Upload error: ' + err.message); }
                     setSaving(false);
                     e.target.value = '';
                   }}
@@ -2556,6 +2838,7 @@ function MembersPage() {
 // ==========================================
 function VisitorsPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [visitors, setVisitors] = useState([]);
@@ -2639,7 +2922,7 @@ function VisitorsPage() {
 
   const handleSave = async () => {
     if (!form.full_name || !form.phone) {
-      alert('Name and phone are required');
+      toast.warning('Name and phone are required');
       return;
     }
     setSaving(true);
@@ -2653,7 +2936,7 @@ function VisitorsPage() {
       resetForm();
       fetchVisitors();
     } catch (error) {
-      alert('Error saving visitor: ' + error.message);
+      toast.info('Error saving visitor: ' + error.message);
     }
     setSaving(false);
   };
@@ -2671,9 +2954,9 @@ function VisitorsPage() {
     if (result.success) {
       await supabaseUpdate('visitors', visitor.id, { followup_status: 'IN_PROGRESS' });
       fetchVisitors();
-      alert(`✅ Day ${dayType} message sent to ${visitor.full_name}!`);
+      toast.info(`✅ Day ${dayType} message sent to ${visitor.full_name}!`);
     } else {
-      alert(`❌ Failed to send message: ${result.error}`);
+      toast.info(`❌ Failed to send message: ${result.error}`);
     }
   };
 
@@ -2812,6 +3095,7 @@ function VisitorsPage() {
 // ==========================================
 function AttendancePage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [activeView, setActiveView] = useState('charts');
@@ -2936,7 +3220,7 @@ function AttendancePage() {
   };
 
   const handleSave = async () => {
-    if (!form.service_date) { alert('Service date is required'); return; }
+    if (!form.service_date) { toast.warning('Service date is required'); return; }
     setSaving(true);
     try {
       const data = {
@@ -2956,7 +3240,7 @@ function AttendancePage() {
       resetForm();
       fetchData();
     } catch (error) {
-      alert('Error saving: ' + error.message);
+      toast.info('Error saving: ' + error.message);
     }
     setSaving(false);
   };
@@ -3314,6 +3598,7 @@ function AttendancePage() {
 // ==========================================
 function GivingPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [activeTab, setActiveTab] = useState('income');
@@ -3418,26 +3703,26 @@ function GivingPage() {
   };
 
   const handleSaveDonation = async () => {
-    if (!donationForm.amount) { alert('Amount is required'); return; }
+    if (!donationForm.amount) { toast.warning('Amount is required'); return; }
     setSaving(true);
     try {
       const data = { ...donationForm, amount: parseFloat(donationForm.amount) };
       if (editingItem) { await supabaseUpdate('donations', editingItem.id, data); }
       else { await supabaseInsert('donations', data); }
       setShowModal(false); resetDonationForm(); fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
   const handleSaveExpense = async () => {
-    if (!expenseForm.amount || !expenseForm.description) { alert('Amount and description are required'); return; }
+    if (!expenseForm.amount || !expenseForm.description) { toast.warning('Amount and description are required'); return; }
     setSaving(true);
     try {
       const data = { ...expenseForm, amount: parseFloat(expenseForm.amount) };
       if (editingItem) { await supabaseUpdate('expenses', editingItem.id, data); }
       else { await supabaseInsert('expenses', data); }
       setShowExpenseModal(false); resetExpenseForm(); fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
@@ -3792,6 +4077,7 @@ function GivingPage() {
 // ==========================================
 function SalvationsPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [salvations, setSalvations] = useState([]);
@@ -3809,7 +4095,7 @@ function SalvationsPage() {
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: mainCampus?.id || '' }); setEditingRecord(null); };
   const openModal = (record = null) => { if (record) { setEditingRecord(record); setForm({ full_name: record.full_name || '', phone: record.phone || '', email: record.email || '', gender: record.gender || '', age_group: record.age_group || '', salvation_date: record.salvation_date || '', followup_status: record.followup_status || 'PENDING', followup_notes: record.followup_notes || '', location_id: record.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.full_name) { alert('Name required'); return; } setSaving(true); try { if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, form); } else { await supabaseInsert('salvations', form); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { alert('Error: ' + error.message); } setSaving(false); };
+  const handleSave = async () => { if (!form.full_name) { toast.warning('Name required'); return; } setSaving(true); try { if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, form); } else { await supabaseInsert('salvations', form); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { toast.error(error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('salvations', deleteConfirm.id); setDeleteConfirm(null); fetchSalvations(); };
 
   const filteredSalvations = salvations.filter(s => filterLocation === 'all' || s.location_id === filterLocation);
@@ -3867,6 +4153,7 @@ function SalvationsPage() {
 // ==========================================
 function GroupsPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [groups, setGroups] = useState([]);
@@ -3884,7 +4171,7 @@ function GroupsPage() {
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: mainCampus?.id || '' }); setEditingGroup(null); };
   const openModal = (group = null) => { if (group) { setEditingGroup(group); setForm({ name: group.name || '', description: group.description || '', group_type: group.group_type || 'CELL', meeting_day: group.meeting_day || 'WEDNESDAY', meeting_time: group.meeting_time || '18:00', is_active: group.is_active ?? true, location_id: group.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.name) { alert('Name required'); return; } setSaving(true); try { if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, form); } else { await supabaseInsert('groups', form); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { alert('Error: ' + error.message); } setSaving(false); };
+  const handleSave = async () => { if (!form.name) { toast.warning('Name required'); return; } setSaving(true); try { if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, form); } else { await supabaseInsert('groups', form); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { toast.error(error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('groups', deleteConfirm.id); setDeleteConfirm(null); fetchGroups(); };
 
   const filteredGroups = groups.filter(g => filterLocation === 'all' || g.location_id === filterLocation);
@@ -3941,6 +4228,7 @@ function GroupsPage() {
 // ==========================================
 function VolunteersPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [volunteers, setVolunteers] = useState([]);
@@ -4022,7 +4310,7 @@ function VolunteersPage() {
 
   const handleSave = async () => {
     if (!form.full_name || !form.ministry) {
-      alert('Name and ministry are required');
+      toast.warning('Name and ministry are required');
       return;
     }
     setSaving(true);
@@ -4036,7 +4324,7 @@ function VolunteersPage() {
       resetForm();
       fetchData();
     } catch (error) {
-      alert('Error: ' + error.message);
+      toast.error(error.message);
     }
     setSaving(false);
   };
@@ -4288,6 +4576,7 @@ function VolunteersPage() {
 // ==========================================
 function MessagingPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [members, setMembers] = useState([]);
@@ -4426,8 +4715,8 @@ function MessagingPage() {
 
   // ── Handle send ──
   const handleSend = async () => {
-    if (!message.body) { alert('Please enter a message'); return; }
-    if (recipientCount === 0) { alert('No recipients selected'); return; }
+    if (!message.body) { toast.warning('Please enter a message'); return; }
+    if (recipientCount === 0) { toast.warning('No recipients selected'); return; }
 
     setSending(true);
     try {
@@ -4440,12 +4729,12 @@ function MessagingPage() {
         status: 'SENT',
         sent_by: 'Admin'
       });
-      alert(`✅ Message sent to ${recipientCount} recipient${recipientCount !== 1 ? 's' : ''}!`);
+      toast.info(`✅ Message sent to ${recipientCount} recipient${recipientCount !== 1 ? 's' : ''}!`);
       setMessage({ ...message, body: '', subject: '' });
       if (audienceMode === 'individual') setSelectedIndividuals([]);
       fetchData();
     } catch (error) {
-      alert('Error: ' + error.message);
+      toast.error(error.message);
     }
     setSending(false);
   };
@@ -4919,6 +5208,7 @@ function MessagingPage() {
 // ==========================================
 function ReportsPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [loading, setLoading] = useState(true);
@@ -5433,6 +5723,7 @@ function ReportsPage() {
 // ==========================================
 function ServicesPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
   const [activeTab, setActiveTab] = useState('services');
@@ -5518,7 +5809,7 @@ function ServicesPage() {
 
   // Save handlers
   const handleSaveService = async () => {
-    if (!serviceForm.name) { alert('Service name is required'); return; }
+    if (!serviceForm.name) { toast.warning('Service name is required'); return; }
     setSaving(true);
     try {
       if (editingService) {
@@ -5529,12 +5820,12 @@ function ServicesPage() {
       setShowServiceModal(false);
       resetServiceForm();
       fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
   const handleSaveEvent = async () => {
-    if (!eventForm.title || !eventForm.event_date) { alert('Event title and date are required'); return; }
+    if (!eventForm.title || !eventForm.event_date) { toast.warning('Event title and date are required'); return; }
     setSaving(true);
     try {
       if (editingEvent) {
@@ -5545,7 +5836,7 @@ function ServicesPage() {
       setShowEventModal(false);
       resetEventForm();
       fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
@@ -5560,7 +5851,7 @@ function ServicesPage() {
       }
       setDeleteConfirm(null);
       fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
   };
 
   // Helper functions
@@ -5970,6 +6261,7 @@ function ServicesPage() {
 // ==========================================
 function SuperAdminPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [churches, setChurches] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -6008,7 +6300,7 @@ function SuperAdminPage() {
 
   const deleteChurch = async (churchId) => {
     if (deleteConfirmText !== 'DELETE') {
-      alert('Please type DELETE to confirm');
+      toast.info('Please type DELETE to confirm');
       return;
     }
     setSaving(true);
@@ -6024,13 +6316,13 @@ function SuperAdminPage() {
         method: 'DELETE',
         headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' }
       });
-      alert('✅ Church and all data deleted permanently');
+      toast.success('✅ Church and all data deleted permanently');
       setDeleteConfirmId(null);
       setDeleteConfirmText('');
       setSelectedChurch(null);
       setActiveView('overview');
       fetchAllData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
@@ -6042,7 +6334,7 @@ function SuperAdminPage() {
         body: JSON.stringify({ is_active: !currentStatus })
       });
       fetchAllData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
   };
 
   const openEditUser = (u) => {
@@ -6062,13 +6354,13 @@ function SuperAdminPage() {
       });
       setEditingUser(null);
       fetchAllData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
   const addNewChurch = async () => {
     if (!newChurchForm.name || !newChurchForm.admin_email || !newChurchForm.admin_password) {
-      alert('Church name, admin email and password are required');
+      toast.warning('Church name, admin email and password are required');
       return;
     }
     setSaving(true);
@@ -6080,7 +6372,7 @@ function SuperAdminPage() {
       });
       const newChurch = await churchRes.json();
       const churchId = newChurch[0]?.id;
-      if (!churchId) { alert('Failed to create church'); setSaving(false); return; }
+      if (!churchId) { toast.error('Failed to create church'); setSaving(false); return; }
 
       await fetch(`${SUPABASE_URL}/rest/v1/church_users`, {
         method: 'POST',
@@ -6088,11 +6380,11 @@ function SuperAdminPage() {
         body: JSON.stringify({ church_id: churchId, full_name: newChurchForm.admin_name || 'Admin', email: newChurchForm.admin_email, password_hash: newChurchForm.admin_password, role: 'ADMIN', is_active: true })
       });
 
-      alert('✅ Church and admin account created!');
+      toast.success('✅ Church and admin account created!');
       setShowAddChurch(false);
       setNewChurchForm({ name: '', city: '', denomination: '', pastor_name: '', phone: '', email: '', currency: 'XAF', admin_name: '', admin_email: '', admin_password: '' });
       fetchAllData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
@@ -6358,6 +6650,7 @@ function SuperAdminPage() {
 // ==========================================
 function SettingsPage() {
   const { user, logout } = useAuth();
+  const toast = useToast();
   const CHURCH_ID = user?.church_id;
   const { t, language, changeLanguage } = useLanguage();
   const [church, setChurch] = useState(null);
@@ -6432,13 +6725,13 @@ function SettingsPage() {
   };
 
   const handleSaveChurch = async () => {
-    if (!churchForm.name) { alert('Church name is required'); return; }
+    if (!churchForm.name) { toast.warning('Church name is required'); return; }
     setSaving(true);
     try {
       await supabaseUpdate('churches', CHURCH_ID, churchForm);
       setEditingChurch(false);
       fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
@@ -6449,7 +6742,7 @@ function SettingsPage() {
   };
 
   const handleSaveAccount = async () => {
-    if (!accountForm.full_name) { alert('Name is required'); return; }
+    if (!accountForm.full_name) { toast.warning('Name is required'); return; }
     setSaving(true);
     try {
       const userData = JSON.parse(localStorage.getItem('churchsmart_user'));
@@ -6460,14 +6753,14 @@ function SettingsPage() {
       }
       setEditingAccount(false);
       window.location.reload();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
   const handleChangePassword = async () => {
-    if (!passwordForm.new_password || !passwordForm.confirm) { alert('Please fill in all password fields'); return; }
-    if (passwordForm.new_password !== passwordForm.confirm) { alert('Passwords do not match'); return; }
-    if (passwordForm.new_password.length < 6) { alert('Password must be at least 6 characters'); return; }
+    if (!passwordForm.new_password || !passwordForm.confirm) { toast.warning('Please fill in all password fields'); return; }
+    if (passwordForm.new_password !== passwordForm.confirm) { toast.info('Passwords do not match'); return; }
+    if (passwordForm.new_password.length < 6) { toast.info('Password must be at least 6 characters'); return; }
     setSaving(true);
     try {
       const userData = JSON.parse(localStorage.getItem('churchsmart_user'));
@@ -6476,8 +6769,8 @@ function SettingsPage() {
       }
       setShowPasswordChange(false);
       setPasswordForm({ current: '', new_password: '', confirm: '' });
-      alert('Password updated successfully!');
-    } catch (error) { alert('Error: ' + error.message); }
+      toast.success('Password updated successfully!');
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
@@ -6493,7 +6786,7 @@ function SettingsPage() {
   };
 
   const handleSaveLocation = async () => {
-    if (!locationForm.name) { alert('Location name is required'); return; }
+    if (!locationForm.name) { toast.warning('Location name is required'); return; }
     setSaving(true);
     try {
       const data = { 
@@ -6517,7 +6810,7 @@ function SettingsPage() {
       resetLocationForm(); 
       fetchData();
     } catch (error) { 
-      alert('Error: ' + error.message); 
+      toast.error(error.message); 
     }
     setSaving(false);
   };
@@ -6534,26 +6827,26 @@ function SettingsPage() {
   };
 
   const handleSaveRole = async () => {
-    if (!roleForm.name) { alert('Role name is required'); return; }
+    if (!roleForm.name) { toast.warning('Role name is required'); return; }
     setSaving(true);
     try {
       if (editingRole) { await supabaseUpdate('user_roles', editingRole.id, roleForm); }
       else { await supabaseInsert('user_roles', { ...roleForm, is_system_role: false }); }
       setShowRoleModal(false); resetRoleForm(); fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
   // ============ ROLE ASSIGNMENT HANDLERS ============
   const handleAssignRole = async () => {
-    if (!assignForm.user_email || !assignForm.role_id) { alert('Email and role are required'); return; }
+    if (!assignForm.user_email || !assignForm.role_id) { toast.warning('Email and role are required'); return; }
     setSaving(true);
     try {
       await supabaseInsert('user_role_assignments', { ...assignForm, assigned_by: user?.email });
       setShowAssignRoleModal(false);
       setAssignForm({ user_email: '', user_name: '', role_id: '' });
       fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
@@ -6584,13 +6877,13 @@ function SettingsPage() {
   };
 
   const handleSaveTemplate = async () => {
-    if (!templateForm.name || !templateForm.body) { alert('Name and message body are required'); return; }
+    if (!templateForm.name || !templateForm.body) { toast.warning('Name and message body are required'); return; }
     setSaving(true);
     try {
       if (editingTemplate) { await supabaseUpdate('message_templates', editingTemplate.id, templateForm); }
       else { await supabaseInsert('message_templates', templateForm); }
       setShowTemplateModal(false); resetTemplateForm(); fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
     setSaving(false);
   };
 
@@ -6599,11 +6892,11 @@ function SettingsPage() {
     if (!deleteConfirm) return;
     try {
       if (deleteConfirm.table === 'church_locations') {
-        if (deleteConfirm.is_main_campus) { alert('Cannot delete main campus'); setDeleteConfirm(null); return; }
+        if (deleteConfirm.is_main_campus) { toast.error('Cannot delete main campus'); setDeleteConfirm(null); return; }
       }
       await supabaseDelete(deleteConfirm.table, deleteConfirm.id);
       setDeleteConfirm(null); fetchData();
-    } catch (error) { alert('Error: ' + error.message); }
+    } catch (error) { toast.error(error.message); }
   };
 
   // ============ HELPERS ============
@@ -6717,13 +7010,13 @@ function SettingsPage() {
 
                             // Validate file size (2MB max)
                             if (file.size > 2 * 1024 * 1024) {
-                              alert('File is too large. Maximum size is 2MB.');
+                              toast.info('File is too large. Maximum size is 2MB.');
                               return;
                             }
 
                             // Validate file type
                             if (!['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'].includes(file.type)) {
-                              alert('Please upload a PNG, JPG, SVG, or WebP image.');
+                              toast.info('Please upload a PNG, JPG, SVG, or WebP image.');
                               return;
                             }
 
@@ -6743,11 +7036,11 @@ function SettingsPage() {
                                   await supabaseUpdate('churches', CHURCH_ID, { logo_url: fallbackUrl });
                                   fetchData();
                                 } else {
-                                  alert('Upload failed. Please ensure the storage bucket exists in Supabase. Go to Supabase Dashboard → Storage → Create bucket "church-logos" (set as public).');
+                                  toast.error('Upload failed. Please ensure the storage bucket exists in Supabase. Go to Supabase Dashboard → Storage → Create bucket "church-logos" (set as public).');
                                 }
                               }
                             } catch (error) {
-                              alert('Upload error: ' + error.message);
+                              toast.info('Upload error: ' + error.message);
                             }
                             setSaving(false);
                             e.target.value = ''; // Reset file input
@@ -6763,7 +7056,7 @@ function SettingsPage() {
                           try {
                             await supabaseUpdate('churches', CHURCH_ID, { logo_url: null });
                             fetchData();
-                          } catch (error) { alert('Error: ' + error.message); }
+                          } catch (error) { toast.error(error.message); }
                           setSaving(false);
                         }} style={{
                           padding: '10px 20px', border: '1px solid #fecaca', borderRadius: '10px',
