@@ -833,6 +833,10 @@ function AuthProvider({ children }) {
         }
       }
       setLoading(false);
+      // Clean up OAuth hash fragment from URL
+      if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
     };
     initSession();
 
@@ -845,6 +849,8 @@ function AuthProvider({ children }) {
           console.warn('Auth user has no church profile:', session.user.email);
           // Don't set user — they need to be added by an admin or register a church
         }
+        // Clean OAuth hash fragment
+        if (window.location.hash) window.history.replaceState(null, '', window.location.pathname);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         localStorage.removeItem('churchsmart_user');
