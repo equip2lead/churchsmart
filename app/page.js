@@ -958,6 +958,45 @@ function ToastProvider({ children }) {
 }
 
 
+
+// ==========================================
+// CSV EXPORT UTILITY
+// ==========================================
+function exportToCSV(data, columns, filename) {
+  if (!data || data.length === 0) return;
+  const header = columns.map(c => c.label).join(',');
+  const rows = data.map(row => columns.map(c => {
+    let val = c.accessor ? c.accessor(row) : (row[c.key] || '');
+    val = String(val).replace(/"/g, '""');
+    return `"${val}"`;
+  }).join(','));
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+// ==========================================
+// SEARCH INPUT COMPONENT
+// ==========================================
+function SearchInput({ value, onChange, placeholder }) {
+  return React.createElement('input', {
+    type: 'text',
+    value: value,
+    onChange: (e) => onChange(e.target.value),
+    placeholder: placeholder || 'Search...',
+    style: {
+      padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px',
+      fontSize: '14px', width: '100%', maxWidth: '320px', outline: 'none',
+      backgroundColor: '#f9fafb'
+    }
+  });
+}
+
 // ==========================================
 // PAGINATION COMPONENT
 // ==========================================
@@ -2417,6 +2456,28 @@ function MembersPage() {
     setEditingMember(null);
   };
 
+  const exportMembersCSV = () => {
+    const data = (members || []).filter(m => {
+      const matchesLocation = filterLocation === 'all' || m.location_id === filterLocation;
+      const matchesStatus = filterStatus === 'all' || m.status === filterStatus;
+      const matchesSearch = !searchTerm || (m.first_name + ' ' + m.last_name).toLowerCase().includes(searchTerm.toLowerCase()) || (m.phone || '').includes(searchTerm) || (m.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesLocation && matchesStatus && matchesSearch;
+    });
+    exportToCSV(data, [
+      { label: 'First Name', key: 'first_name' },
+      { label: 'Last Name', key: 'last_name' },
+      { label: 'Phone', key: 'phone' },
+      { label: 'Email', key: 'email' },
+      { label: 'Gender', key: 'gender' },
+      { label: 'Status', key: 'status' },
+      { label: 'Membership Date', key: 'membership_date' },
+      { label: 'Date of Birth', key: 'date_of_birth' },
+      { label: 'Address', key: 'address' },
+      { label: 'City', key: 'city' },
+    ], 'members');
+    toast.success('CSV exported!');
+  };
+
   const openModal = (member = null) => {
     if (member) {
       setEditingMember(member);
@@ -2437,6 +2498,15 @@ function MembersPage() {
     if (!form.first_name || !form.last_name) {
       toast.warning('First name and last name are required');
       return;
+    }
+    // Duplicate detection
+    if (!editingMember) {
+      const possibleDupe = members.find(m => 
+        (m.phone && form.phone && m.phone === form.phone) ||
+        (m.email && form.email && m.email.toLowerCase() === form.email.toLowerCase()) ||
+        (m.first_name.toLowerCase() === form.first_name.toLowerCase() && m.last_name.toLowerCase() === form.last_name.toLowerCase())
+      );
+      if (possibleDupe && !confirm(`⚠️ Possible duplicate: ${possibleDupe.first_name} ${possibleDupe.last_name} (${possibleDupe.phone || possibleDupe.email || 'no contact'}). Add anyway?`)) return;
     }
     setSaving(true);
     try {
@@ -2531,6 +2601,7 @@ function MembersPage() {
         subtitle={`Manage your ${members.length} church members across ${locations.length} locations`}
         actions={
           <div style={{ display: 'flex', gap: '10px' }}>
+            <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button>
             <Button variant="secondary" onClick={() => setShowInviteModal(true)}>🔗 Invite Link</Button>
             <Button onClick={() => openModal()}>➕ {t('addMember')}</Button>
           </div>
@@ -2844,6 +2915,9 @@ function VisitorsPage() {
   const [visitors, setVisitors] = useState([]);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 50;
   const [search, setSearch] = useState('');
   const [filterLocation, setFilterLocation] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -2925,6 +2999,14 @@ function VisitorsPage() {
       toast.warning('Name and phone are required');
       return;
     }
+    // Duplicate detection
+    if (!editingVisitor) {
+      const possibleDupe = visitors.find(v => 
+        (v.phone && form.phone && v.phone === form.phone) ||
+        (v.full_name && form.full_name && v.full_name.toLowerCase() === form.full_name.toLowerCase())
+      );
+      if (possibleDupe && !confirm(`⚠️ Possible duplicate visitor: ${possibleDupe.full_name} (${possibleDupe.phone || 'no phone'}). Add anyway?`)) return;
+    }
     setSaving(true);
     try {
       if (editingVisitor) {
@@ -2988,7 +3070,17 @@ function VisitorsPage() {
       <PageHeader
         title={`🚶 ${t('visitors')}`}
         subtitle={`${visitors.length} ${t('total')}`}
-        actions={<Button onClick={() => openModal()}>➕ {t('addVisitor')}</Button>}
+        actions={<div style={{ display: 'flex', gap: '10px' }}><Button variant="secondary" onClick={() => {
+          exportToCSV(filteredVisitors, [
+            { label: 'First Name', key: 'first_name' },
+            { label: 'Last Name', key: 'last_name' },
+            { label: 'Phone', key: 'phone' },
+            { label: 'Email', key: 'email' },
+            { label: 'Visit Date', key: 'visit_date' },
+            { label: 'How Heard', key: 'how_heard_about_us' },
+            { label: 'Follow-up', key: 'follow_up_status' },
+          ], 'visitors'); toast.success('CSV exported!');
+        }}>📥 {t('exportCSV')}</Button><Button onClick={() => openModal()}>➕ {t('addVisitor')}</Button></div>}
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -3296,6 +3388,18 @@ function AttendancePage() {
             >
               📋 Details
             </button>
+            <Button variant="secondary" onClick={() => {
+              const filtered = (records || []).filter(r => filterLocation === 'all' || r.location_id === filterLocation);
+              exportToCSV(filtered, [
+                { label: 'Date', key: 'service_date' },
+                { label: 'Service', key: 'service_name' },
+                { label: 'Men', key: 'men_count' },
+                { label: 'Women', key: 'women_count' },
+                { label: 'Children', key: 'children_count' },
+                { label: 'First Timers', key: 'first_timers_count' },
+                { label: 'Total', accessor: r => (r.men_count||0) + (r.women_count||0) + (r.children_count||0) },
+              ], 'attendance'); toast.success('CSV exported!');
+            }}>📥 {t('exportCSV')}</Button>
             <Button onClick={() => openModal()}>➕ {t('recordAttendance')}</Button>
           </div>
         }
@@ -3601,6 +3705,7 @@ function GivingPage() {
   const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
+  const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('income');
   const [donations, setDonations] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -3793,6 +3898,23 @@ function GivingPage() {
         subtitle="Track and manage all church income and expenses"
         actions={
           <div style={{ display: 'flex', gap: '12px' }}>
+            <Button variant="secondary" onClick={() => {
+              const data = activeTab === 'income' ? (donations || []) : (expenses || []);
+              const cols = activeTab === 'income' ? [
+                { label: 'Date', key: 'donation_date' },
+                { label: 'Donor', key: 'donor_name' },
+                { label: 'Amount', key: 'amount' },
+                { label: 'Category', key: 'category' },
+                { label: 'Method', key: 'payment_method' },
+              ] : [
+                { label: 'Date', key: 'expense_date' },
+                { label: 'Description', key: 'description' },
+                { label: 'Amount', key: 'amount' },
+                { label: 'Category', key: 'category' },
+              ];
+              exportToCSV(data, cols, activeTab === 'income' ? 'donations' : 'expenses');
+              toast.success('CSV exported!');
+            }}>📥 {t('exportCSV')}</Button>
             {activeTab === 'income' && <Button onClick={() => openDonationModal()}>➕ Add Donation</Button>}
             {activeTab === 'expenses' && <Button onClick={() => openExpenseModal()}>➕ Add Expense</Button>}
           </div>
@@ -4080,6 +4202,7 @@ function SalvationsPage() {
   const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
+  const [searchTerm, setSearchTerm] = useState('');
   const [salvations, setSalvations] = useState([]);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -4156,6 +4279,7 @@ function GroupsPage() {
   const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
+  const [searchTerm, setSearchTerm] = useState('');
   const [groups, setGroups] = useState([]);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -5726,6 +5850,7 @@ function ServicesPage() {
   const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
+  const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('services');
   const [services, setServices] = useState([]);
   const [events, setEvents] = useState([]);
