@@ -249,8 +249,6 @@ const translations = {
     givingHistory: 'Giving History',
     givingStatement: 'Giving Statement',
     page: 'Page',
-    calendar: 'Calendar',
-    today: 'Today',
   },
   fr: {
     // General
@@ -488,8 +486,6 @@ const translations = {
     givingHistory: 'Historique des Offrandes',
     givingStatement: 'Relevé des Offrandes',
     page: 'Page',
-    calendar: 'Calendrier',
-    today: "Aujourd'hui",
   }
 };
 
@@ -1723,7 +1719,6 @@ function Dashboard() {
     { id: 'messaging', label: 'Messaging', icon: '💬' },
     { id: 'reports', label: 'Reports', icon: '📊' },
     { id: 'services', label: t('services'), icon: '⛪' },
-    { id: 'calendar', label: t('calendar') || 'Calendar', icon: '📅' },
     { id: 'settings', label: t('settings'), icon: '⚙️' },
     ...(user?.is_super_admin ? [{ id: 'superadmin', label: '🛡️ Super Admin', icon: '🛡️' }] : []),
   ];
@@ -1803,7 +1798,6 @@ function Dashboard() {
           {activeTab === 'messaging' && <MessagingPage />}
           {activeTab === 'reports' && <ReportsPage />}
           {activeTab === 'services' && <ServicesPage />}
-          {activeTab === 'calendar' && <CalendarPage />}
           {activeTab === 'settings' && <SettingsPage />}
           {activeTab === 'superadmin' && <SuperAdminPage />}
         </main>
@@ -1952,7 +1946,7 @@ function DataTable({ columns, data, onEdit, onDelete, onSMS, emptyMessage = 'No 
   const [dtPage, setDtPage] = useState(1);
   const dtTotal = Math.ceil((data || []).length / pageSize);
   const dtPaged = (data || []).slice((dtPage - 1) * pageSize, dtPage * pageSize);
-  useEffect(() => { setDtPage(1); }, [data]);
+  useEffect(function() { setDtPage(1); }, [data]);
   if (!data || data.length === 0) {
     return (
       <div style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
@@ -2010,9 +2004,9 @@ function DataTable({ columns, data, onEdit, onDelete, onSMS, emptyMessage = 'No 
     </div>
     {dtTotal > 1 && (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', padding: '16px' }}>
-        <button onClick={() => setDtPage(p => Math.max(1, p - 1))} disabled={dtPage === 1} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: dtPage === 1 ? '#f9fafb' : 'white', color: dtPage === 1 ? '#d1d5db' : '#4b5563', cursor: dtPage === 1 ? 'default' : 'pointer', fontSize: '14px' }}>Previous</button>
-        <span style={{ fontSize: '14px', color: '#6b7280' }}>Page {dtPage} of {dtTotal} ({data.length} records)</span>
-        <button onClick={() => setDtPage(p => Math.min(dtTotal, p + 1))} disabled={dtPage >= dtTotal} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: dtPage >= dtTotal ? '#f9fafb' : 'white', color: dtPage >= dtTotal ? '#d1d5db' : '#4b5563', cursor: dtPage >= dtTotal ? 'default' : 'pointer', fontSize: '14px' }}>Next</button>
+        <button onClick={function(){setDtPage(function(p){return Math.max(1,p-1)})}} disabled={dtPage===1} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: dtPage===1 ? '#f9fafb' : 'white', color: dtPage===1 ? '#d1d5db' : '#4b5563', cursor: dtPage===1 ? 'default' : 'pointer', fontSize: '14px' }}>Previous</button>
+        <span style={{ fontSize: '14px', color: '#6b7280' }}>Page {dtPage} of {dtTotal}</span>
+        <button onClick={function(){setDtPage(function(p){return Math.min(dtTotal,p+1)})}} disabled={dtPage>=dtTotal} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: dtPage>=dtTotal ? '#f9fafb' : 'white', color: dtPage>=dtTotal ? '#d1d5db' : '#4b5563', cursor: dtPage>=dtTotal ? 'default' : 'pointer', fontSize: '14px' }}>Next</button>
       </div>
     )}
     </>
@@ -6876,117 +6870,6 @@ function SuperAdminPage() {
 // ==========================================
 // SETTINGS PAGE - Complete with All Features
 // ==========================================
-// ==========================================
-// CALENDAR PAGE
-// ==========================================
-function CalendarPage() {
-  const { t } = useLanguage();
-  const toast = useToast();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [services, setServices] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDay, setSelectedDay] = useState(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const [svcData, evtData] = await Promise.all([
-        supabaseQuery('church_services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('church_events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      ]);
-      setServices(svcData || []);
-      setEvents(evtData || []);
-      setLoading(false);
-    };
-    if (CHURCH_ID) fetchData();
-  }, [CHURCH_ID]);
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfWeek = new Date(year, month, 1).getDay();
-  const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const getEventsForDay = (day) => {
-    const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-    const dayOfWeek = new Date(year, month, day).getDay();
-    const dayMap = { 0: 'SUNDAY', 1: 'MONDAY', 2: 'TUESDAY', 3: 'WEDNESDAY', 4: 'THURSDAY', 5: 'FRIDAY', 6: 'SATURDAY' };
-    const dayName = dayMap[dayOfWeek];
-    const svcForDay = services.filter(s => s.day_of_week === dayName);
-    const evtForDay = events.filter(e => e.event_date === dateStr);
-    return [...svcForDay.map(s => ({ title: s.name, time: s.start_time, type: 'service', color: '#6366f1' })), ...evtForDay.map(e => ({ title: e.title, time: e.start_time, type: e.event_type || 'event', color: e.event_type === 'CONFERENCE' ? '#f59e0b' : e.event_type === 'PRAYER' ? '#8b5cf6' : '#10b981' }))];
-  };
-
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-  const goToday = () => setCurrentDate(new Date());
-  const isToday = (day) => { const td = new Date(); return day === td.getDate() && month === td.getMonth() && year === td.getFullYear(); };
-
-  const cells = [];
-  for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  const selectedDayEvents = selectedDay ? getEventsForDay(selectedDay) : [];
-
-  return (
-    <div>
-      <PageHeader title={'📅 ' + (t('calendar') || 'Calendar')} subtitle={monthName} actions={<Button onClick={goToday} variant="secondary">{t('today') || 'Today'}</Button>} />
-      {loading ? <LoadingSpinner /> : (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <button onClick={prevMonth} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '16px' }}>←</button>
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#111827' }}>{monthName}</h2>
-            <button onClick={nextMonth} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '16px' }}>→</button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
-            {dayNames.map(d => (
-              <div key={d} style={{ padding: '12px', textAlign: 'center', backgroundColor: '#f9fafb', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{d}</div>
-            ))}
-            {cells.map((day, i) => {
-              const dayEvts = day ? getEventsForDay(day) : [];
-              return (
-                <div key={i} onClick={() => day && setSelectedDay(day === selectedDay ? null : day)} style={{ minHeight: '80px', padding: '8px', backgroundColor: !day ? '#f9fafb' : isToday(day) ? '#eef2ff' : selectedDay === day ? '#f0fdf4' : 'white', cursor: day ? 'pointer' : 'default' }}>
-                  {day && (
-                    <>
-                      <span style={{ fontSize: '14px', fontWeight: isToday(day) ? '700' : '400', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', backgroundColor: isToday(day) ? '#4338ca' : 'transparent', color: isToday(day) ? 'white' : '#374151' }}>{day}</span>
-                      <div style={{ marginTop: '4px' }}>
-                        {dayEvts.slice(0, 3).map((evt, j) => (
-                          <div key={j} style={{ fontSize: '10px', padding: '2px 4px', marginBottom: '2px', borderRadius: '4px', backgroundColor: evt.color + '15', color: evt.color, fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{evt.time ? evt.time.slice(0, 5) : ''} {evt.title}</div>
-                        ))}
-                        {dayEvts.length > 3 && <div style={{ fontSize: '10px', color: '#6b7280' }}>+{dayEvts.length - 3} more</div>}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {selectedDay && (
-            <div style={{ marginTop: '24px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>{monthName.split(' ')[0]} {selectedDay}, {year}</h3>
-              {selectedDayEvents.length === 0 ? (
-                <p style={{ color: '#9ca3af', fontSize: '14px' }}>No events scheduled</p>
-              ) : (
-                selectedDayEvents.map((evt, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: 'white', borderRadius: '8px', marginBottom: '8px', borderLeft: '4px solid ' + evt.color }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: evt.color, flexShrink: 0 }}></div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>{evt.title}</p>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{evt.time ? evt.time.slice(0, 5) : ''} - {evt.type}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function SettingsPage() {
   const { user, logout } = useAuth();
   const toast = useToast();
