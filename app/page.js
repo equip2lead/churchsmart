@@ -837,10 +837,30 @@ export default function ChurchSmartApp() {
           :root { --bg-primary: #f5f7fb; --bg-card: #fff; --bg-sidebar: #fff; --text-primary: #111827; --text-secondary: #6b7280; --border-color: #e5e7eb; --input-bg: #f9fafb; }
           [data-theme="dark"] { --bg-primary: #111827; --bg-card: #1f2937; --bg-sidebar: #111827; --text-primary: #f3f4f6; --text-secondary: #9ca3af; --border-color: #374151; --input-bg: #1f2937; }
           
-          [data-theme="dark"] select, [data-theme="dark"] input, [data-theme="dark"] textarea { background-color: var(--input-bg) !important; color: var(--text-primary) !important; border-color: var(--border-color) !important; }
-          [data-theme="dark"] table th { background-color: #1f2937 !important; color: #9ca3af !important; }
-          [data-theme="dark"] table td { color: #f3f4f6 !important; border-color: #374151 !important; }
-          [data-theme="dark"] h1,[data-theme="dark"] h2,[data-theme="dark"] h3,[data-theme="dark"] h4,[data-theme="dark"] p { color: inherit !important; }
+          /* DARK MODE */
+          [data-theme="dark"] { color: #f3f4f6 !important; }
+          [data-theme="dark"] div { color: #e5e7eb; }
+          [data-theme="dark"] p { color: #d1d5db !important; }
+          [data-theme="dark"] h1,[data-theme="dark"] h2,[data-theme="dark"] h3,[data-theme="dark"] h4 { color: #f9fafb !important; }
+          [data-theme="dark"] label { color: #d1d5db !important; }
+          [data-theme="dark"] select,[data-theme="dark"] input,[data-theme="dark"] textarea { background-color: #374151 !important; color: #f3f4f6 !important; border-color: #4b5563 !important; }
+          [data-theme="dark"] select option { background-color: #1f2937; color: #f3f4f6; }
+          [data-theme="dark"] table th { background-color: #1f2937 !important; color: #9ca3af !important; border-color: #374151 !important; }
+          [data-theme="dark"] table td { color: #e5e7eb !important; border-color: #374151 !important; }
+          [data-theme="dark"] table tr { border-color: #374151 !important; }
+          [data-theme="dark"] button { color: #d1d5db; }
+          [data-theme="dark"] div[style*="background-color: white"],[data-theme="dark"] div[style*="backgroundColor: 'white'"] { background-color: #1f2937 !important; }
+          [data-theme="dark"] div[style*="#f9fafb"] { background-color: #111827 !important; }
+          [data-theme="dark"] div[style*="#f5f7fb"] { background-color: #111827 !important; }
+          [data-theme="dark"] div[style*="#f0fdf4"] { background-color: #064e3b !important; }
+          [data-theme="dark"] div[style*="#eef2ff"],[data-theme="dark"] div[style*="#e0e7ff"] { background-color: #312e81 !important; }
+          [data-theme="dark"] div[style*="#fef3c7"],[data-theme="dark"] div[style*="#fffbeb"] { background-color: #78350f !important; }
+          [data-theme="dark"] div[style*="#fef2f2"] { background-color: #7f1d1d !important; }
+          [data-theme="dark"] div[style*="#dbeafe"] { background-color: #1e3a5f !important; }
+          [data-theme="dark"] div[style*="#dcfce7"] { background-color: #064e3b !important; }
+          [data-theme="dark"] div[style*="#f3f4f6"] { background-color: #1f2937 !important; }
+          [data-theme="dark"] span[style*="color: rgb(22, 101, 52)"] { color: #4ade80 !important; }
+          [data-theme="dark"] span[style*="color: rgb(146, 64, 14)"] { color: #fbbf24 !important; }
           @media (max-width: 768px) {
             .sidebar { position: fixed !important; left: -280px !important; top: 0 !important; bottom: 0 !important; width: 260px !important; z-index: 50 !important; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
             .sidebar.open { left: 0 !important; }
@@ -870,6 +890,34 @@ export default function ChurchSmartApp() {
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const themeCtx = useTheme();
+  const isDarkMode = themeCtx ? themeCtx.isDark : false;
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const fixDark = () => {
+      if (!isDarkMode) return;
+      document.querySelectorAll('div,section,aside,header,main,nav').forEach(function(el) {
+        var bg = el.style.backgroundColor;
+        if (bg === 'white' || bg === '#ffffff' || bg === '#fff' || bg === 'rgb(255, 255, 255)') el.style.backgroundColor = '#1f2937';
+        else if (bg === '#f9fafb' || bg === 'rgb(249, 250, 251)' || bg === '#f5f7fb') el.style.backgroundColor = '#111827';
+        else if (bg === '#f3f4f6' || bg === 'rgb(243, 244, 246)') el.style.backgroundColor = '#1f2937';
+      });
+    };
+    var fixLight = function() {
+      if (isDarkMode) return;
+      document.querySelectorAll('div,section,aside,header,main,nav').forEach(function(el) {
+        var bg = el.style.backgroundColor;
+        if (bg === '#1f2937' || bg === 'rgb(31, 41, 55)') el.style.backgroundColor = '';
+        else if (bg === '#111827' || bg === 'rgb(17, 24, 39)') el.style.backgroundColor = '';
+      });
+    };
+    var fix = isDarkMode ? fixDark : fixLight;
+    var t = setTimeout(fix, 50);
+    var obs = new MutationObserver(function() { setTimeout(fix, 20); });
+    obs.observe(document.body, { childList: true, subtree: true });
+    return function() { clearTimeout(t); obs.disconnect(); };
+  }, [isDarkMode, user]);
 
   // ── Public Join Page: detect ?join=CHURCH_ID or ?connect=SLUG ──
   const [joinChurchId, setJoinChurchId] = useState(null);
@@ -941,7 +989,7 @@ function useTheme() { return useContext(ThemeContext); }
 function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(false);
   useEffect(() => { try { if (localStorage.getItem('cs-theme') === 'dark') setIsDark(true); } catch(e) {} }, []);
-  useEffect(() => { if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); try { localStorage.setItem('cs-theme', isDark ? 'dark' : 'light'); } catch(e) {} } }, [isDark]);
+  useEffect(() => { if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); document.body.classList.toggle('cs-dark', isDark); try { localStorage.setItem('cs-theme', isDark ? 'dark' : 'light'); } catch(e) {} } }, [isDark]);
   return React.createElement(ThemeContext.Provider, { value: { isDark, toggle: () => setIsDark(d => !d) } }, children);
 }
 function DarkModeToggle() {
