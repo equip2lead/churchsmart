@@ -843,11 +843,30 @@ function AuthProvider({ children }) {
     // Listen for auth state changes (login/logout, OAuth callbacks)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user?.email) {
-        const profile = await loadUserProfile(session.user.email);
+        let profile = await loadUserProfile(session.user.email);
         if (!profile && event === 'SIGNED_IN') {
-          // Google user with no church_users profile — store auth info for later linking
-          console.warn('Auth user has no church profile:', session.user.email);
-          // Don't set user — they need to be added by an admin or register a church
+          // New Google user with no church_users row — create a minimal one
+          const fullName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email.split('@')[0];
+          const { data: newRow } = await supabase
+            .from('church_users')
+            .insert({
+              auth_id: session.user.id,
+              email: session.user.email,
+              full_name: fullName,
+              role: 'ADMIN',
+              is_active: true
+            })
+            .select()
+            .single();
+
+          if (newRow) {
+            const sessionUser = {
+              id: newRow.id, email: newRow.email, name: newRow.full_name,
+              role: newRow.role, church_id: null, phone: null, is_super_admin: false
+            };
+            setUser(sessionUser);
+            localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+          }
         }
         // Clean OAuth hash fragment
         if (window.location.hash) window.history.replaceState(null, '', window.location.pathname);
@@ -1178,6 +1197,11 @@ function AppContent() {
 
   if (!user) {
     return <LoginPage />;
+  }
+
+  // Google user who signed in but has no church — show church setup
+  if (!user.church_id) {
+    return <GoogleChurchSetup user={user} />;
   }
 
   return <Dashboard />;
@@ -1628,6 +1652,172 @@ function PublicJoinPage({ churchId }) {
 // ==========================================
 // LOGIN PAGE - Split Screen Bilingual + Registration with Church Info
 // ==========================================
+// ==========================================
+// GOOGLE CHURCH SETUP (for new Google users with no church)
+// ==========================================
+function GoogleChurchSetup({ user }) {
+  const { logout } = useAuth();
+  const toast = useToast();
+  const [lang, setLang] = useState('en');
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    church_name: '', church_city: '', church_denomination: '',
+    church_pastor: '', church_phone: '', church_email: '',
+    church_currency: 'XAF'
+  });
+
+  const txt = {
+    en: {
+      title: 'Welcome to ChurchSmart!',
+      desc: `You're signed in as ${user.email}. Set up your church to get started.`,
+      churchName: 'Church Name *', city: 'City', denomination: 'Denomination',
+      pastor: 'Senior Pastor', phone: 'Church Phone', email: 'Church Email',
+      currency: 'Currency', create: 'Create My Church →', creating: 'Creating...',
+      logout: 'Sign out', required: 'Church name is required'
+    },
+    fr: {
+      title: 'Bienvenue sur ChurchSmart!',
+      desc: `Vous êtes connecté en tant que ${user.email}. Configurez votre église pour commencer.`,
+      churchName: 'Nom de l\'Église *', city: 'Ville', denomination: 'Dénomination',
+      pastor: 'Pasteur Principal', phone: 'Téléphone', email: 'Email de l\'Église',
+      currency: 'Devise', create: 'Créer Mon Église →', creating: 'Création...',
+      logout: 'Se déconnecter', required: 'Le nom de l\'église est requis'
+    }
+  };
+  const t = txt[lang];
+
+  const inputStyle = { width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box' };
+  const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' };
+
+  const handleCreate = async () => {
+    if (!form.church_name.trim()) { toast.warning(t.required); return; }
+    setLoading(true);
+    try {
+      const slug = form.church_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+      const { data: newChurch, error: churchError } = await supabase
+        .from('churches')
+        .insert({
+          name: form.church_name,
+          slug,
+          city: form.church_city || null,
+          denomination: form.church_denomination || null,
+          pastor_name: form.church_pastor || null,
+          phone: form.church_phone || null,
+          email: form.church_email || null,
+          currency: form.church_currency || 'XAF'
+        })
+        .select()
+        .single();
+
+      if (churchError || !newChurch?.id) {
+        toast.error('Failed to create church. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // Update existing church_users row with church_id
+      const { error: updateError } = await supabase
+        .from('church_users')
+        .update({
+          church_id: newChurch.id,
+          full_name: user.name || user.email.split('@')[0],
+          role: 'ADMIN',
+          is_active: true
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        await supabase.from('churches').delete().eq('id', newChurch.id);
+        toast.error('Failed to link account. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // Reload page to pick up updated profile
+      toast.success('Church created! Loading your dashboard...');
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+      toast.error(err.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '20px' }}>
+      <div style={{ width: '100%', maxWidth: '500px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '40px' }}>
+        {/* Language toggle */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '4px' }}>
+          <button onClick={() => setLang('en')} style={{ padding: '4px 10px', border: 'none', borderRadius: '6px', backgroundColor: lang === 'en' ? '#eef2ff' : 'transparent', color: lang === 'en' ? '#4f46e5' : '#9ca3af', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>EN</button>
+          <button onClick={() => setLang('fr')} style={{ padding: '4px 10px', border: 'none', borderRadius: '6px', backgroundColor: lang === 'fr' ? '#eef2ff' : 'transparent', color: lang === 'fr' ? '#4f46e5' : '#9ca3af', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>FR</button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '12px' }}>⛪</div>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>{t.title}</h2>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>{t.desc}</p>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>{t.churchName}</label>
+          <input type="text" value={form.church_name} onChange={(e) => setForm({...form, church_name: e.target.value})} placeholder="e.g., Fire of God Ministry" style={inputStyle} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+          <div>
+            <label style={labelStyle}>{t.city}</label>
+            <input type="text" value={form.church_city} onChange={(e) => setForm({...form, church_city: e.target.value})} placeholder="Douala" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>{t.denomination}</label>
+            <input type="text" value={form.church_denomination} onChange={(e) => setForm({...form, church_denomination: e.target.value})} placeholder="Pentecostal" style={inputStyle} />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+          <div>
+            <label style={labelStyle}>{t.pastor}</label>
+            <input type="text" value={form.church_pastor} onChange={(e) => setForm({...form, church_pastor: e.target.value})} placeholder="Pastor John" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>{t.currency}</label>
+            <select value={form.church_currency} onChange={(e) => setForm({...form, church_currency: e.target.value})} style={inputStyle}>
+              <option value="XAF">XAF (CFA Franc)</option>
+              <option value="NGN">NGN (Naira)</option>
+              <option value="GHS">GHS (Cedi)</option>
+              <option value="KES">KES (Shilling)</option>
+              <option value="USD">USD (Dollar)</option>
+              <option value="EUR">EUR (Euro)</option>
+              <option value="GBP">GBP (Pound)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+          <div>
+            <label style={labelStyle}>{t.phone}</label>
+            <input type="tel" value={form.church_phone} onChange={(e) => setForm({...form, church_phone: e.target.value})} placeholder="+237..." style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>{t.email}</label>
+            <input type="email" value={form.church_email} onChange={(e) => setForm({...form, church_email: e.target.value})} placeholder="info@church.com" style={inputStyle} />
+          </div>
+        </div>
+
+        <button onClick={handleCreate} disabled={loading}
+          style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)', marginBottom: '12px' }}>
+          {loading ? `⏳ ${t.creating}` : t.create}
+        </button>
+
+        <button onClick={logout}
+          style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#6b7280', border: 'none', fontSize: '14px', cursor: 'pointer' }}>
+          {t.logout}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LoginPage() {
   const { login, register, forgotPassword } = useAuth();
   const toast = useToast();
