@@ -897,19 +897,25 @@ function AppContent() {
     if (typeof document === 'undefined') return;
     const fixDark = () => {
       if (!isDarkMode) return;
-      document.querySelectorAll('div,section,aside,header,main,nav').forEach(function(el) {
+      document.querySelectorAll('div,section,aside,header,main,nav,td,th').forEach(function(el) {
         var bg = el.style.backgroundColor;
-        if (bg === 'white' || bg === '#ffffff' || bg === '#fff' || bg === 'rgb(255, 255, 255)') el.style.backgroundColor = '#1f2937';
-        else if (bg === '#f9fafb' || bg === 'rgb(249, 250, 251)' || bg === '#f5f7fb') el.style.backgroundColor = '#111827';
-        else if (bg === '#f3f4f6' || bg === 'rgb(243, 244, 246)') el.style.backgroundColor = '#1f2937';
+        if (!bg) {}
+        else if (bg === 'white' || bg === '#ffffff' || bg === '#fff' || bg === 'rgb(255, 255, 255)') { el.style.backgroundColor = '#1f2937'; if(!el.closest('span')) el.style.color = '#e5e7eb'; }
+        else if (bg === '#f9fafb' || bg === 'rgb(249, 250, 251)' || bg === '#f5f7fb') { el.style.backgroundColor = '#111827'; el.style.color = '#e5e7eb'; }
+        else if (bg === '#f3f4f6' || bg === 'rgb(243, 244, 246)') { el.style.backgroundColor = '#1f2937'; el.style.color = '#e5e7eb'; }
+        var col = el.style.color;
+        if (col === '#111827' || col === 'rgb(17, 24, 39)' || col === '#374151' || col === 'rgb(55, 65, 81)' || col === '#1f2937' || col === 'rgb(31, 41, 55)') el.style.color = '#e5e7eb';
+        if (col === '#4b5563' || col === 'rgb(75, 85, 99)' || col === '#6b7280' || col === 'rgb(107, 114, 128)') el.style.color = '#9ca3af';
       });
     };
     var fixLight = function() {
       if (isDarkMode) return;
-      document.querySelectorAll('div,section,aside,header,main,nav').forEach(function(el) {
+      document.querySelectorAll('div,section,aside,header,main,nav,td,th').forEach(function(el) {
         var bg = el.style.backgroundColor;
-        if (bg === '#1f2937' || bg === 'rgb(31, 41, 55)') el.style.backgroundColor = '';
-        else if (bg === '#111827' || bg === 'rgb(17, 24, 39)') el.style.backgroundColor = '';
+        if (bg === '#1f2937' || bg === 'rgb(31, 41, 55)') { el.style.backgroundColor = ''; el.style.color = ''; }
+        else if (bg === '#111827' || bg === 'rgb(17, 24, 39)') { el.style.backgroundColor = ''; el.style.color = ''; }
+        var col = el.style.color;
+        if (col === '#e5e7eb' || col === '#d1d5db' || col === '#9ca3af' || col === '#f3f4f6' || col === 'rgb(229, 231, 235)' || col === 'rgb(209, 213, 219)') el.style.color = '';
       });
     };
     var fix = isDarkMode ? fixDark : fixLight;
