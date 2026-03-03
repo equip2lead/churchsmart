@@ -834,7 +834,13 @@ export default function ChurchSmartApp() {
     <LanguageProvider>
       <AuthProvider>
       <style dangerouslySetInnerHTML={{ __html: `
-          :root { --bg-primary: #f5f7fb; --bg-card: #ffffff; --bg-sidebar: #ffffff; --text-primary: #111827; --text-secondary: #6b7280; --border-color: #e5e7eb; --input-bg: #f9fafb; }
+          :root { --bg-primary: #f5f7fb; --bg-card: #fff; --bg-sidebar: #fff; --text-primary: #111827; --text-secondary: #6b7280; --border-color: #e5e7eb; --input-bg: #f9fafb; }
+          [data-theme="dark"] { --bg-primary: #111827; --bg-card: #1f2937; --bg-sidebar: #111827; --text-primary: #f3f4f6; --text-secondary: #9ca3af; --border-color: #374151; --input-bg: #1f2937; }
+          
+          [data-theme="dark"] select, [data-theme="dark"] input, [data-theme="dark"] textarea { background-color: var(--input-bg) !important; color: var(--text-primary) !important; border-color: var(--border-color) !important; }
+          [data-theme="dark"] table th { background-color: #1f2937 !important; color: #9ca3af !important; }
+          [data-theme="dark"] table td { color: #f3f4f6 !important; border-color: #374151 !important; }
+          [data-theme="dark"] h1,[data-theme="dark"] h2,[data-theme="dark"] h3,[data-theme="dark"] h4,[data-theme="dark"] p { color: inherit !important; }
           @media (max-width: 768px) {
             .sidebar { position: fixed !important; left: -280px !important; top: 0 !important; bottom: 0 !important; width: 260px !important; z-index: 50 !important; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
             .sidebar.open { left: 0 !important; }
@@ -935,12 +941,12 @@ function useTheme() { return useContext(ThemeContext); }
 function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(false);
   useEffect(() => { try { if (localStorage.getItem('cs-theme') === 'dark') setIsDark(true); } catch(e) {} }, []);
-  useEffect(() => { if (typeof document !== 'undefined') { const r = document.documentElement.style; r.setProperty('--bg-primary', isDark ? '#111827' : '#f5f7fb'); r.setProperty('--bg-card', isDark ? '#1f2937' : '#ffffff'); r.setProperty('--bg-sidebar', isDark ? '#111827' : '#ffffff'); r.setProperty('--text-primary', isDark ? '#f3f4f6' : '#111827'); r.setProperty('--text-secondary', isDark ? '#9ca3af' : '#6b7280'); r.setProperty('--border-color', isDark ? '#374151' : '#e5e7eb'); r.setProperty('--input-bg', isDark ? '#1f2937' : '#f9fafb'); try { localStorage.setItem('cs-theme', isDark ? 'dark' : 'light'); } catch(e) {} } }, [isDark]);
+  useEffect(() => { if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); try { localStorage.setItem('cs-theme', isDark ? 'dark' : 'light'); } catch(e) {} } }, [isDark]);
   return React.createElement(ThemeContext.Provider, { value: { isDark, toggle: () => setIsDark(d => !d) } }, children);
 }
 function DarkModeToggle() {
   const { isDark, toggle } = useTheme();
-  return (<button onClick={toggle} style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e5e7eb)', backgroundColor: isDark ? '#374151' : 'white', fontSize: '13px', cursor: 'pointer', fontWeight: '500', color: isDark ? '#fbbf24' : '#6b7280' }} title={isDark ? 'Light mode' : 'Dark mode'}>{isDark ? '\u2600\ufe0f' : '\U0001f319'}</button>);
+  return (<button onClick={toggle} style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e5e7eb)', backgroundColor: isDark ? '#374151' : 'white', fontSize: '13px', cursor: 'pointer', fontWeight: '500', color: isDark ? '#fbbf24' : '#6b7280' }} title={isDark ? 'Light mode' : 'Dark mode'}>{isDark ? '☀️' : '🌙'}</button>);
 }
 
 // ==========================================
@@ -1008,11 +1014,11 @@ function MemberProfile({ member, onClose, churchId }) {
         <div style={{ width: '80px', height: '80px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '700', fontSize: '24px', overflow: 'hidden', flexShrink: 0 }}>{member.photo_url ? <img src={member.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}</div>
         <div style={{ flex: 1 }}>
           <h2 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700' }}>{member.first_name} {member.last_name}</h2>
-          <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{member.email || ''}{member.email && member.phone ? ' \u2022 ' : ''}{member.phone || ''}</p>
+          <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{member.email || ''}{member.email && member.phone ? ' • ' : ''}{member.phone || ''}</p>
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
             <span style={{ padding: '4px 12px', backgroundColor: member.status === 'ACTIVE' ? '#dcfce7' : '#fef3c7', color: member.status === 'ACTIVE' ? '#166534' : '#92400e', borderRadius: '9999px', fontSize: '12px', fontWeight: '600' }}>{member.status}</span>
             <span style={{ padding: '4px 12px', backgroundColor: '#e0e7ff', color: '#4338ca', borderRadius: '9999px', fontSize: '12px' }}>{member.gender}</span>
-            {member.date_of_birth && <span style={{ padding: '4px 12px', backgroundColor: '#f3f4f6', color: '#374151', borderRadius: '9999px', fontSize: '12px' }}>\U0001f382 {member.date_of_birth}</span>}
+            {member.date_of_birth && <span style={{ padding: '4px 12px', backgroundColor: '#f3f4f6', color: '#374151', borderRadius: '9999px', fontSize: '12px' }}>🎂 {member.date_of_birth}</span>}
           </div>
         </div>
       </div>
@@ -1021,20 +1027,20 @@ function MemberProfile({ member, onClose, churchId }) {
         <div style={{ backgroundColor: '#eef2ff', borderRadius: '12px', padding: '16px', textAlign: 'center' }}><p style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#4338ca' }}>{totalGiving.toLocaleString()}</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{t('totalGiving')}</p></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px', backgroundColor: '#f9fafb', borderRadius: '12px', padding: '20px' }}>
-        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('address')}</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.address || '\u2014'}{member.city ? `, ${member.city}` : ''}</p></div>
-        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('membershipDate')}</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.membership_date || '\u2014'}</p></div>
-        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Emergency</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.emergency_contact || '\u2014'}</p></div>
+        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('address')}</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.address || '—'}{member.city ? `, ${member.city}` : ''}</p></div>
+        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('membershipDate')}</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.membership_date || '—'}</p></div>
+        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Emergency</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.emergency_contact || '—'}</p></div>
       </div>
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>\U0001f4b0 {t('givingHistory')}</h3>
-          <button onClick={genStatement} style={{ padding: '6px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', fontSize: '13px', cursor: 'pointer', color: '#4b5563' }}>\U0001f4e5 {t('givingStatement')}</button>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>💰 {t('givingHistory')}</h3>
+          <button onClick={genStatement} style={{ padding: '6px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', fontSize: '13px', cursor: 'pointer', color: '#4b5563' }}>📥 {t('givingStatement')}</button>
         </div>
         {loading ? <p style={{ color: '#9ca3af', textAlign: 'center' }}>Loading...</p> : donations.length === 0 ? <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', padding: '20px' }}>{t('noData')}</p> : (
           <div style={{ maxHeight: '250px', overflowY: 'auto' }}>{donations.slice(0, 10).map((d, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}><div><span style={{ fontSize: '14px', fontWeight: '500' }}>{d.category || 'Donation'}</span><span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>{d.donation_date}</span></div><span style={{ fontSize: '14px', fontWeight: '600', color: '#10b981' }}>{(parseFloat(d.amount) || 0).toLocaleString()}</span></div>))}</div>
         )}
       </div>
-      {member.notes && <div style={{ backgroundColor: '#fffbeb', borderRadius: '12px', padding: '16px', border: '1px solid #fde68a' }}><h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>\U0001f4dd Notes</h4><p style={{ margin: 0, fontSize: '14px', color: '#78716c', lineHeight: '1.6' }}>{member.notes}</p></div>}
+      {member.notes && <div style={{ backgroundColor: '#fffbeb', borderRadius: '12px', padding: '16px', border: '1px solid #fde68a' }}><h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>📝 Notes</h4><p style={{ margin: 0, fontSize: '14px', color: '#78716c', lineHeight: '1.6' }}>{member.notes}</p></div>}
     </div>
   );
 }
@@ -1787,7 +1793,7 @@ function Dashboard() {
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <header style={{ height: '64px', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+        <header style={{ height: '64px', backgroundColor: 'var(--bg-card, white)', borderBottom: '1px solid var(--border-color, #e5e7eb)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '20px' }}>
               ☰
@@ -1832,7 +1838,7 @@ function Dashboard() {
 // ==========================================
 function StatCard({ label, value, icon, color = '#6366f1', trend }) {
   return (
-    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+    <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>{label}</p>
@@ -2335,7 +2341,7 @@ function DashboardPage() {
           </div>
 
           {/* Weekly Giving Chart */}
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+          <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#6b7280' }}>💰 Weekly Contributions</h3>
@@ -2364,7 +2370,7 @@ function DashboardPage() {
           </div>
 
           {/* Upcoming Birthdays */}
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+          <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🎂 Upcoming Birthdays</h3>
               <span style={{ fontSize: '14px', color: '#6b7280' }}>Next 30 days</span>
@@ -2395,7 +2401,7 @@ function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '24px' }}>
             
             {/* Recent Activity */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
               <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>⚡ Recent Activity</h3>
               {recentActivity.length === 0 ? (
                 <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No recent activity</p>
@@ -2418,7 +2424,7 @@ function DashboardPage() {
             </div>
 
             {/* Upcoming Services & Events */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
               <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📅 Upcoming Services & Events</h3>
               {upcomingItems.length === 0 ? (
                 <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No upcoming items</p>
@@ -2449,7 +2455,7 @@ function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
             
             {/* Recent Visitors */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>🚶 Recent Visitors</h3>
                 <span style={{ fontSize: '20px' }}>👥</span>
@@ -2472,7 +2478,7 @@ function DashboardPage() {
             </div>
 
             {/* Salvation Decisions */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>❤️ Salvation Decisions</h3>
                 <span style={{ fontSize: '20px' }}>🙌</span>
@@ -2710,7 +2716,7 @@ function MembersPage() {
       </div>
 
       {/* Members by Location */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+      <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
         <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>📍 Members by Location</h3>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {locationStats.map((loc, i) => (
@@ -2730,7 +2736,7 @@ function MembersPage() {
       </div>
 
       {/* Filters */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+      <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: '200px' }}>
             <input
@@ -2832,16 +2838,16 @@ function MembersPage() {
           </div>
           {filteredMembers.length > 50 && (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', padding: '16px' }}>
-              <button onClick={() => setMemberPage(p => Math.max(1, p-1))} disabled={memberPage===1} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: memberPage===1 ? '#f9fafb' : 'white', color: memberPage===1 ? '#d1d5db' : '#4b5563', cursor: memberPage===1 ? 'default' : 'pointer', fontSize: '14px' }}>{'\u2190 '+t('previous')}</button>
+              <button onClick={() => setMemberPage(p => Math.max(1, p-1))} disabled={memberPage===1} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: memberPage===1 ? '#f9fafb' : 'white', color: memberPage===1 ? '#d1d5db' : '#4b5563', cursor: memberPage===1 ? 'default' : 'pointer', fontSize: '14px' }}>{'← '+t('previous')}</button>
               <span style={{ fontSize: '14px', color: '#6b7280' }}>{t('page')} {memberPage} {t('of')} {Math.ceil(filteredMembers.length/50)}</span>
-              <button onClick={() => setMemberPage(p => Math.min(Math.ceil(filteredMembers.length/50), p+1))} disabled={memberPage>=Math.ceil(filteredMembers.length/50)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: memberPage>=Math.ceil(filteredMembers.length/50) ? '#f9fafb' : 'white', color: memberPage>=Math.ceil(filteredMembers.length/50) ? '#d1d5db' : '#4b5563', cursor: memberPage>=Math.ceil(filteredMembers.length/50) ? 'default' : 'pointer', fontSize: '14px' }}>{t('next')+' \u2192'}</button>
+              <button onClick={() => setMemberPage(p => Math.min(Math.ceil(filteredMembers.length/50), p+1))} disabled={memberPage>=Math.ceil(filteredMembers.length/50)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: memberPage>=Math.ceil(filteredMembers.length/50) ? '#f9fafb' : 'white', color: memberPage>=Math.ceil(filteredMembers.length/50) ? '#d1d5db' : '#4b5563', cursor: memberPage>=Math.ceil(filteredMembers.length/50) ? 'default' : 'pointer', fontSize: '14px' }}>{t('next')+' →'}</button>
             </div>
           )}
         </div>
       )}
 
       {/* Member Profile Modal */}
-      <Modal isOpen={!!viewingMember} onClose={() => setViewingMember(null)} title={'\U0001f464 '+t('memberProfile')} width="700px">
+      <Modal isOpen={!!viewingMember} onClose={() => setViewingMember(null)} title={'👤 '+t('memberProfile')} width="700px">
         {viewingMember && <MemberProfile member={viewingMember} onClose={() => setViewingMember(null)} churchId={CHURCH_ID} />}
       </Modal>
 
@@ -4638,7 +4644,7 @@ function VolunteersPage() {
       </div>
 
       {/* Filters */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+      <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: '200px' }}>
             <input
@@ -5029,7 +5035,7 @@ function MessagingPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
                 {/* Channel Selector */}
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Channel</label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     {[
@@ -5050,7 +5056,7 @@ function MessagingPage() {
                 </div>
 
                 {/* Audience Builder */}
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Audience</label>
                     <div style={{ display: 'flex', gap: '4px', backgroundColor: '#f3f4f6', borderRadius: '8px', padding: '3px' }}>
@@ -5235,7 +5241,7 @@ function MessagingPage() {
                 </div>
 
                 {/* Message Composer */}
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message</label>
 
                   {/* Subject (for Email) */}
