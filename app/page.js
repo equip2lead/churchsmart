@@ -245,7 +245,6 @@ const translations = {
     superAdmin: 'Super Admin',
     churches: 'Churches',
     addChurch: 'Add Church',
-    darkMode: 'Dark Mode',
     memberProfile: 'Member Profile',
     givingHistory: 'Giving History',
     givingStatement: 'Giving Statement',
@@ -483,7 +482,6 @@ const translations = {
     superAdmin: 'Super Admin',
     churches: 'Églises',
     addChurch: 'Ajouter Église',
-    darkMode: 'Mode Sombre',
     memberProfile: 'Profil du Membre',
     givingHistory: 'Historique des Offrandes',
     givingStatement: 'Relevé des Offrandes',
@@ -829,39 +827,12 @@ function useAuth() {
 // ==========================================
 export default function ChurchSmartApp() {
   return (
-    <ThemeProvider>
     <ToastProvider>
     <LanguageProvider>
       <AuthProvider>
       <style dangerouslySetInnerHTML={{ __html: `
-          :root { --bg-primary: #f5f7fb; --bg-card: #fff; --bg-sidebar: #fff; --text-primary: #111827; --text-secondary: #6b7280; --border-color: #e5e7eb; --input-bg: #f9fafb; }
-          [data-theme="dark"] { --bg-primary: #111827; --bg-card: #1f2937; --bg-sidebar: #111827; --text-primary: #f3f4f6; --text-secondary: #9ca3af; --border-color: #374151; --input-bg: #1f2937; }
-          
-          /* DARK MODE */
-          [data-theme="dark"] { color: #f3f4f6 !important; }
-          [data-theme="dark"] div { color: #e5e7eb; }
-          [data-theme="dark"] p { color: #d1d5db !important; }
-          [data-theme="dark"] h1,[data-theme="dark"] h2,[data-theme="dark"] h3,[data-theme="dark"] h4 { color: #f9fafb !important; }
-          [data-theme="dark"] label { color: #d1d5db !important; }
-          [data-theme="dark"] select,[data-theme="dark"] input,[data-theme="dark"] textarea { background-color: #374151 !important; color: #f3f4f6 !important; border-color: #4b5563 !important; }
-          [data-theme="dark"] select option { background-color: #1f2937; color: #f3f4f6; }
-          [data-theme="dark"] table th { background-color: #1f2937 !important; color: #9ca3af !important; border-color: #374151 !important; }
-          [data-theme="dark"] table td { color: #e5e7eb !important; border-color: #374151 !important; }
-          [data-theme="dark"] table tr { border-color: #374151 !important; }
-          [data-theme="dark"] button { color: #d1d5db; }
-          [data-theme="dark"] div[style*="background-color: white"],[data-theme="dark"] div[style*="backgroundColor: 'white'"] { background-color: #1f2937 !important; }
-          [data-theme="dark"] div[style*="#f9fafb"] { background-color: #111827 !important; }
-          [data-theme="dark"] div[style*="#f5f7fb"] { background-color: #111827 !important; }
-          [data-theme="dark"] div[style*="#f0fdf4"] { background-color: #064e3b !important; }
-          [data-theme="dark"] div[style*="#eef2ff"],[data-theme="dark"] div[style*="#e0e7ff"] { background-color: #312e81 !important; }
-          [data-theme="dark"] div[style*="#fef3c7"],[data-theme="dark"] div[style*="#fffbeb"] { background-color: #78350f !important; }
-          [data-theme="dark"] div[style*="#fef2f2"] { background-color: #7f1d1d !important; }
-          [data-theme="dark"] div[style*="#dbeafe"] { background-color: #1e3a5f !important; }
-          [data-theme="dark"] div[style*="#dcfce7"] { background-color: #064e3b !important; }
-          [data-theme="dark"] div[style*="#f3f4f6"] { background-color: #1f2937 !important; }
-          [data-theme="dark"] span[style*="color: rgb(22, 101, 52)"] { color: #4ade80 !important; }
-          [data-theme="dark"] span[style*="color: rgb(146, 64, 14)"] { color: #fbbf24 !important; }
-          @media (max-width: 768px) {
+                    
+                                                                                                                                                                                                                                                          @media (max-width: 768px) {
             .sidebar { position: fixed !important; left: -280px !important; top: 0 !important; bottom: 0 !important; width: 260px !important; z-index: 50 !important; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
             .sidebar.open { left: 0 !important; }
             .mobile-overlay { display: block !important; }
@@ -884,48 +855,12 @@ export default function ChurchSmartApp() {
       </AuthProvider>
     </LanguageProvider>
     </ToastProvider>
-    </ThemeProvider>
   );
 }
 
 function AppContent() {
   const { user, loading } = useAuth();
-  const themeCtx = useTheme();
-  const isDarkMode = themeCtx ? themeCtx.isDark : false;
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const fixDark = () => {
-      if (!isDarkMode) return;
-      document.querySelectorAll('div,section,aside,header,main,nav,td,th').forEach(function(el) {
-        var bg = el.style.backgroundColor;
-        if (!bg) {}
-        else if (bg === 'white' || bg === '#ffffff' || bg === '#fff' || bg === 'rgb(255, 255, 255)') { el.style.backgroundColor = '#1f2937'; if(!el.closest('span')) el.style.color = '#e5e7eb'; }
-        else if (bg === '#f9fafb' || bg === 'rgb(249, 250, 251)' || bg === '#f5f7fb') { el.style.backgroundColor = '#111827'; el.style.color = '#e5e7eb'; }
-        else if (bg === '#f3f4f6' || bg === 'rgb(243, 244, 246)') { el.style.backgroundColor = '#1f2937'; el.style.color = '#e5e7eb'; }
-        var col = el.style.color;
-        if (col === '#111827' || col === 'rgb(17, 24, 39)' || col === '#374151' || col === 'rgb(55, 65, 81)' || col === '#1f2937' || col === 'rgb(31, 41, 55)') el.style.color = '#e5e7eb';
-        if (col === '#4b5563' || col === 'rgb(75, 85, 99)' || col === '#6b7280' || col === 'rgb(107, 114, 128)') el.style.color = '#9ca3af';
-      });
-    };
-    var fixLight = function() {
-      if (isDarkMode) return;
-      document.querySelectorAll('div,section,aside,header,main,nav,td,th').forEach(function(el) {
-        var bg = el.style.backgroundColor;
-        if (bg === '#1f2937' || bg === 'rgb(31, 41, 55)') { el.style.backgroundColor = ''; el.style.color = ''; }
-        else if (bg === '#111827' || bg === 'rgb(17, 24, 39)') { el.style.backgroundColor = ''; el.style.color = ''; }
-        var col = el.style.color;
-        if (col === '#e5e7eb' || col === '#d1d5db' || col === '#9ca3af' || col === '#f3f4f6' || col === 'rgb(229, 231, 235)' || col === 'rgb(209, 213, 219)') el.style.color = '';
-      });
-    };
-    var fix = isDarkMode ? fixDark : fixLight;
-    var t = setTimeout(fix, 50);
-    var obs = new MutationObserver(function() { setTimeout(fix, 20); });
-    obs.observe(document.body, { childList: true, subtree: true });
-    return function() { clearTimeout(t); obs.disconnect(); };
-  }, [isDarkMode, user]);
-
-  // ── Public Join Page: detect ?join=CHURCH_ID or ?connect=SLUG ──
+    // ── Public Join Page: detect ?join=CHURCH_ID or ?connect=SLUG ──
   const [joinChurchId, setJoinChurchId] = useState(null);
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -986,22 +921,6 @@ if (typeof document !== 'undefined' && !document.getElementById('toast-styles'))
   document.head.appendChild(style);
 }
 
-
-// ==========================================
-// DARK MODE SYSTEM
-// ==========================================
-const ThemeContext = createContext();
-function useTheme() { return useContext(ThemeContext); }
-function ThemeProvider({ children }) {
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => { try { if (localStorage.getItem('cs-theme') === 'dark') setIsDark(true); } catch(e) {} }, []);
-  useEffect(() => { if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); document.body.classList.toggle('cs-dark', isDark); try { localStorage.setItem('cs-theme', isDark ? 'dark' : 'light'); } catch(e) {} } }, [isDark]);
-  return React.createElement(ThemeContext.Provider, { value: { isDark, toggle: () => setIsDark(d => !d) } }, children);
-}
-function DarkModeToggle() {
-  const { isDark, toggle } = useTheme();
-  return (<button onClick={toggle} style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e5e7eb)', backgroundColor: isDark ? '#374151' : 'white', fontSize: '13px', cursor: 'pointer', fontWeight: '500', color: isDark ? '#fbbf24' : '#6b7280' }} title={isDark ? 'Light mode' : 'Dark mode'}>{isDark ? '☀️' : '🌙'}</button>);
-}
 
 // ==========================================
 // TOAST NOTIFICATION SYSTEM
@@ -1847,7 +1766,7 @@ function Dashboard() {
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <header style={{ height: '64px', backgroundColor: 'var(--bg-card, white)', borderBottom: '1px solid var(--border-color, #e5e7eb)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+        <header style={{ height: '64px', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '20px' }}>
               ☰
@@ -1861,7 +1780,6 @@ function Dashboard() {
             <button onClick={() => changeLanguage(language === 'en' ? 'fr' : 'en')} style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px' }}>
               {language === 'en' ? '🇫🇷 FR' : '🇬🇧 EN'}
             </button>
-            <DarkModeToggle />
             <span className="desktop-only" style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>🟢 Live</span>
             <button style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer' }}>🔔</button>
           </div>
@@ -1892,7 +1810,7 @@ function Dashboard() {
 // ==========================================
 function StatCard({ label, value, icon, color = '#6366f1', trend }) {
   return (
-    <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>{label}</p>
@@ -2395,7 +2313,7 @@ function DashboardPage() {
           </div>
 
           {/* Weekly Giving Chart */}
-          <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#6b7280' }}>💰 Weekly Contributions</h3>
@@ -2424,7 +2342,7 @@ function DashboardPage() {
           </div>
 
           {/* Upcoming Birthdays */}
-          <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🎂 Upcoming Birthdays</h3>
               <span style={{ fontSize: '14px', color: '#6b7280' }}>Next 30 days</span>
@@ -2455,7 +2373,7 @@ function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '24px' }}>
             
             {/* Recent Activity */}
-            <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
               <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>⚡ Recent Activity</h3>
               {recentActivity.length === 0 ? (
                 <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No recent activity</p>
@@ -2478,7 +2396,7 @@ function DashboardPage() {
             </div>
 
             {/* Upcoming Services & Events */}
-            <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
               <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📅 Upcoming Services & Events</h3>
               {upcomingItems.length === 0 ? (
                 <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No upcoming items</p>
@@ -2509,7 +2427,7 @@ function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
             
             {/* Recent Visitors */}
-            <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>🚶 Recent Visitors</h3>
                 <span style={{ fontSize: '20px' }}>👥</span>
@@ -2532,7 +2450,7 @@ function DashboardPage() {
             </div>
 
             {/* Salvation Decisions */}
-            <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>❤️ Salvation Decisions</h3>
                 <span style={{ fontSize: '20px' }}>🙌</span>
@@ -2770,7 +2688,7 @@ function MembersPage() {
       </div>
 
       {/* Members by Location */}
-      <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
         <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>📍 Members by Location</h3>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {locationStats.map((loc, i) => (
@@ -2790,7 +2708,7 @@ function MembersPage() {
       </div>
 
       {/* Filters */}
-      <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: '200px' }}>
             <input
@@ -4698,7 +4616,7 @@ function VolunteersPage() {
       </div>
 
       {/* Filters */}
-      <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)', marginBottom: '24px' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: '200px' }}>
             <input
@@ -5089,7 +5007,7 @@ function MessagingPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
                 {/* Channel Selector */}
-                <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Channel</label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     {[
@@ -5110,7 +5028,7 @@ function MessagingPage() {
                 </div>
 
                 {/* Audience Builder */}
-                <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Audience</label>
                     <div style={{ display: 'flex', gap: '4px', backgroundColor: '#f3f4f6', borderRadius: '8px', padding: '3px' }}>
@@ -5295,7 +5213,7 @@ function MessagingPage() {
                 </div>
 
                 {/* Message Composer */}
-                <div style={{ backgroundColor: 'var(--bg-card, white)', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: 'var(--text-primary)' }}>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message</label>
 
                   {/* Subject (for Email) */}
