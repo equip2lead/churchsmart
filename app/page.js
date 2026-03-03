@@ -423,11 +423,11 @@ const translations = {
     givingReport: 'Rapport des Offrandes',
     
     // Settings
-    churchName: 'Nom de l'Église',
+    churchName: "Nom de l'Église",
     currency: 'Devise',
     timezone: 'Fuseau Horaire',
     uploadLogo: 'Télécharger Logo',
-    inviteLink: 'Lien d'Invitation',
+    inviteLink: "Lien d'Invitation",
     
     // Pagination
     showMore: 'Voir Plus',
