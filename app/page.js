@@ -245,6 +245,11 @@ const translations = {
     superAdmin: 'Super Admin',
     churches: 'Churches',
     addChurch: 'Add Church',
+    darkMode: 'Dark Mode',
+    memberProfile: 'Member Profile',
+    givingHistory: 'Giving History',
+    givingStatement: 'Giving Statement',
+    page: 'Page',
   },
   fr: {
     // General
@@ -478,6 +483,11 @@ const translations = {
     superAdmin: 'Super Admin',
     churches: 'Églises',
     addChurch: 'Ajouter Église',
+    darkMode: 'Mode Sombre',
+    memberProfile: 'Profil du Membre',
+    givingHistory: 'Historique des Offrandes',
+    givingStatement: 'Relevé des Offrandes',
+    page: 'Page',
   }
 };
 
@@ -819,10 +829,12 @@ function useAuth() {
 // ==========================================
 export default function ChurchSmartApp() {
   return (
+    <ThemeProvider>
     <ToastProvider>
     <LanguageProvider>
       <AuthProvider>
       <style dangerouslySetInnerHTML={{ __html: `
+          :root { --bg-primary: #f5f7fb; --bg-card: #ffffff; --bg-sidebar: #ffffff; --text-primary: #111827; --text-secondary: #6b7280; --border-color: #e5e7eb; --input-bg: #f9fafb; }
           @media (max-width: 768px) {
             .sidebar { position: fixed !important; left: -280px !important; top: 0 !important; bottom: 0 !important; width: 260px !important; z-index: 50 !important; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
             .sidebar.open { left: 0 !important; }
@@ -846,6 +858,7 @@ export default function ChurchSmartApp() {
       </AuthProvider>
     </LanguageProvider>
     </ToastProvider>
+    </ThemeProvider>
   );
 }
 
@@ -913,6 +926,23 @@ if (typeof document !== 'undefined' && !document.getElementById('toast-styles'))
   document.head.appendChild(style);
 }
 
+
+// ==========================================
+// DARK MODE SYSTEM
+// ==========================================
+const ThemeContext = createContext();
+function useTheme() { return useContext(ThemeContext); }
+function ThemeProvider({ children }) {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => { try { if (localStorage.getItem('cs-theme') === 'dark') setIsDark(true); } catch(e) {} }, []);
+  useEffect(() => { if (typeof document !== 'undefined') { const r = document.documentElement.style; r.setProperty('--bg-primary', isDark ? '#111827' : '#f5f7fb'); r.setProperty('--bg-card', isDark ? '#1f2937' : '#ffffff'); r.setProperty('--bg-sidebar', isDark ? '#111827' : '#ffffff'); r.setProperty('--text-primary', isDark ? '#f3f4f6' : '#111827'); r.setProperty('--text-secondary', isDark ? '#9ca3af' : '#6b7280'); r.setProperty('--border-color', isDark ? '#374151' : '#e5e7eb'); r.setProperty('--input-bg', isDark ? '#1f2937' : '#f9fafb'); try { localStorage.setItem('cs-theme', isDark ? 'dark' : 'light'); } catch(e) {} } }, [isDark]);
+  return React.createElement(ThemeContext.Provider, { value: { isDark, toggle: () => setIsDark(d => !d) } }, children);
+}
+function DarkModeToggle() {
+  const { isDark, toggle } = useTheme();
+  return (<button onClick={toggle} style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e5e7eb)', backgroundColor: isDark ? '#374151' : 'white', fontSize: '13px', cursor: 'pointer', fontWeight: '500', color: isDark ? '#fbbf24' : '#6b7280' }} title={isDark ? 'Light mode' : 'Dark mode'}>{isDark ? '\u2600\ufe0f' : '\U0001f319'}</button>);
+}
+
 // ==========================================
 // TOAST NOTIFICATION SYSTEM
 // ==========================================
@@ -958,6 +988,56 @@ function ToastProvider({ children }) {
 }
 
 
+
+
+// ==========================================
+// MEMBER PROFILE VIEW
+// ==========================================
+function MemberProfile({ member, onClose, churchId }) {
+  const { t } = useLanguage();
+  const toast = useToast();
+  const [donations, setDonations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { (async () => { setLoading(true); const d = await supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }, { column: 'member_id', operator: 'eq', value: member.id }], order: 'donation_date.desc', limit: 20 }); setDonations(d || []); setLoading(false); })(); }, [member.id]);
+  const totalGiving = donations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+  const initials = `${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}`;
+  const genStatement = () => { if (!donations.length) { toast.warning('No records'); return; } exportToCSV(donations, [{ label: 'Date', key: 'donation_date' },{ label: 'Amount', key: 'amount' },{ label: 'Category', key: 'category' },{ label: 'Method', key: 'payment_method' }], `giving-${member.first_name}-${member.last_name}`); toast.success(t('givingStatement') + ' exported!'); };
+  return (
+    <div style={{ padding: '8px 0' }}>
+      <div style={{ display: 'flex', gap: '24px', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap' }}>
+        <div style={{ width: '80px', height: '80px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '700', fontSize: '24px', overflow: 'hidden', flexShrink: 0 }}>{member.photo_url ? <img src={member.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}</div>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700' }}>{member.first_name} {member.last_name}</h2>
+          <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{member.email || ''}{member.email && member.phone ? ' \u2022 ' : ''}{member.phone || ''}</p>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+            <span style={{ padding: '4px 12px', backgroundColor: member.status === 'ACTIVE' ? '#dcfce7' : '#fef3c7', color: member.status === 'ACTIVE' ? '#166534' : '#92400e', borderRadius: '9999px', fontSize: '12px', fontWeight: '600' }}>{member.status}</span>
+            <span style={{ padding: '4px 12px', backgroundColor: '#e0e7ff', color: '#4338ca', borderRadius: '9999px', fontSize: '12px' }}>{member.gender}</span>
+            {member.date_of_birth && <span style={{ padding: '4px 12px', backgroundColor: '#f3f4f6', color: '#374151', borderRadius: '9999px', fontSize: '12px' }}>\U0001f382 {member.date_of_birth}</span>}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ backgroundColor: '#f0fdf4', borderRadius: '12px', padding: '16px', textAlign: 'center' }}><p style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#166534' }}>{donations.length}</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Donations</p></div>
+        <div style={{ backgroundColor: '#eef2ff', borderRadius: '12px', padding: '16px', textAlign: 'center' }}><p style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#4338ca' }}>{totalGiving.toLocaleString()}</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{t('totalGiving')}</p></div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px', backgroundColor: '#f9fafb', borderRadius: '12px', padding: '20px' }}>
+        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('address')}</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.address || '\u2014'}{member.city ? `, ${member.city}` : ''}</p></div>
+        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('membershipDate')}</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.membership_date || '\u2014'}</p></div>
+        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Emergency</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.emergency_contact || '\u2014'}</p></div>
+      </div>
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>\U0001f4b0 {t('givingHistory')}</h3>
+          <button onClick={genStatement} style={{ padding: '6px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', fontSize: '13px', cursor: 'pointer', color: '#4b5563' }}>\U0001f4e5 {t('givingStatement')}</button>
+        </div>
+        {loading ? <p style={{ color: '#9ca3af', textAlign: 'center' }}>Loading...</p> : donations.length === 0 ? <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', padding: '20px' }}>{t('noData')}</p> : (
+          <div style={{ maxHeight: '250px', overflowY: 'auto' }}>{donations.slice(0, 10).map((d, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}><div><span style={{ fontSize: '14px', fontWeight: '500' }}>{d.category || 'Donation'}</span><span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>{d.donation_date}</span></div><span style={{ fontSize: '14px', fontWeight: '600', color: '#10b981' }}>{(parseFloat(d.amount) || 0).toLocaleString()}</span></div>))}</div>
+        )}
+      </div>
+      {member.notes && <div style={{ backgroundColor: '#fffbeb', borderRadius: '12px', padding: '16px', border: '1px solid #fde68a' }}><h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>\U0001f4dd Notes</h4><p style={{ margin: 0, fontSize: '14px', color: '#78716c', lineHeight: '1.6' }}>{member.notes}</p></div>}
+    </div>
+  );
+}
 
 // ==========================================
 // CSV EXPORT UTILITY
@@ -1721,6 +1801,7 @@ function Dashboard() {
             <button onClick={() => changeLanguage(language === 'en' ? 'fr' : 'en')} style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px' }}>
               {language === 'en' ? '🇫🇷 FR' : '🇬🇧 EN'}
             </button>
+            <DarkModeToggle />
             <span className="desktop-only" style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>🟢 Live</span>
             <button style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer' }}>🔔</button>
           </div>
@@ -2436,6 +2517,8 @@ function MembersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterLocation, setFilterLocation] = useState('all');
+  const [viewingMember, setViewingMember] = useState(null);
+  const [memberPage, setMemberPage] = useState(1);
 
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', phone: '', date_of_birth: '',
@@ -2679,7 +2762,7 @@ function MembersPage() {
       {loading ? <LoadingSpinner /> : (
         <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>Showing {filteredMembers.length} of {members.length} members</span>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>{t('showing')} {Math.min(memberPage*50, filteredMembers.length)} {t('of')} {filteredMembers.length} {t('members').toLowerCase()}</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2694,7 +2777,7 @@ function MembersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredMembers.map((member, index) => (
+                {filteredMembers.slice((memberPage-1)*50, memberPage*50).map((member, index) => (
                   <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2706,7 +2789,7 @@ function MembersPage() {
                           )}
                         </div>
                         <div>
-                          <p style={{ margin: 0, fontWeight: '500' }}>{member.first_name} {member.last_name}</p>
+                          <p style={{ margin: 0, fontWeight: '500', cursor: 'pointer', color: '#4338ca' }} onClick={() => setViewingMember(member)}>{member.first_name} {member.last_name}</p>
                           <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{member.gender === 'MALE' ? '👨' : '👩'} {member.gender}</p>
                         </div>
                       </div>
@@ -2740,15 +2823,27 @@ function MembersPage() {
                   <tr>
                     <td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
                       <span style={{ fontSize: '48px' }}>👥</span>
-                      <p>No members found</p>
+                      <p>{t('noResults')}</p>
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+          {filteredMembers.length > 50 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', padding: '16px' }}>
+              <button onClick={() => setMemberPage(p => Math.max(1, p-1))} disabled={memberPage===1} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: memberPage===1 ? '#f9fafb' : 'white', color: memberPage===1 ? '#d1d5db' : '#4b5563', cursor: memberPage===1 ? 'default' : 'pointer', fontSize: '14px' }}>{'\u2190 '+t('previous')}</button>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>{t('page')} {memberPage} {t('of')} {Math.ceil(filteredMembers.length/50)}</span>
+              <button onClick={() => setMemberPage(p => Math.min(Math.ceil(filteredMembers.length/50), p+1))} disabled={memberPage>=Math.ceil(filteredMembers.length/50)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: memberPage>=Math.ceil(filteredMembers.length/50) ? '#f9fafb' : 'white', color: memberPage>=Math.ceil(filteredMembers.length/50) ? '#d1d5db' : '#4b5563', cursor: memberPage>=Math.ceil(filteredMembers.length/50) ? 'default' : 'pointer', fontSize: '14px' }}>{t('next')+' \u2192'}</button>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Member Profile Modal */}
+      <Modal isOpen={!!viewingMember} onClose={() => setViewingMember(null)} title={'\U0001f464 '+t('memberProfile')} width="700px">
+        {viewingMember && <MemberProfile member={viewingMember} onClose={() => setViewingMember(null)} churchId={CHURCH_ID} />}
+      </Modal>
 
       {/* Invite Link Modal */}
       <Modal isOpen={showInviteModal} onClose={() => { setShowInviteModal(false); setLinkCopied(false); }} title="🔗 Member Self-Registration Link" width="560px">
@@ -3925,6 +4020,7 @@ function GivingPage() {
               exportToCSV(data, cols, activeTab === 'income' ? 'donations' : 'expenses');
               toast.success('CSV exported!');
             }}>📥 {t('exportCSV')}</Button>
+            {activeTab === 'income' && <Button variant="secondary" onClick={() => { const bd={}; (donations||[]).forEach(d => { const n=d.donor_name||'Anonymous'; if(!bd[n])bd[n]=[]; bd[n].push(d); }); const rows=Object.entries(bd).map(([n,ds])=>({donor:n,total:ds.reduce((s,d)=>s+(parseFloat(d.amount)||0),0),count:ds.length,first:ds[ds.length-1]?.donation_date||'',last:ds[0]?.donation_date||''})); exportToCSV(rows,[{label:'Donor',key:'donor'},{label:'Total',key:'total'},{label:'Count',key:'count'},{label:'First',key:'first'},{label:'Last',key:'last'}],'giving-statements'); toast.success(t('givingStatement')+' exported!'); }}>📊 {t('givingStatement')}</Button>}
             {activeTab === 'income' && <Button onClick={() => openDonationModal()}>➕ Add Donation</Button>}
             {activeTab === 'expenses' && <Button onClick={() => openExpenseModal()}>➕ Add Expense</Button>}
           </div>
