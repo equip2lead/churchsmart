@@ -952,7 +952,7 @@ function AuthProvider({ children }) {
 
   const register = async (userData) => {
     try {
-      // 1. Create the church first (no auth needed)
+      // 1. Create the church first
       const slug = userData.church_name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -978,7 +978,7 @@ function AuthProvider({ children }) {
         return { success: false, error: 'Failed to create church. Please try again.' };
       }
 
-      // 2. Try Supabase Auth signup
+      // 2. Try Supabase Auth signup (trigger will auto-create church_users row)
       let authUserId = null;
       try {
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -988,42 +988,89 @@ function AuthProvider({ children }) {
         });
         if (!authError && authData?.user?.id) {
           authUserId = authData.user.id;
-        } else {
-          console.warn('Supabase Auth signup issue (will use legacy):', authError?.message);
+        } else if (authError) {
+          console.warn('Supabase Auth signup issue:', authError?.message);
+          // If user already registered in auth, delete church and inform
+          if (authError.message?.includes('already registered')) {
+            await supabase.from('churches').delete().eq('id', newChurch.id);
+            return { success: false, error: lang === 'fr' ? 'Cet email est déjà enregistré' : 'This email is already registered' };
+          }
         }
       } catch (authErr) {
-        console.warn('Auth signup failed, falling back to legacy:', authErr);
+        console.warn('Auth signup failed:', authErr);
       }
 
-      // 3. Create the admin user in church_users
-      const insertData = {
-        church_id: newChurch.id,
-        email: userData.email.trim().toLowerCase(),
-        full_name: userData.full_name,
-        phone: userData.phone || null,
-        role: 'ADMIN',
-        is_active: true
-      };
-      // Only set auth_id if we got a confirmed auth user
-      if (authUserId) insertData.auth_id = authUserId;
-      // Keep legacy password as fallback if auth signup didn't work
-      if (!authUserId) insertData.password_hash = userData.password;
-
-      const { error: userError } = await supabase
+      // 3. Check if trigger already created a church_users row
+      const { data: existingUser } = await supabase
         .from('church_users')
-        .insert(insertData);
+        .select('id')
+        .eq('email', userData.email.trim().toLowerCase())
+        .limit(1)
+        .single();
 
-      if (userError) {
-        // Rollback: delete the church
-        await supabase.from('churches').delete().eq('id', newChurch.id);
-        console.error('User creation failed:', userError);
-        return { success: false, error: 'Database error saving new user' };
+      if (existingUser) {
+        // Trigger already created the row — update it with church info
+        const { error: updateError } = await supabase
+          .from('church_users')
+          .update({
+            church_id: newChurch.id,
+            full_name: userData.full_name,
+            phone: userData.phone || null,
+            role: 'ADMIN',
+            is_active: true
+          })
+          .eq('id', existingUser.id);
+
+        if (updateError) {
+          await supabase.from('churches').delete().eq('id', newChurch.id);
+          console.error('User update failed:', updateError);
+          return { success: false, error: 'Failed to complete registration. Please try again.' };
+        }
+      } else {
+        // No trigger row — insert manually (legacy fallback)
+        const insertData = {
+          church_id: newChurch.id,
+          email: userData.email.trim().toLowerCase(),
+          full_name: userData.full_name,
+          phone: userData.phone || null,
+          role: 'ADMIN',
+          is_active: true
+        };
+        if (authUserId) insertData.auth_id = authUserId;
+        if (!authUserId) insertData.password_hash = userData.password;
+
+        const { error: userError } = await supabase
+          .from('church_users')
+          .insert(insertData);
+
+        if (userError) {
+          await supabase.from('churches').delete().eq('id', newChurch.id);
+          console.error('User creation failed:', userError);
+          return { success: false, error: 'Database error saving new user' };
+        }
       }
 
       return { success: true };
     } catch (error) {
       console.error('Register error:', error);
       return { success: false, error: 'Registration failed. Please try again.' };
+    }
+  };
+
+  const forgotPassword = async (email) => {
+    try {
+      if (!email || !isValidEmail(email)) {
+        return { success: false, error: 'Please enter a valid email address' };
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}?reset=true`
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: 'Failed to send reset email. Please try again.' };
     }
   };
 
@@ -1034,7 +1081,7 @@ function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, register, forgotPassword, loading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -1582,14 +1629,28 @@ function PublicJoinPage({ churchId }) {
 // LOGIN PAGE - Split Screen Bilingual + Registration with Church Info
 // ==========================================
 function LoginPage() {
-  const { login, register } = useAuth();
+  const { login, register, forgotPassword } = useAuth();
   const toast = useToast();
   const [isLogin, setIsLogin] = useState(true);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [lang, setLang] = useState('en');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [step, setStep] = useState(1); // Registration steps: 1=user info, 2=church info
+  const [step, setStep] = useState(1);
+
+  // Detect password reset redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reset') === 'true' || window.location.hash?.includes('type=recovery')) {
+      setShowResetForm(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []); // Registration steps: 1=user info, 2=church info
 
   const [form, setForm] = useState({
     email: '', password: '', full_name: '', phone: '', confirm_password: '',
@@ -1610,6 +1671,12 @@ function LoginPage() {
       orContinueWith: 'or continue with',
       googleSignIn: 'Sign in with Google',
       googleLinkNeeded: 'Google account not linked to any church. Please register first or contact your administrator.',
+      forgotTitle: 'Reset Password', forgotDesc: 'Enter your email and we\'ll send a reset link',
+      sendResetLink: 'Send Reset Link', backToLogin: '← Back to Login',
+      resetSent: 'Password reset link sent! Check your email.',
+      newPasswordTitle: 'Set New Password', newPasswordDesc: 'Enter your new password below',
+      newPassword: 'New Password', confirmNewPassword: 'Confirm New Password',
+      updatePassword: 'Update Password', passwordUpdated: 'Password updated! You can now sign in.',
       tagline: 'The all-in-one church management platform built for African churches. Manage your congregation with ease.',
       churches: 'Churches', membersManaged: 'Members Managed', countries: 'Countries',
       memberMgmt: 'Member Management', memberDesc: 'Track members, visitors & groups across all locations',
@@ -1648,6 +1715,12 @@ function LoginPage() {
       orContinueWith: 'ou continuer avec',
       googleSignIn: 'Se connecter avec Google',
       googleLinkNeeded: 'Compte Google non lié à une église. Inscrivez-vous d\'abord ou contactez votre administrateur.',
+      forgotTitle: 'Réinitialiser le mot de passe', forgotDesc: 'Entrez votre email et nous vous enverrons un lien',
+      sendResetLink: 'Envoyer le lien', backToLogin: '← Retour à la connexion',
+      resetSent: 'Lien de réinitialisation envoyé! Vérifiez votre email.',
+      newPasswordTitle: 'Nouveau mot de passe', newPasswordDesc: 'Entrez votre nouveau mot de passe',
+      newPassword: 'Nouveau mot de passe', confirmNewPassword: 'Confirmer le mot de passe',
+      updatePassword: 'Mettre à jour', passwordUpdated: 'Mot de passe mis à jour! Vous pouvez vous connecter.',
       churchInfo: 'Informations de l\'Église', churchInfoDesc: 'Parlez-nous de votre église',
       churchName: 'Nom de l\'Église *', churchAddress: 'Adresse', churchCity: 'Ville',
       churchPhone: 'Téléphone de l\'Église', churchEmail: 'Email de l\'Église', pastorName: 'Pasteur Principal',
@@ -1799,6 +1872,79 @@ function LoginPage() {
           {error && <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', marginBottom: '16px', color: '#dc2626', fontSize: '14px' }}>❌ {error}</div>}
           {success && <div style={{ padding: '12px 16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', marginBottom: '16px', color: '#166534', fontSize: '14px' }}>✅ {success}</div>}
 
+          {/* FORGOT PASSWORD PANEL */}
+          {showResetForm ? (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', fontWeight: 'bold', color: '#1f2937' }}>🔐 {t.newPasswordTitle}</h3>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>{t.newPasswordDesc}</p>
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={labelStyle}>{t.newPassword}</label>
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" style={inputStyle}
+                  onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={labelStyle}>{t.confirmNewPassword}</label>
+                <input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder="••••••••" style={inputStyle}
+                  onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+              </div>
+              <button
+                onClick={async () => {
+                  setError(''); setSuccess('');
+                  if (!newPassword || newPassword.length < 8) { setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 8 caractères' : 'Password must be at least 8 characters'); return; }
+                  if (!/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) { setError(lang === 'fr' ? 'Le mot de passe doit contenir une majuscule et un chiffre' : 'Password must include an uppercase letter and a number'); return; }
+                  if (newPassword !== confirmNewPassword) { setError(lang === 'fr' ? 'Les mots de passe ne correspondent pas' : 'Passwords do not match'); return; }
+                  setLoading(true);
+                  const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
+                  if (updateErr) {
+                    setError(updateErr.message);
+                  } else {
+                    setSuccess(t.passwordUpdated);
+                    setShowResetForm(false);
+                    await supabase.auth.signOut();
+                  }
+                  setLoading(false);
+                }}
+                disabled={loading}
+                style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+                {loading ? '⏳...' : t.updatePassword}
+              </button>
+            </div>
+          ) : showForgotPassword ? (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', fontWeight: 'bold', color: '#1f2937' }}>🔑 {t.forgotTitle}</h3>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>{t.forgotDesc}</p>
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={labelStyle}>{t.email}</label>
+                <input type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="you@church.com" style={inputStyle}
+                  onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+              </div>
+              <button
+                onClick={async () => {
+                  setLoading(true); setError(''); setSuccess('');
+                  const result = await forgotPassword(resetEmail);
+                  if (result.success) {
+                    setSuccess(t.resetSent);
+                  } else {
+                    setError(result.error);
+                  }
+                  setLoading(false);
+                }}
+                disabled={loading}
+                style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginBottom: '12px' }}>
+                {loading ? '⏳...' : t.sendResetLink}
+              </button>
+              <button
+                onClick={() => { setShowForgotPassword(false); setError(''); setSuccess(''); }}
+                style={{ width: '100%', padding: '12px', backgroundColor: 'transparent', color: '#6366f1', border: 'none', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+                {t.backToLogin}
+              </button>
+            </div>
+          ) : (
+          <>
           <form onSubmit={handleSubmit}>
             {/* LOGIN FORM */}
             {isLogin && (
@@ -1817,7 +1963,7 @@ function LoginPage() {
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b7280', cursor: 'pointer' }}>
                     <input type="checkbox" style={{ width: '16px', height: '16px', accentColor: '#6366f1' }} /> {t.rememberMe}
                   </label>
-                  <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: '13px', color: '#6366f1', textDecoration: 'none', fontWeight: '500' }}>{t.forgotPassword}</a>
+                  <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotPassword(true); setError(''); setSuccess(''); setResetEmail(form.email); }} style={{ fontSize: '13px', color: '#6366f1', textDecoration: 'none', fontWeight: '500' }}>{t.forgotPassword}</a>
                 </div>
               </>
             )}
@@ -1962,6 +2108,8 @@ function LoginPage() {
                 {t.googleSignIn}
               </button>
             </div>
+          )}
+          </>
           )}
 
           <div style={{ marginTop: '20px', textAlign: 'center' }}>
