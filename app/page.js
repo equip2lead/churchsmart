@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 // ==========================================
 // SUPABASE CONFIG
@@ -9,6 +10,9 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ntngwrtbbg
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bmd3cnRiYmdldG9iaW53dnhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTc3NTIsImV4cCI6MjA4NTMzMzc1Mn0.uvMWB2zwd4LYJM1P1jpov5rG83L62Eqbe7Bko9kI_1Q';
 const SUPABASE_ANON_KEY = SUPABASE_KEY;
 const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL || 'https://ntngwrtbbgetobinwvxd.supabase.co/functions/v1/send-message';
+
+// Initialize Supabase client (handles JWT auth automatically)
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // ==========================================
 // TRANSLATIONS (Bilingual FR/EN)
 // ==========================================
@@ -593,29 +597,40 @@ function isValidFilterValue(val) {
 }
 
 // ==========================================
-// SUPABASE API HELPERS (hardened)
+// SUPABASE API HELPERS (using Supabase client)
 // ==========================================
+
+// Helper to get current session token for raw fetch calls
+async function getAuthHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || SUPABASE_KEY;
+  return {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  };
+}
+
 async function supabaseQuery(table, options = {}) {
   if (!isValidTable(table)) { console.error('Invalid table:', table); return []; }
   const { select = '*', filters = [], order, limit, single = false } = options;
-  let url = `${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
-  
+
+  let query = supabase.from(table).select(select);
+
   for (const f of filters) {
     if (!isValidFilterValue(String(f.value))) { console.error('Suspicious filter blocked'); return []; }
-    url += `&${encodeURIComponent(f.column)}=${f.operator}.${encodeURIComponent(f.value)}`;
+    query = query.filter(f.column, f.operator, f.value);
   }
-  
-  if (order) url += `&order=${encodeURIComponent(order)}`;
-  if (limit) url += `&limit=${parseInt(limit, 10) || 50}`;
-  
-  const response = await fetch(url, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-  });
-  
-  if (!response.ok) { console.error(`Query ${table} failed:`, response.status); return single ? null : []; }
-  const data = await response.json();
-  if (Array.isArray(data) && data.length > 0 && data[0]?.message) { console.error('Supabase error:', data[0].message); return single ? null : []; }
-  return single ? data[0] : data;
+
+  if (order) {
+    const [col, dir] = order.split('.');
+    query = query.order(col, { ascending: dir !== 'desc' });
+  }
+  if (limit) query = query.limit(parseInt(limit, 10) || 50);
+
+  const { data, error } = await query;
+  if (error) { console.error(`Query ${table} failed:`, error.message); return single ? null : []; }
+  return single ? (data?.[0] || null) : (data || []);
 }
 
 async function supabaseInsert(table, data) {
@@ -624,34 +639,27 @@ async function supabaseInsert(table, data) {
   const churchId = savedUser ? JSON.parse(savedUser).church_id : null;
   const sanitized = sanitizeObject(data);
   const insertData = sanitized.church_id ? sanitized : { ...sanitized, church_id: churchId };
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-    body: JSON.stringify(insertData)
-  });
-  if (!response.ok) { const err = await response.text(); throw new Error(`Insert failed: ${err}`); }
-  return response.json();
+
+  const { data: result, error } = await supabase.from(table).insert(insertData).select();
+  if (error) throw new Error(`Insert failed: ${error.message}`);
+  return result;
 }
 
 async function supabaseUpdate(table, id, data) {
   if (!isValidTable(table)) { console.error('Invalid table:', table); return null; }
   const sanitized = sanitizeObject(data);
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-    body: JSON.stringify(sanitized)
-  });
-  if (!response.ok) { const err = await response.text(); throw new Error(`Update failed: ${err}`); }
-  return response.json();
+
+  const { data: result, error } = await supabase.from(table).update(sanitized).eq('id', id).select();
+  if (error) throw new Error(`Update failed: ${error.message}`);
+  return result;
 }
 
 async function supabaseDelete(table, id) {
   if (!isValidTable(table)) { console.error('Invalid table:', table); return false; }
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-  });
-  return response.ok;
+
+  const { error } = await supabase.from(table).delete().eq('id', id);
+  if (error) { console.error(`Delete failed:`, error.message); return false; }
+  return true;
 }
 
 // ==========================================
@@ -659,12 +667,10 @@ async function supabaseDelete(table, id) {
 // ==========================================
 async function sendMessage(to, message, type = 'sms') {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      },
+      headers,
       body: JSON.stringify({ to, message, type })
     });
     return response.json();
@@ -680,21 +686,17 @@ async function sendMessage(to, message, type = 'sms') {
 async function uploadPhoto(file, bucket = 'avatars') {
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}.${fileExt}`;
-  const filePath = `${fileName}`;
 
-  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${filePath}`, {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': file.type,
-    },
-    body: file
+  const { error } = await supabase.storage.from(bucket).upload(fileName, file, {
+    contentType: file.type,
+    upsert: false
   });
 
-  if (response.ok) {
-    return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${filePath}`;
+  if (!error) {
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    return urlData?.publicUrl || null;
   }
+  console.error('Upload failed:', error.message);
   return null;
 }
 // ==========================================
@@ -777,16 +779,66 @@ function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const loginAttempts = useRef({ count: 0, lastAttempt: 0, lockedUntil: 0 });
 
+  // Load user profile from church_users given an auth email
+  const loadUserProfile = async (authEmail) => {
+    const { data: users } = await supabase
+      .from('church_users')
+      .select('*')
+      .eq('email', authEmail.toLowerCase())
+      .eq('is_active', true)
+      .limit(1);
+
+    if (users && users.length > 0) {
+      const dbUser = users[0];
+      const sessionUser = {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.full_name,
+        role: dbUser.role,
+        church_id: dbUser.church_id,
+        phone: dbUser.phone,
+        is_super_admin: dbUser.is_super_admin || false
+      };
+
+      // Update last_login
+      await supabase.from('church_users').update({ last_login: new Date().toISOString() }).eq('id', dbUser.id);
+
+      setUser(sessionUser);
+      localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+      return sessionUser;
+    }
+    return null;
+  };
+
+  // Initialize: check Supabase Auth session on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('churchsmart_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
+    const initSession = async () => {
+      // First check for existing Supabase Auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        await loadUserProfile(session.user.email);
+      } else {
+        // Fallback: check localStorage for legacy sessions
+        const savedUser = localStorage.getItem('churchsmart_user');
+        if (savedUser) {
+          try { setUser(JSON.parse(savedUser)); } catch (e) { localStorage.removeItem('churchsmart_user'); }
+        }
+      }
+      setLoading(false);
+    };
+    initSession();
+
+    // Listen for auth state changes (login/logout from other tabs)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user?.email) {
+        await loadUserProfile(session.user.email);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
         localStorage.removeItem('churchsmart_user');
       }
-    }
-    setLoading(false);
+    });
+
+    return () => subscription?.unsubscribe();
   }, []);
 
   const login = async (email, password) => {
@@ -803,63 +855,73 @@ function AuthProvider({ children }) {
       if (!email || !password) return { success: false, error: 'Email and password are required' };
       if (!isValidEmail(email)) return { success: false, error: 'Invalid email format' };
 
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/church_users?email=eq.${encodeURIComponent(email.trim().toLowerCase())}&is_active=eq.true`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        }
+      // Try Supabase Auth first
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password
       });
-      
-      const users = await response.json();
-      
-      if (!users || users.length === 0) {
-        attempts.count++;
-        attempts.lastAttempt = Date.now();
-        if (attempts.count >= 5) { attempts.lockedUntil = Date.now() + 60000; attempts.count = 0; } // Lock 60s after 5 fails
-        return { success: false, error: 'Invalid email or password' };
-      }
 
-      const dbUser = users[0];
+      if (authError) {
+        // Fallback: try legacy password_hash login for users not yet migrated
+        const { data: legacyUsers } = await supabase
+          .from('church_users')
+          .select('*')
+          .eq('email', email.trim().toLowerCase())
+          .eq('is_active', true)
+          .limit(1);
 
-      if (dbUser.password_hash !== password) {
+        if (legacyUsers && legacyUsers.length > 0 && legacyUsers[0].password_hash === password) {
+          // Legacy login succeeded — migrate this user to Supabase Auth
+          const dbUser = legacyUsers[0];
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: dbUser.email,
+            password: password,
+            options: { data: { church_id: dbUser.church_id, role: dbUser.role } }
+          });
+
+          if (!signUpError && signUpData?.user) {
+            // Update church_users with auth_id and clear legacy password
+            await supabase.from('church_users')
+              .update({ auth_id: signUpData.user.id, password_hash: null })
+              .eq('id', dbUser.id);
+
+            // Auto sign-in after migration
+            await supabase.auth.signInWithPassword({ email: dbUser.email, password });
+          }
+
+          // Even if migration fails, allow login with legacy session
+          const sessionUser = {
+            id: dbUser.id, email: dbUser.email, name: dbUser.full_name,
+            role: dbUser.role, church_id: dbUser.church_id,
+            phone: dbUser.phone, is_super_admin: dbUser.is_super_admin || false
+          };
+          await supabase.from('church_users').update({ last_login: new Date().toISOString() }).eq('id', dbUser.id);
+          setUser(sessionUser);
+          localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+          attempts.count = 0; attempts.lockedUntil = 0;
+          return { success: true };
+        }
+
+        // Both auth methods failed
         attempts.count++;
         attempts.lastAttempt = Date.now();
         if (attempts.count >= 5) { attempts.lockedUntil = Date.now() + 60000; attempts.count = 0; }
         return { success: false, error: 'Invalid email or password' };
       }
 
-      // Success — reset rate limiter
+      // Supabase Auth succeeded — load profile
       attempts.count = 0; attempts.lockedUntil = 0;
-
-      const sessionUser = {
-        id: dbUser.id,
-        email: dbUser.email,
-        name: dbUser.full_name,
-        role: dbUser.role,
-        church_id: dbUser.church_id,
-        phone: dbUser.phone,
-        is_super_admin: dbUser.is_super_admin || false
-      };
-      await fetch(`${SUPABASE_URL}/rest/v1/church_users?id=eq.${dbUser.id}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({ last_login: new Date().toISOString() })
-      });
-
-      setUser(sessionUser);
-      localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
-      
+      const profile = await loadUserProfile(authData.user.email);
+      if (!profile) {
+        return { success: false, error: 'Account found but no church profile. Contact your administrator.' };
+      }
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, error: 'Login failed. Please try again.' };
     }
   };
+
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('general');
   const [editingChurch, setEditingChurch] = useState(false);
@@ -868,37 +930,34 @@ function AuthProvider({ children }) {
   const [accountForm, setAccountForm] = useState({});
   const [passwordForm, setPasswordForm] = useState({ current: '', new_password: '', confirm: '' });
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+
   const register = async (userData) => {
     try {
-      // 1. Check if email already exists
-      const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/church_users?email=eq.${encodeURIComponent(userData.email)}`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        }
+      // 1. Sign up with Supabase Auth (handles password hashing, email validation)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email.trim().toLowerCase(),
+        password: userData.password,
+        options: { data: { full_name: userData.full_name } }
       });
-      
-      const existingUsers = await checkResponse.json();
-      
-      if (existingUsers && existingUsers.length > 0) {
-        return { success: false, error: 'Email already registered' };
+
+      if (authError) {
+        if (authError.message?.includes('already registered')) {
+          return { success: false, error: 'Email already registered' };
+        }
+        return { success: false, error: authError.message || 'Registration failed' };
       }
 
-      // 2. Create the church first
+      const authUserId = authData?.user?.id;
+
+      // 2. Create the church
       const slug = userData.church_name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
 
-      const churchResponse = await fetch(`${SUPABASE_URL}/rest/v1/churches`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
+      const { data: newChurch, error: churchError } = await supabase
+        .from('churches')
+        .insert({
           name: userData.church_name,
           slug: slug,
           city: userData.church_city || null,
@@ -908,50 +967,31 @@ function AuthProvider({ children }) {
           email: userData.church_email || null,
           currency: userData.church_currency || 'XAF'
         })
-      });
+        .select()
+        .single();
 
-      if (!churchResponse.ok) {
-        const errText = await churchResponse.text();
-        console.error('Church creation failed:', errText);
+      if (churchError || !newChurch?.id) {
+        console.error('Church creation failed:', churchError);
         return { success: false, error: 'Failed to create church. Please try again.' };
       }
 
-      const newChurch = await churchResponse.json();
-      const churchId = newChurch[0]?.id;
-
-      if (!churchId) {
-        return { success: false, error: 'Failed to create church. Please try again.' };
-      }
-
-      // 3. Create the admin user linked to the new church
-      const createResponse = await fetch(`${SUPABASE_URL}/rest/v1/church_users`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          church_id: churchId,
-          email: userData.email,
-          password_hash: userData.password,
+      // 3. Create the admin user in church_users (linked to Supabase Auth)
+      const { error: userError } = await supabase
+        .from('church_users')
+        .insert({
+          church_id: newChurch.id,
+          auth_id: authUserId || null,
+          email: userData.email.trim().toLowerCase(),
           full_name: userData.full_name,
           phone: userData.phone || null,
           role: 'ADMIN',
           is_active: true
-        })
-      });
-
-      if (!createResponse.ok) {
-        // Rollback: delete the church if user creation fails
-        await fetch(`${SUPABASE_URL}/rest/v1/churches?id=eq.${churchId}`, {
-          method: 'DELETE',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-          }
         });
+
+      if (userError) {
+        // Rollback: delete the church
+        await supabase.from('churches').delete().eq('id', newChurch.id);
+        console.error('User creation failed:', userError);
         return { success: false, error: 'Failed to create account. Please try again.' };
       }
 
@@ -962,7 +1002,8 @@ function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     localStorage.removeItem('churchsmart_user');
   };
@@ -7250,15 +7291,9 @@ function SuperAdminPage() {
     try {
       const tables = ['activity_logs', 'attendance_records', 'donations', 'salvations', 'visitors', 'members', 'services', 'events', 'church_locations', 'user_role_assignments', 'church_users'];
       for (const table of tables) {
-        await fetch(`${SUPABASE_URL}/rest/v1/${table}?church_id=eq.${churchId}`, {
-          method: 'DELETE',
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' }
-        });
+        await supabase.from(table).delete().eq('church_id', churchId);
       }
-      await fetch(`${SUPABASE_URL}/rest/v1/churches?id=eq.${churchId}`, {
-        method: 'DELETE',
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' }
-      });
+      await supabase.from('churches').delete().eq('id', churchId);
       toast.success('✅ Church and all data deleted permanently');
       setDeleteConfirmId(null);
       setDeleteConfirmText('');
@@ -7271,30 +7306,28 @@ function SuperAdminPage() {
 
   const toggleUserActive = async (userId, currentStatus) => {
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/church_users?id=eq.${userId}`, {
-        method: 'PATCH',
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ is_active: !currentStatus })
-      });
+      await supabase.from('church_users').update({ is_active: !currentStatus }).eq('id', userId);
       fetchAllData();
     } catch (error) { toast.error(error.message); }
   };
 
   const openEditUser = (u) => {
     setEditingUser(u.id);
-    setEditUserForm({ full_name: u.full_name || '', email: u.email || '', phone: u.phone || '', role: u.role || 'STAFF', password_hash: '' });
+    setEditUserForm({ full_name: u.full_name || '', email: u.email || '', phone: u.phone || '', role: u.role || 'STAFF', new_password: '' });
   };
 
   const saveEditUser = async (userId) => {
     setSaving(true);
     try {
       const updates = { full_name: editUserForm.full_name, email: editUserForm.email, phone: editUserForm.phone, role: editUserForm.role };
-      if (editUserForm.password_hash) updates.password_hash = editUserForm.password_hash;
-      await fetch(`${SUPABASE_URL}/rest/v1/church_users?id=eq.${userId}`, {
-        method: 'PATCH',
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(updates)
-      });
+      await supabase.from('church_users').update(updates).eq('id', userId);
+
+      // If a new password is provided, update via Supabase Auth admin (or note for manual reset)
+      if (editUserForm.new_password) {
+        // For non-migrated users, update password_hash as fallback
+        await supabase.from('church_users').update({ password_hash: editUserForm.new_password }).eq('id', userId);
+      }
+
       setEditingUser(null);
       fetchAllData();
     } catch (error) { toast.error(error.message); }
@@ -7308,19 +7341,30 @@ function SuperAdminPage() {
     }
     setSaving(true);
     try {
-      const churchRes = await fetch(`${SUPABASE_URL}/rest/v1/churches`, {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-        body: JSON.stringify({ name: newChurchForm.name, city: newChurchForm.city, denomination: newChurchForm.denomination, pastor_name: newChurchForm.pastor_name, phone: newChurchForm.phone, email: newChurchForm.email, currency: newChurchForm.currency })
-      });
-      const newChurch = await churchRes.json();
-      const churchId = newChurch[0]?.id;
-      if (!churchId) { toast.error('Failed to create church'); setSaving(false); return; }
+      // Create church
+      const { data: newChurch, error: churchErr } = await supabase
+        .from('churches')
+        .insert({ name: newChurchForm.name, city: newChurchForm.city, denomination: newChurchForm.denomination, pastor_name: newChurchForm.pastor_name, phone: newChurchForm.phone, email: newChurchForm.email, currency: newChurchForm.currency })
+        .select()
+        .single();
 
-      await fetch(`${SUPABASE_URL}/rest/v1/church_users`, {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ church_id: churchId, full_name: newChurchForm.admin_name || 'Admin', email: newChurchForm.admin_email, password_hash: newChurchForm.admin_password, role: 'ADMIN', is_active: true })
+      if (churchErr || !newChurch?.id) { toast.error('Failed to create church'); setSaving(false); return; }
+
+      // Create Supabase Auth user for the admin
+      const { data: authData } = await supabase.auth.signUp({
+        email: newChurchForm.admin_email,
+        password: newChurchForm.admin_password,
+        options: { data: { church_id: newChurch.id, role: 'ADMIN' } }
+      });
+
+      // Create church_users record
+      await supabase.from('church_users').insert({
+        church_id: newChurch.id,
+        auth_id: authData?.user?.id || null,
+        full_name: newChurchForm.admin_name || 'Admin',
+        email: newChurchForm.admin_email,
+        role: 'ADMIN',
+        is_active: true
       });
 
       toast.success('✅ Church and admin account created!');
@@ -7513,7 +7557,7 @@ function SuperAdminPage() {
                       <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                         {editingUser === u.id ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-                            <input value={editUserForm.password_hash} onChange={e => setEditUserForm({...editUserForm, password_hash: e.target.value})} placeholder="New password (optional)" style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', width: '160px' }} />
+                            <input value={editUserForm.new_password} onChange={e => setEditUserForm({...editUserForm, new_password: e.target.value})} placeholder="New password (optional)" style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', width: '160px' }} />
                             <div style={{ display: 'flex', gap: '4px' }}>
                               <button onClick={() => setEditingUser(null)} style={{ padding: '4px 10px', border: '1px solid #e5e7eb', borderRadius: '6px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
                               <button onClick={() => saveEditUser(u.id)} disabled={saving} style={{ padding: '4px 10px', border: 'none', borderRadius: '6px', backgroundColor: '#4f46e5', color: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{saving ? '⏳' : '💾 Save'}</button>
@@ -7703,12 +7747,18 @@ function SettingsPage() {
   const handleChangePassword = async () => {
     if (!passwordForm.new_password || !passwordForm.confirm) { toast.warning('Please fill in all password fields'); return; }
     if (passwordForm.new_password !== passwordForm.confirm) { toast.info('Passwords do not match'); return; }
-    if (passwordForm.new_password.length < 6) { toast.info('Password must be at least 6 characters'); return; }
+    if (passwordForm.new_password.length < 8) { toast.info('Password must be at least 8 characters'); return; }
+    if (!/[A-Z]/.test(passwordForm.new_password) || !/[0-9]/.test(passwordForm.new_password)) { toast.info('Password must include an uppercase letter and a number'); return; }
     setSaving(true);
     try {
-      const userData = JSON.parse(localStorage.getItem('churchsmart_user'));
-      if (userData?.id) {
-        await supabaseUpdate('church_users', userData.id, { password_hash: passwordForm.new_password });
+      // Try Supabase Auth password update first
+      const { error: authError } = await supabase.auth.updateUser({ password: passwordForm.new_password });
+      if (authError) {
+        // Fallback for legacy users: update password_hash
+        const userData = JSON.parse(localStorage.getItem('churchsmart_user'));
+        if (userData?.id) {
+          await supabase.from('church_users').update({ password_hash: passwordForm.new_password }).eq('id', userData.id);
+        }
       }
       setShowPasswordChange(false);
       setPasswordForm({ current: '', new_password: '', confirm: '' });
