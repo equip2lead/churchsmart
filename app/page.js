@@ -552,7 +552,7 @@ const ALLOWED_TABLES = [
   'attendance_records', 'donations', 'expenses', 'salvations', 'services',
   'events', 'groups', 'volunteers', 'activity_logs', 'message_logs',
   'message_templates', 'automation_settings', 'user_roles', 'user_role_assignments',
-  'super_admin_log'
+  'super_admin_log', 'subscriptions', 'payment_history', 'message_credits'
 ];
 
 function sanitizeInput(val) {
@@ -8253,6 +8253,428 @@ function SuperAdminPage() {
   }
 
 // ==========================================
+// PLAN LIMITS & FEATURE GATING
+// ==========================================
+const PLAN_LIMITS = {
+  free:    { members: 50,       admins: 1,        locations: 1,        email: false, whatsapp: 0,   sms: false,           reports: 'basic',    import_export: false, auto_birthday: false, multi_location: false },
+  starter: { members: 200,      admins: 2,        locations: 1,        email: true,  whatsapp: 0,   sms: false,           reports: 'basic',    import_export: true,  auto_birthday: false, multi_location: false },
+  growth:  { members: 1000,     admins: 5,        locations: 3,        email: true,  whatsapp: 100, sms: false,           reports: 'advanced', import_export: true,  auto_birthday: true,  multi_location: true  },
+  pro:     { members: Infinity, admins: Infinity,  locations: Infinity, email: true,  whatsapp: 500, sms: 'contact_sales', reports: 'advanced', import_export: true,  auto_birthday: true,  multi_location: true  }
+};
+
+function getPlanLimits(planId) {
+  return PLAN_LIMITS[planId] || PLAN_LIMITS.free;
+}
+
+// ==========================================
+// BILLING SECTION - Stripe Subscription
+// ==========================================
+function BillingSection({ churchId }) {
+  const toast = useToast();
+  const { t } = useLanguage();
+  const [subscription, setSubscription] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [credits, setCredits] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [upgrading, setUpgrading] = useState(false);
+  const [buyingCredits, setBuyingCredits] = useState(false);
+
+  const plans = [
+    {
+      id: 'free',
+      name: 'Free',
+      price: 0,
+      interval: 'forever',
+      icon: '🆓',
+      features: ['Up to 50 members', '1 admin user', '1 location', 'Basic member management', 'Attendance tracking', 'Basic financial tracking', 'Basic reports'],
+      excluded: ['Email notifications', 'WhatsApp messaging', 'SMS messaging', 'Data import/export', 'Auto birthday messages', 'Multi-location', 'Advanced reports']
+    },
+    {
+      id: 'starter',
+      name: 'Starter',
+      price: 9,
+      interval: 'month',
+      icon: '🚀',
+      features: ['Up to 200 members', '2 admin users', '1 location', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Basic reports', 'Unlimited email', 'Data import/export', 'Email support (48hr)'],
+      excluded: ['WhatsApp messaging', 'SMS messaging', 'Auto birthday messages', 'Multi-location', 'Advanced reports'],
+      stripePriceId: 'price_starter_monthly'
+    },
+    {
+      id: 'growth',
+      name: 'Growth',
+      price: 25,
+      interval: 'month',
+      icon: '📈',
+      popular: true,
+      features: ['Up to 1,000 members', '5 admin users', '3 locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '100 WhatsApp messages/mo', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Email support (24hr)'],
+      excluded: ['SMS messaging (contact sales)'],
+      stripePriceId: 'price_growth_monthly'
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: 49,
+      interval: 'month',
+      icon: '👑',
+      features: ['Unlimited members', 'Unlimited admin users', 'Unlimited locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '500 WhatsApp messages/mo', 'SMS (contact sales)', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Phone + WhatsApp support'],
+      excluded: [],
+      stripePriceId: 'price_pro_monthly'
+    }
+  ];
+
+  const creditPacks = [
+    { id: 'whatsapp_100', label: '100 WhatsApp Messages', price: 5, credits: 100, stripePriceId: 'price_whatsapp_100' },
+    { id: 'whatsapp_500', label: '500 WhatsApp Messages', price: 20, credits: 500, stripePriceId: 'price_whatsapp_500' }
+  ];
+
+  // Trial tracking (30 days)
+  const [trialExpired, setTrialExpired] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState(30);
+
+  useEffect(() => {
+    const checkTrial = async () => {
+      if (!churchId) return;
+      const church = await supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: churchId }], single: true });
+      if (church?.created_at) {
+        const created = new Date(church.created_at);
+        const now = new Date();
+        const daysSince = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+        const remaining = Math.max(0, 30 - daysSince);
+        setTrialDaysLeft(remaining);
+        setTrialExpired(remaining <= 0);
+      }
+    };
+    checkTrial();
+  }, [churchId]);
+
+  useEffect(() => {
+    if (churchId) loadBilling();
+  }, [churchId]);
+
+  const loadBilling = async () => {
+    setLoading(true);
+    try {
+      const [sub, hist, cred] = await Promise.all([
+        supabaseQuery('subscriptions', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }], single: true }),
+        supabaseQuery('payment_history', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }], order: 'created_at.desc', limit: 10 }),
+        supabaseQuery('message_credits', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }], single: true })
+      ]);
+      setSubscription(sub || { plan: 'free', status: 'active' });
+      setPayments(hist || []);
+      setCredits(cred || null);
+    } catch (err) { console.error('Billing load error:', err); }
+    setLoading(false);
+  };
+
+  const handleUpgrade = async (plan) => {
+    if (plan.id === 'free') return;
+    if (!plan.stripePriceId) {
+      toast.warning('Stripe is not configured yet. Contact support to upgrade.');
+      return;
+    }
+    setUpgrading(true);
+    try {
+      const response = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          churchId,
+          priceId: plan.stripePriceId,
+          planId: plan.id,
+          customerEmail: JSON.parse(localStorage.getItem('churchsmart_user'))?.email
+        })
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.error || 'Failed to create checkout session');
+      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+      toast.error('Failed to start checkout. Please try again.');
+    }
+    setUpgrading(false);
+  };
+
+  const handleBuyCredits = async (pack) => {
+    if (!pack.stripePriceId) {
+      toast.warning('Credit packs are not configured yet.');
+      return;
+    }
+    setBuyingCredits(true);
+    try {
+      const response = await fetch('/api/stripe/buy-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          churchId,
+          priceId: pack.stripePriceId,
+          credits: pack.credits,
+          customerEmail: JSON.parse(localStorage.getItem('churchsmart_user'))?.email
+        })
+      });
+      const data = await response.json();
+      if (data.url) window.location.href = data.url;
+      else toast.error(data.error || 'Failed to create checkout');
+    } catch (err) {
+      toast.error('Failed to purchase credits.');
+    }
+    setBuyingCredits(false);
+  };
+
+  const handleManageBilling = async () => {
+    if (!subscription?.stripe_customer_id) {
+      toast.warning('No active subscription to manage.');
+      return;
+    }
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: subscription.stripe_customer_id })
+      });
+      const data = await response.json();
+      if (data.url) window.location.href = data.url;
+    } catch (err) {
+      toast.error('Failed to open billing portal');
+    }
+  };
+
+  const currentPlan = plans.find(p => p.id === (subscription?.plan || 'free')) || plans[0];
+  const planLimits = getPlanLimits(currentPlan.id);
+  const whatsappUsed = credits?.whatsapp_used_this_month || 0;
+  const whatsappTotal = (credits?.monthly_whatsapp_allowance || 0) + (credits?.bonus_credits || 0);
+  const whatsappPercent = whatsappTotal > 0 ? Math.min(100, Math.round((whatsappUsed / whatsappTotal) * 100)) : 0;
+
+  if (loading) return <LoadingSpinner />;
+
+  return (
+    <div style={{ display: 'grid', gap: '24px' }}>
+      {/* Trial Warning Banner */}
+      {currentPlan.id === 'free' && trialExpired && (
+        <div style={{ backgroundColor: '#fef2f2', borderRadius: '16px', padding: '20px', border: '2px solid #fca5a5', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ fontSize: '36px' }}>⚠️</div>
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '700', color: '#991b1b' }}>Your 30-day free trial has ended</h4>
+            <p style={{ margin: 0, fontSize: '14px', color: '#7f1d1d' }}>Upgrade to continue using ChurchSmart. Your data is safe.</p>
+          </div>
+          <button onClick={() => handleUpgrade(plans[2])} style={{ padding: '10px 24px', border: 'none', borderRadius: '10px', backgroundColor: '#dc2626', color: 'white', fontWeight: '700', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            Upgrade Now
+          </button>
+        </div>
+      )}
+
+      {/* Trial Ending Soon */}
+      {currentPlan.id === 'free' && !trialExpired && trialDaysLeft <= 7 && (
+        <div style={{ backgroundColor: '#fffbeb', borderRadius: '16px', padding: '16px 20px', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ fontSize: '24px' }}>⏰</div>
+          <p style={{ margin: 0, fontSize: '14px', color: '#92400e' }}>
+            <strong>{trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} left</strong> on your free trial. Upgrade to keep all features.
+          </p>
+        </div>
+      )}
+
+      {/* Current Plan Card */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>💳 Current Plan</h3>
+            <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Manage your ChurchSmart subscription</p>
+          </div>
+          {subscription?.stripe_customer_id && (
+            <button onClick={handleManageBilling} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#6366f1' }}>
+              🔗 Manage in Stripe
+            </button>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '20px', backgroundColor: '#f0f0ff', borderRadius: '12px', flexWrap: 'wrap' }}>
+          <div style={{ fontSize: '40px' }}>{currentPlan.icon}</div>
+          <div style={{ flex: 1, minWidth: '150px' }}>
+            <h4 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '700', color: '#4338ca' }}>{currentPlan.name} Plan</h4>
+            <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+              {currentPlan.price === 0
+                ? (trialExpired ? 'Trial ended — please upgrade' : `Free trial • ${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} remaining`)
+                : `$${currentPlan.price}/month`}
+              {subscription?.cancel_at_period_end && ' • Cancels at period end'}
+            </p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{
+              padding: '4px 12px', borderRadius: '9999px', fontSize: '12px', fontWeight: '600',
+              backgroundColor: subscription?.status === 'active' || subscription?.status === 'trialing' ? '#d1fae5' : subscription?.status === 'past_due' ? '#fef3c7' : '#fee2e2',
+              color: subscription?.status === 'active' || subscription?.status === 'trialing' ? '#065f46' : subscription?.status === 'past_due' ? '#92400e' : '#991b1b'
+            }}>
+              {(subscription?.status || 'active').toUpperCase()}
+            </span>
+            {subscription?.current_period_end && (
+              <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
+                Renews {new Date(subscription.current_period_end).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* WhatsApp Credits Meter */}
+      {planLimits.whatsapp > 0 && credits && (
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💬 WhatsApp Credits</h3>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>{whatsappUsed} / {whatsappTotal} used this month</span>
+          </div>
+          <div style={{ backgroundColor: '#f3f4f6', borderRadius: '8px', height: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+            <div style={{
+              height: '100%', borderRadius: '8px', transition: 'width 0.3s',
+              width: `${whatsappPercent}%`,
+              backgroundColor: whatsappPercent >= 100 ? '#ef4444' : whatsappPercent >= 80 ? '#f59e0b' : '#10b981'
+            }} />
+          </div>
+          {whatsappPercent >= 100 && (
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#ef4444', fontWeight: '600' }}>
+              ⚠️ WhatsApp credits exhausted. Buy more or wait for monthly reset.
+            </p>
+          )}
+          {whatsappPercent >= 80 && whatsappPercent < 100 && (
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#f59e0b', fontWeight: '600' }}>
+              ⚠️ Running low on WhatsApp credits.
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {creditPacks.map(pack => (
+              <button
+                key={pack.id}
+                onClick={() => handleBuyCredits(pack)}
+                disabled={buyingCredits}
+                style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#4b5563' }}
+              >
+                {buyingCredits ? '⏳' : `Buy ${pack.credits} credits — $${pack.price}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Plans Grid */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📦 Available Plans</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          {plans.map(plan => {
+            const isCurrent = plan.id === currentPlan.id;
+            const isDowngrade = plans.indexOf(plan) < plans.indexOf(currentPlan);
+            return (
+              <div key={plan.id} style={{
+                border: plan.popular ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                borderRadius: '16px', padding: '24px', position: 'relative',
+                backgroundColor: isCurrent ? '#fafaff' : 'white',
+                opacity: isDowngrade ? 0.6 : 1
+              }}>
+                {plan.popular && (
+                  <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#6366f1', color: 'white', padding: '2px 12px', borderRadius: '9999px', fontSize: '11px', fontWeight: '600' }}>
+                    MOST POPULAR
+                  </div>
+                )}
+                <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>{plan.icon}</div>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700' }}>{plan.name}</h4>
+                  <div style={{ fontSize: '32px', fontWeight: '800', color: '#111827' }}>
+                    {plan.price === 0 ? 'Free' : `$${plan.price}`}
+                  </div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#9ca3af' }}>
+                    {plan.price === 0 ? '30-day trial' : 'per month'}
+                  </p>
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  {plan.features.map((f, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '3px 0', fontSize: '12px', color: '#4b5563' }}>
+                      <span style={{ color: '#10b981', marginTop: '1px' }}>✓</span> <span>{f}</span>
+                    </div>
+                  ))}
+                  {(plan.excluded || []).map((f, i) => (
+                    <div key={`ex-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '3px 0', fontSize: '12px', color: '#d1d5db' }}>
+                      <span style={{ marginTop: '1px' }}>✗</span> <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                {isCurrent ? (
+                  <button disabled style={{ width: '100%', padding: '10px', border: '2px solid #6366f1', borderRadius: '10px', backgroundColor: '#eef2ff', color: '#6366f1', fontWeight: '600', fontSize: '14px', cursor: 'default' }}>
+                    {plan.id === 'free' ? (trialExpired ? '⏰ Trial Ended' : `✅ Current (${trialDaysLeft}d left)`) : '✅ Current Plan'}
+                  </button>
+                ) : isDowngrade ? (
+                  <button disabled style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: '#f9fafb', color: '#9ca3af', fontSize: '14px', cursor: 'default' }}>
+                    Contact to Downgrade
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleUpgrade(plan)}
+                    disabled={upgrading}
+                    style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', backgroundColor: plan.popular ? '#4f46e5' : '#111827', color: 'white', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+                  >
+                    {upgrading ? '⏳ Loading...' : plan.price === 0 ? 'Start Free' : `Upgrade to ${plan.name}`}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p style={{ margin: '16px 0 0 0', fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>
+          💳 No credit card required for free plan • Cancel anytime • 30-day money-back guarantee
+        </p>
+      </div>
+
+      {/* Payment History */}
+      {payments.length > 0 && (
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🧾 Payment History</h3>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ backgroundColor: '#f9fafb' }}>
+              <tr>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Description</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Receipt</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p, i) => (
+                <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                  <td style={{ padding: '12px 16px', fontSize: '14px' }}>{new Date(p.created_at).toLocaleDateString()}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '14px' }}>{p.description || `${(p.plan || '').charAt(0).toUpperCase() + (p.plan || '').slice(1)} Plan`}</td>
+                  <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '600' }}>${((p.amount || 0) / 100).toFixed(2)}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: '9999px', fontSize: '11px', fontWeight: '600',
+                      backgroundColor: p.status === 'succeeded' ? '#d1fae5' : '#fee2e2',
+                      color: p.status === 'succeeded' ? '#065f46' : '#991b1b'
+                    }}>{p.status}</span>
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    {p.receipt_url && <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" style={{ color: '#6366f1', fontSize: '13px' }}>View ↗</a>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Setup Instructions */}
+      {!subscription?.stripe_customer_id && currentPlan.id === 'free' && (
+        <div style={{ backgroundColor: '#fffbeb', borderRadius: '16px', padding: '20px', border: '1px solid #fde68a' }}>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '600', color: '#92400e' }}>🔧 Stripe Setup Required</h4>
+          <p style={{ margin: 0, fontSize: '13px', color: '#78350f', lineHeight: '1.6' }}>
+            To enable paid plans, configure Stripe: create products/prices in your Stripe Dashboard, update the <code>stripePriceId</code> values, and deploy the API routes.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
 // SETTINGS PAGE - Complete with All Features
 // ==========================================
 function SettingsPage() {
@@ -8525,6 +8947,7 @@ function SettingsPage() {
 
   const sections = [
     { id: 'general', label: '⚙️ General', icon: '⚙️' },
+    { id: 'billing', label: '💳 Billing', icon: '💳' },
     { id: 'locations', label: '📍 Locations', icon: '📍' },
     { id: 'automation', label: '🤖 Automation', icon: '🤖' },
     { id: 'roles', label: '👥 User Roles', icon: '👥' },
@@ -8779,6 +9202,9 @@ function SettingsPage() {
               </div>
             </div>
           )}
+
+          {/* ============ BILLING & SUBSCRIPTION ============ */}
+          {activeSection === 'billing' && <BillingSection churchId={CHURCH_ID} />}
 
           {/* ============ LOCATIONS ============ */}
           {activeSection === 'locations' && (
