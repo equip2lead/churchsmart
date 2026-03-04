@@ -778,6 +778,7 @@ function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
+  const registeringRef = useRef(false);
   const loginAttempts = useRef({ count: 0, lastAttempt: 0, lockedUntil: 0 });
 
   // Load user profile from church_users given an auth email
@@ -852,8 +853,8 @@ function AuthProvider({ children }) {
         return;
       }
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user?.email) {
-        // Skip loading profile if in password recovery mode
-        if (passwordRecovery) return;
+        // Skip if in password recovery or actively registering
+        if (passwordRecovery || registeringRef.current) return;
         let profile = await loadUserProfile(session.user.email);
         if (!profile && event === 'SIGNED_IN') {
           // New Google user with no church_users row — create a minimal one
@@ -981,8 +982,9 @@ function AuthProvider({ children }) {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
 
   const register = async (userData) => {
+    registeringRef.current = true;
     try {
-      // 1. Create the church first
+      // 1. Create the church
       const slug = userData.church_name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -1005,32 +1007,35 @@ function AuthProvider({ children }) {
 
       if (churchError || !newChurch?.id) {
         console.error('Church creation failed:', churchError);
+        registeringRef.current = false;
         return { success: false, error: 'Failed to create church. Please try again.' };
       }
 
-      // 2. Try Supabase Auth signup (trigger will auto-create church_users row)
-      let authUserId = null;
-      try {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: userData.email.trim().toLowerCase(),
-          password: userData.password,
-          options: { data: { full_name: userData.full_name, church_id: newChurch.id } }
-        });
-        if (!authError && authData?.user?.id) {
-          authUserId = authData.user.id;
-        } else if (authError) {
-          console.warn('Supabase Auth signup issue:', authError?.message);
-          // If user already registered in auth, delete church and inform
-          if (authError.message?.includes('already registered')) {
+      // 2. Check if user already exists in auth (OTP flow) or needs signUp
+      const { data: { session } } = await supabase.auth.getSession();
+      let authUserId = session?.user?.id || null;
+
+      if (!authUserId) {
+        // No active session — try signUp (legacy email flow)
+        try {
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: userData.email.trim().toLowerCase(),
+            password: userData.password,
+            options: { data: { full_name: userData.full_name, church_id: newChurch.id } }
+          });
+          if (!authError && authData?.user?.id) {
+            authUserId = authData.user.id;
+          } else if (authError?.message?.includes('already registered')) {
             await supabase.from('churches').delete().eq('id', newChurch.id);
-            return { success: false, error: lang === 'fr' ? 'Cet email est déjà enregistré' : 'This email is already registered' };
+            registeringRef.current = false;
+            return { success: false, error: 'This email is already registered' };
           }
+        } catch (authErr) {
+          console.warn('Auth signup failed:', authErr);
         }
-      } catch (authErr) {
-        console.warn('Auth signup failed:', authErr);
       }
 
-      // 3. Check if trigger already created a church_users row
+      // 3. Check if church_users row exists (trigger or OTP may have created one)
       const { data: existingUser } = await supabase
         .from('church_users')
         .select('id')
@@ -1039,7 +1044,7 @@ function AuthProvider({ children }) {
         .single();
 
       if (existingUser) {
-        // Trigger already created the row — update it with church info
+        // Update existing row with church info
         const { error: updateError } = await supabase
           .from('church_users')
           .update({
@@ -1047,17 +1052,18 @@ function AuthProvider({ children }) {
             full_name: userData.full_name,
             phone: userData.phone || null,
             role: 'ADMIN',
-            is_active: true
+            is_active: true,
+            auth_id: authUserId
           })
           .eq('id', existingUser.id);
 
         if (updateError) {
           await supabase.from('churches').delete().eq('id', newChurch.id);
-          console.error('User update failed:', updateError);
-          return { success: false, error: 'Failed to complete registration. Please try again.' };
+          registeringRef.current = false;
+          return { success: false, error: 'Failed to complete registration.' };
         }
       } else {
-        // No trigger row — insert manually (legacy fallback)
+        // Insert new row
         const insertData = {
           church_id: newChurch.id,
           email: userData.email.trim().toLowerCase(),
@@ -1075,14 +1081,16 @@ function AuthProvider({ children }) {
 
         if (userError) {
           await supabase.from('churches').delete().eq('id', newChurch.id);
-          console.error('User creation failed:', userError);
+          registeringRef.current = false;
           return { success: false, error: 'Database error saving new user' };
         }
       }
 
+      registeringRef.current = false;
       return { success: true };
     } catch (error) {
       console.error('Register error:', error);
+      registeringRef.current = false;
       return { success: false, error: 'Registration failed. Please try again.' };
     }
   };
@@ -1996,18 +2004,44 @@ function LoginPage() {
             return;
           }
 
-          // OTP verified — now set the password
+          // OTP verified — set the password
           if (verifyData?.session) {
             await supabase.auth.updateUser({ password: form.password });
           }
 
-          // Now create the church and user profile
+          // Create the church and user profile
           const result = await register(form);
           if (result.success) {
-            setSuccess(lang === 'fr' ? 'Compte créé avec succès! Connectez-vous maintenant.' : 'Account created successfully! Sign in now.');
+            // Auto-login: sign in with the password we just set
+            await supabase.auth.signOut();
+            const { error: loginErr } = await supabase.auth.signInWithPassword({
+              email: form.email.trim().toLowerCase(),
+              password: form.password
+            });
+            if (!loginErr) {
+              // Load profile and go straight to dashboard
+              const { data: users } = await supabase
+                .from('church_users')
+                .select('*')
+                .eq('email', form.email.trim().toLowerCase())
+                .eq('is_active', true)
+                .limit(1);
+              if (users?.length > 0) {
+                const dbUser = users[0];
+                const sessionUser = {
+                  id: dbUser.id, email: dbUser.email, name: dbUser.full_name,
+                  role: dbUser.role, church_id: dbUser.church_id,
+                  phone: dbUser.phone, is_super_admin: dbUser.is_super_admin || false
+                };
+                localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+                window.location.reload();
+                return;
+              }
+            }
+            // Fallback if auto-login fails
+            setSuccess(lang === 'fr' ? 'Compte créé! Connectez-vous.' : 'Account created! Sign in now.');
             await supabase.auth.signOut();
             setIsLogin(true); setStep(1); setOtpCode('');
-            setForm({ ...form, password: '', confirm_password: '' });
           } else { setError(result.error); }
         } catch (err) {
           setError(err.message || 'Verification failed');
