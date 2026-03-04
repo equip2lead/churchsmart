@@ -1113,9 +1113,16 @@ function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
     localStorage.removeItem('churchsmart_user');
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('SignOut error:', e);
+    }
+    setUser(null);
+    setPasswordRecovery(false);
+    // Force clean reload to prevent stuck states
+    window.location.href = window.location.origin;
   };
 
   return (
