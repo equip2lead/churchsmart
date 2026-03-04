@@ -777,6 +777,7 @@ function PermissionsProvider({ children }) {
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const loginAttempts = useRef({ count: 0, lastAttempt: 0, lockedUntil: 0 });
 
   // Load user profile from church_users given an auth email
@@ -842,7 +843,17 @@ function AuthProvider({ children }) {
 
     // Listen for auth state changes (login/logout, OAuth callbacks)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // User clicked reset link — show reset form instead of dashboard
+        setPasswordRecovery(true);
+        setUser(null);
+        localStorage.removeItem('churchsmart_user');
+        if (window.location.hash) window.history.replaceState(null, '', window.location.pathname + '?reset=true');
+        return;
+      }
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user?.email) {
+        // Skip loading profile if in password recovery mode
+        if (passwordRecovery) return;
         let profile = await loadUserProfile(session.user.email);
         if (!profile && event === 'SIGNED_IN') {
           // New Google user with no church_users row — create a minimal one
@@ -1082,7 +1093,7 @@ function AuthProvider({ children }) {
         return { success: false, error: 'Please enter a valid email address' };
       }
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}?reset=true`
+        redirectTo: window.location.origin
       });
       if (error) {
         return { success: false, error: error.message };
@@ -1100,7 +1111,7 @@ function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, forgotPassword, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, register, forgotPassword, passwordRecovery, setPasswordRecovery, loading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -1150,7 +1161,7 @@ export default function ChurchSmartApp() {
 }
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, passwordRecovery } = useAuth();
     // ── Public Join Page: detect ?join=CHURCH_ID or ?connect=SLUG ──
   const [joinChurchId, setJoinChurchId] = useState(null);
   useEffect(() => {
@@ -1195,7 +1206,7 @@ function AppContent() {
     );
   }
 
-  if (!user) {
+  if (!user || passwordRecovery) {
     return <LoginPage />;
   }
 
@@ -1819,11 +1830,14 @@ function GoogleChurchSetup({ user }) {
 }
 
 function LoginPage() {
-  const { login, register, forgotPassword } = useAuth();
+  const { login, register, forgotPassword, passwordRecovery, setPasswordRecovery } = useAuth();
   const toast = useToast();
   const [isLogin, setIsLogin] = useState(true);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [showResetForm, setShowResetForm] = useState(false);
+  const [showResetForm, setShowResetForm] = useState(passwordRecovery || false);
+  const [showOTP, setShowOTP] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
@@ -1831,7 +1845,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // Registration steps: 1=user info, 2=church info, 3=OTP
 
   // Detect password reset redirect
   useEffect(() => {
@@ -1867,6 +1881,9 @@ function LoginPage() {
       newPasswordTitle: 'Set New Password', newPasswordDesc: 'Enter your new password below',
       newPassword: 'New Password', confirmNewPassword: 'Confirm New Password',
       updatePassword: 'Update Password', passwordUpdated: 'Password updated! You can now sign in.',
+      otpTitle: 'Verify Your Email', otpDesc: 'We sent a 6-digit code to',
+      otpPlaceholder: '000000', verifyCode: 'Verify Code', verifying: 'Verifying...',
+      resendCode: 'Resend code', codeSent: 'New code sent!', invalidCode: 'Invalid code. Please try again.',
       tagline: 'The all-in-one church management platform built for African churches. Manage your congregation with ease.',
       churches: 'Churches', membersManaged: 'Members Managed', countries: 'Countries',
       memberMgmt: 'Member Management', memberDesc: 'Track members, visitors & groups across all locations',
@@ -1881,8 +1898,8 @@ function LoginPage() {
       churchName: 'Church Name *', churchAddress: 'Address', churchCity: 'City',
       churchPhone: 'Church Phone', churchEmail: 'Church Email', pastorName: 'Senior Pastor',
       denomination: 'Denomination', currency: 'Currency',
-      back: '← Back', finishBtn: 'Create Account →', creating: 'Creating...',
-      step1: 'Your Info', step2: 'Church Info'
+      back: '← Back', finishBtn: 'Send Verification Code →', creating: 'Sending...',
+      step1: 'Your Info', step2: 'Church Info', step3: 'Verify'
     },
     fr: {
       welcome: 'Bon retour!', signInDesc: 'Connectez-vous pour accéder à votre tableau de bord',
@@ -1911,12 +1928,15 @@ function LoginPage() {
       newPasswordTitle: 'Nouveau mot de passe', newPasswordDesc: 'Entrez votre nouveau mot de passe',
       newPassword: 'Nouveau mot de passe', confirmNewPassword: 'Confirmer le mot de passe',
       updatePassword: 'Mettre à jour', passwordUpdated: 'Mot de passe mis à jour! Vous pouvez vous connecter.',
+      otpTitle: 'Vérifiez votre email', otpDesc: 'Nous avons envoyé un code à 6 chiffres à',
+      otpPlaceholder: '000000', verifyCode: 'Vérifier le code', verifying: 'Vérification...',
+      resendCode: 'Renvoyer le code', codeSent: 'Nouveau code envoyé!', invalidCode: 'Code invalide. Réessayez.',
       churchInfo: 'Informations de l\'Église', churchInfoDesc: 'Parlez-nous de votre église',
       churchName: 'Nom de l\'Église *', churchAddress: 'Adresse', churchCity: 'Ville',
       churchPhone: 'Téléphone de l\'Église', churchEmail: 'Email de l\'Église', pastorName: 'Pasteur Principal',
       denomination: 'Dénomination', currency: 'Devise',
-      back: '← Retour', finishBtn: 'Créer le Compte →', creating: 'Création...',
-      step1: 'Vos Infos', step2: 'Info Église'
+      back: '← Retour', finishBtn: 'Envoyer le Code →', creating: 'Envoi...',
+      step1: 'Vos Infos', step2: 'Info Église', step3: 'Vérifier'
     }
   };
   const t = txt[lang];
@@ -1938,18 +1958,74 @@ function LoginPage() {
         if (form.password.length < 8) { setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 8 caractères' : 'Password must be at least 8 characters'); return; }
         if (!/[A-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError(lang === 'fr' ? 'Le mot de passe doit contenir une majuscule et un chiffre' : 'Password must include an uppercase letter and a number'); return; }
         setStep(2);
-      } else {
+      } else if (step === 2) {
         if (!form.church_name) { setError(lang === 'fr' ? 'Le nom de l\'église est requis' : 'Church name is required'); return; }
+        // Send OTP to email
         setLoading(true);
-        const result = await register(form);
-        if (result.success) {
-          setSuccess(lang === 'fr' ? 'Compte créé! Vérifiez votre email pour confirmer, puis connectez-vous.' : 'Account created! Check your email to confirm, then sign in.');
-          setIsLogin(true); setStep(1);
-          setForm({ ...form, password: '', confirm_password: '' });
-        } else { setError(result.error); }
+        try {
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            email: form.email.trim().toLowerCase(),
+            options: { shouldCreateUser: true }
+          });
+          if (otpError) {
+            setError(otpError.message);
+          } else {
+            setOtpEmail(form.email.trim().toLowerCase());
+            setStep(3);
+          }
+        } catch (err) {
+          setError('Failed to send verification code');
+        }
+        setLoading(false);
+      } else if (step === 3) {
+        // Verify OTP code
+        if (!otpCode || otpCode.length !== 6) { setError(lang === 'fr' ? 'Entrez le code à 6 chiffres' : 'Enter the 6-digit code'); return; }
+        setLoading(true);
+        try {
+          const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+            email: otpEmail,
+            token: otpCode,
+            type: 'email'
+          });
+          if (verifyError) {
+            setError(t.invalidCode);
+            setLoading(false);
+            return;
+          }
+
+          // OTP verified — now set the password
+          if (verifyData?.session) {
+            await supabase.auth.updateUser({ password: form.password });
+          }
+
+          // Now create the church and user profile
+          const result = await register(form);
+          if (result.success) {
+            setSuccess(lang === 'fr' ? 'Compte créé avec succès! Connectez-vous maintenant.' : 'Account created successfully! Sign in now.');
+            await supabase.auth.signOut();
+            setIsLogin(true); setStep(1); setOtpCode('');
+            setForm({ ...form, password: '', confirm_password: '' });
+          } else { setError(result.error); }
+        } catch (err) {
+          setError(err.message || 'Verification failed');
+        }
         setLoading(false);
       }
     }
+  };
+
+  const handleResendOTP = async () => {
+    setError(''); setSuccess('');
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: otpEmail,
+        options: { shouldCreateUser: true }
+      });
+      if (error) { setError(error.message); }
+      else { setSuccess(t.codeSent); }
+    } catch (err) { setError('Failed to resend code'); }
+    setLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
@@ -2056,6 +2132,11 @@ function LoginPage() {
                 <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: step >= 2 ? '#4f46e5' : '#e5e7eb', color: step >= 2 ? 'white' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>2</span>
                 <span style={{ fontSize: '13px', color: step === 2 ? '#4f46e5' : '#6b7280', fontWeight: step === 2 ? '600' : '400' }}>{t.step2}</span>
               </div>
+              <div style={{ flex: 1, height: '2px', backgroundColor: step >= 3 ? '#4f46e5' : '#e5e7eb' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: step >= 3 ? '#4f46e5' : '#e5e7eb', color: step >= 3 ? 'white' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>3</span>
+                <span style={{ fontSize: '13px', color: step === 3 ? '#4f46e5' : '#6b7280', fontWeight: step === 3 ? '600' : '400' }}>{t.step3}</span>
+              </div>
             </div>
           )}
 
@@ -2092,6 +2173,7 @@ function LoginPage() {
                   } else {
                     setSuccess(t.passwordUpdated);
                     setShowResetForm(false);
+                    if (setPasswordRecovery) setPasswordRecovery(false);
                     await supabase.auth.signOut();
                   }
                   setLoading(false);
@@ -2253,17 +2335,45 @@ function LoginPage() {
               </>
             )}
 
+            {/* REGISTER STEP 3 - OTP Verification */}
+            {!isLogin && step === 3 && (
+              <>
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>📧</div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}>{t.otpTitle}</h3>
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>{t.otpDesc} <strong>{otpEmail}</strong></p>
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <input
+                    type="text" value={otpCode} maxLength={6}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder={t.otpPlaceholder}
+                    style={{ width: '100%', padding: '16px', border: '2px solid #e5e7eb', borderRadius: '12px', fontSize: '28px', textAlign: 'center', letterSpacing: '12px', fontWeight: '700', outline: 'none', boxSizing: 'border-box' }}
+                    onFocus={(e) => e.target.style.borderColor = '#6366f1'}
+                    onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                    autoFocus
+                  />
+                </div>
+                <p style={{ textAlign: 'center', margin: '0 0 16px 0' }}>
+                  <button type="button" onClick={handleResendOTP} disabled={loading}
+                    style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: '13px', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline' }}>
+                    {t.resendCode}
+                  </button>
+                </p>
+              </>
+            )}
+
             {/* Buttons */}
             <div style={{ display: 'flex', gap: '12px' }}>
-              {!isLogin && step === 2 && (
-                <button type="button" onClick={() => setStep(1)}
+              {!isLogin && (step === 2 || step === 3) && (
+                <button type="button" onClick={() => setStep(step - 1)}
                   style={{ flex: 1, padding: '14px', backgroundColor: 'white', color: '#6b7280', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
                   {t.back}
                 </button>
               )}
               <button type="submit" disabled={loading}
                 style={{ flex: 1, padding: '14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)' }}>
-                {loading ? `⏳ ${isLogin ? t.signingIn : t.creating}` : isLogin ? t.signInBtn : step === 1 ? t.createBtn : t.finishBtn}
+                {loading ? `⏳ ${isLogin ? t.signingIn : step === 3 ? t.verifying : t.creating}` : isLogin ? t.signInBtn : step === 1 ? t.createBtn : step === 2 ? t.finishBtn : t.verifyCode}
               </button>
             </div>
           </form>
