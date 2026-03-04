@@ -1,11 +1,16 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY);
+}
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 // Plan → WhatsApp monthly allowance mapping
 const PLAN_WHATSAPP_ALLOWANCE = {
@@ -16,7 +21,6 @@ const PLAN_WHATSAPP_ALLOWANCE = {
 };
 
 // Stripe Price ID → Plan ID mapping
-// ⚠️ REPLACE these with your real Stripe Price IDs
 const PRICE_TO_PLAN = {
   'price_1T7IMDAKBjsQAW9nAhSH5F2c': 'starter',
   'price_1T7IMlAKBjsQAW9n6EEg6WvD': 'growth',
@@ -24,6 +28,9 @@ const PRICE_TO_PLAN = {
 };
 
 export async function POST(request) {
+  const stripe = getStripe();
+  const supabase = getSupabase();
+
   const body = await request.text();
   const sig = request.headers.get('stripe-signature');
 
@@ -41,19 +48,19 @@ export async function POST(request) {
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object);
+        await handleCheckoutCompleted(supabase, event.data.object);
         break;
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object);
+        await handleSubscriptionUpdated(supabase, event.data.object);
         break;
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object);
+        await handleSubscriptionDeleted(supabase, event.data.object);
         break;
       case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object);
+        await handlePaymentSucceeded(supabase, event.data.object);
         break;
       case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object);
+        await handlePaymentFailed(supabase, event.data.object);
         break;
       default:
         console.log(`Unhandled event type: ${event.type}`);
@@ -70,7 +77,7 @@ export async function POST(request) {
 // ──────────────────────────────────────────
 // CHECKOUT COMPLETED
 // ──────────────────────────────────────────
-async function handleCheckoutCompleted(session) {
+async function handleCheckoutCompleted(supabase, session) {
   const churchId = session.metadata?.church_id;
   if (!churchId) return;
 
@@ -78,7 +85,7 @@ async function handleCheckoutCompleted(session) {
   if (session.metadata?.type === 'credit_purchase') {
     const credits = parseInt(session.metadata.credits || '0', 10);
     if (credits > 0) {
-      await addBonusCredits(churchId, credits);
+      await addBonusCredits(supabase, churchId, credits);
 
       // Record payment
       await supabase.from('payment_history').insert({
@@ -114,14 +121,14 @@ async function handleCheckoutCompleted(session) {
     .eq('id', churchId);
 
   // Initialize/update message credits for new plan
-  await updateCreditsForPlan(churchId, planId);
+  await updateCreditsForPlan(supabase, churchId, planId);
 }
 
 
 // ──────────────────────────────────────────
 // SUBSCRIPTION UPDATED (plan change, renewal)
 // ──────────────────────────────────────────
-async function handleSubscriptionUpdated(subscription) {
+async function handleSubscriptionUpdated(supabase, subscription) {
   const churchId = subscription.metadata?.church_id;
   if (!churchId) return;
 
@@ -129,7 +136,7 @@ async function handleSubscriptionUpdated(subscription) {
   const priceId = subscription.items?.data?.[0]?.price?.id;
   const planId = PRICE_TO_PLAN[priceId] || subscription.metadata?.plan_id || 'free';
 
-  const status = subscription.status; // 'active', 'past_due', 'canceled', 'trialing', etc.
+  const status = subscription.status;
 
   // Update subscription record
   await supabase.from('subscriptions').upsert({
@@ -151,14 +158,14 @@ async function handleSubscriptionUpdated(subscription) {
     .eq('id', churchId);
 
   // Update credits if plan changed
-  await updateCreditsForPlan(churchId, planId);
+  await updateCreditsForPlan(supabase, churchId, planId);
 }
 
 
 // ──────────────────────────────────────────
 // SUBSCRIPTION DELETED (canceled)
 // ──────────────────────────────────────────
-async function handleSubscriptionDeleted(subscription) {
+async function handleSubscriptionDeleted(supabase, subscription) {
   const churchId = subscription.metadata?.church_id;
   if (!churchId) return;
 
@@ -187,7 +194,7 @@ async function handleSubscriptionDeleted(subscription) {
 // ──────────────────────────────────────────
 // PAYMENT SUCCEEDED
 // ──────────────────────────────────────────
-async function handlePaymentSucceeded(invoice) {
+async function handlePaymentSucceeded(supabase, invoice) {
   const churchId = invoice.subscription_details?.metadata?.church_id
     || invoice.metadata?.church_id;
   if (!churchId) return;
@@ -213,7 +220,7 @@ async function handlePaymentSucceeded(invoice) {
 // ──────────────────────────────────────────
 // PAYMENT FAILED
 // ──────────────────────────────────────────
-async function handlePaymentFailed(invoice) {
+async function handlePaymentFailed(supabase, invoice) {
   const churchId = invoice.subscription_details?.metadata?.church_id
     || invoice.metadata?.church_id;
   if (!churchId) return;
@@ -240,7 +247,7 @@ async function handlePaymentFailed(invoice) {
 // ──────────────────────────────────────────
 // HELPER: Update credits when plan changes
 // ──────────────────────────────────────────
-async function updateCreditsForPlan(churchId, planId) {
+async function updateCreditsForPlan(supabase, churchId, planId) {
   const allowance = PLAN_WHATSAPP_ALLOWANCE[planId] || 0;
 
   // Check if record exists
@@ -276,7 +283,7 @@ async function updateCreditsForPlan(churchId, planId) {
 // ──────────────────────────────────────────
 // HELPER: Add bonus credits from purchase
 // ──────────────────────────────────────────
-async function addBonusCredits(churchId, credits) {
+async function addBonusCredits(supabase, churchId, credits) {
   const { data: existing } = await supabase
     .from('message_credits')
     .select('id, bonus_credits, whatsapp_credits')
