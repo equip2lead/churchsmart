@@ -8297,7 +8297,7 @@ function BillingSection({ churchId }) {
       icon: '🚀',
       features: ['Up to 200 members', '2 admin users', '1 location', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Basic reports', 'Unlimited email', 'Data import/export', 'Email support (48hr)'],
       excluded: ['WhatsApp messaging', 'SMS messaging', 'Auto birthday messages', 'Multi-location', 'Advanced reports'],
-      stripePriceId: 'price_starter_monthly'
+      stripePriceId: 'price_1T7IMDAKBjsQAW9nAhSH5F2c'
     },
     {
       id: 'growth',
@@ -8308,7 +8308,7 @@ function BillingSection({ churchId }) {
       popular: true,
       features: ['Up to 1,000 members', '5 admin users', '3 locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '100 WhatsApp messages/mo', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Email support (24hr)'],
       excluded: ['SMS messaging (contact sales)'],
-      stripePriceId: 'price_growth_monthly'
+      stripePriceId: 'price_1T7IMlAKBjsQAW9n6EEg6WvD'
     },
     {
       id: 'pro',
@@ -8318,13 +8318,13 @@ function BillingSection({ churchId }) {
       icon: '👑',
       features: ['Unlimited members', 'Unlimited admin users', 'Unlimited locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '500 WhatsApp messages/mo', 'SMS (contact sales)', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Phone + WhatsApp support'],
       excluded: [],
-      stripePriceId: 'price_pro_monthly'
+      stripePriceId: 'price_1T7INOAKBjsQAW9nwuq2yOMV'
     }
   ];
 
   const creditPacks = [
-    { id: 'whatsapp_100', label: '100 WhatsApp Messages', price: 5, credits: 100, stripePriceId: 'price_whatsapp_100' },
-    { id: 'whatsapp_500', label: '500 WhatsApp Messages', price: 20, credits: 500, stripePriceId: 'price_whatsapp_500' }
+    { id: 'whatsapp_100', label: '100 WhatsApp Messages', price: 5, credits: 100, stripePriceId: 'price_1T7IODAKBjsQAW9ndmo9XW4n' },
+    { id: 'whatsapp_500', label: '500 WhatsApp Messages', price: 20, credits: 500, stripePriceId: 'price_1T7IPAAKBjsQAW9nCPpTdKRF' }
   ];
 
   // Trial tracking (30 days)
