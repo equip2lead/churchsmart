@@ -8575,7 +8575,7 @@ function BillingSection({ churchId }) {
                   </div>
                 )}
                 <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>{plan.icon}</div>
+                  <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>{plan.icon === 'free' && (<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="8" width="28" height="20" rx="3" stroke="#9ca3af" strokeWidth="2"/><path d="M4 14h28" stroke="#9ca3af" strokeWidth="2"/><circle cx="18" cy="22" r="2" fill="#9ca3af"/></svg>)}{plan.icon === 'starter' && (<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M18 4l4 8h8l-6 5 2 9-8-5-8 5 2-9-6-5h8z" stroke="#6366f1" strokeWidth="2" strokeLinejoin="round"/></svg>)}{plan.icon === 'growth' && (<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M6 28l8-10 6 6 10-14" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M24 10h6v6" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>)}{plan.icon === 'pro' && (<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M18 6l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" fill="#6366f1" stroke="#6366f1" strokeWidth="1.5" strokeLinejoin="round"/></svg>)}</div>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700' }}>{plan.name}</h4>
                   <div style={{ fontSize: '32px', fontWeight: '800', color: '#111827' }}>
                     {plan.price === 0 ? 'Free' : `$${plan.price}`}
