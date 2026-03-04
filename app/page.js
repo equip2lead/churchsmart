@@ -1965,7 +1965,10 @@ function LoginPage() {
         try {
           const { error: otpError } = await supabase.auth.signInWithOtp({
             email: form.email.trim().toLowerCase(),
-            options: { shouldCreateUser: true }
+            options: {
+              shouldCreateUser: true,
+              emailRedirectTo: undefined
+            }
           });
           if (otpError) {
             setError(otpError.message);
@@ -2020,7 +2023,10 @@ function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: otpEmail,
-        options: { shouldCreateUser: true }
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: undefined
+        }
       });
       if (error) { setError(error.message); }
       else { setSuccess(t.codeSent); }
