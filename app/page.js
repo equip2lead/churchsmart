@@ -1881,8 +1881,8 @@ function LoginPage() {
       newPasswordTitle: 'Set New Password', newPasswordDesc: 'Enter your new password below',
       newPassword: 'New Password', confirmNewPassword: 'Confirm New Password',
       updatePassword: 'Update Password', passwordUpdated: 'Password updated! You can now sign in.',
-      otpTitle: 'Verify Your Email', otpDesc: 'We sent a 6-digit code to',
-      otpPlaceholder: '000000', verifyCode: 'Verify Code', verifying: 'Verifying...',
+      otpTitle: 'Verify Your Email', otpDesc: 'We sent an 8-digit code to',
+      otpPlaceholder: '00000000', verifyCode: 'Verify Code', verifying: 'Verifying...',
       resendCode: 'Resend code', codeSent: 'New code sent!', invalidCode: 'Invalid code. Please try again.',
       tagline: 'The all-in-one church management platform built for African churches. Manage your congregation with ease.',
       churches: 'Churches', membersManaged: 'Members Managed', countries: 'Countries',
@@ -1928,8 +1928,8 @@ function LoginPage() {
       newPasswordTitle: 'Nouveau mot de passe', newPasswordDesc: 'Entrez votre nouveau mot de passe',
       newPassword: 'Nouveau mot de passe', confirmNewPassword: 'Confirmer le mot de passe',
       updatePassword: 'Mettre à jour', passwordUpdated: 'Mot de passe mis à jour! Vous pouvez vous connecter.',
-      otpTitle: 'Vérifiez votre email', otpDesc: 'Nous avons envoyé un code à 6 chiffres à',
-      otpPlaceholder: '000000', verifyCode: 'Vérifier le code', verifying: 'Vérification...',
+      otpTitle: 'Vérifiez votre email', otpDesc: 'Nous avons envoyé un code à 8 chiffres à',
+      otpPlaceholder: '00000000', verifyCode: 'Vérifier le code', verifying: 'Vérification...',
       resendCode: 'Renvoyer le code', codeSent: 'Nouveau code envoyé!', invalidCode: 'Code invalide. Réessayez.',
       churchInfo: 'Informations de l\'Église', churchInfoDesc: 'Parlez-nous de votre église',
       churchName: 'Nom de l\'Église *', churchAddress: 'Adresse', churchCity: 'Ville',
@@ -1982,7 +1982,7 @@ function LoginPage() {
         setLoading(false);
       } else if (step === 3) {
         // Verify OTP code
-        if (!otpCode || otpCode.length !== 6) { setError(lang === 'fr' ? 'Entrez le code à 6 chiffres' : 'Enter the 6-digit code'); return; }
+        if (!otpCode || otpCode.length !== 8) { setError(lang === 'fr' ? 'Entrez le code à 8 chiffres' : 'Enter the 8-digit code'); return; }
         setLoading(true);
         try {
           const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
@@ -2351,8 +2351,8 @@ function LoginPage() {
                 </div>
                 <div style={{ marginBottom: '20px' }}>
                   <input
-                    type="text" value={otpCode} maxLength={6}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    type="text" value={otpCode} maxLength={8}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
                     placeholder={t.otpPlaceholder}
                     style={{ width: '100%', padding: '16px', border: '2px solid #e5e7eb', borderRadius: '12px', fontSize: '28px', textAlign: 'center', letterSpacing: '12px', fontWeight: '700', outline: 'none', boxSizing: 'border-box' }}
                     onFocus={(e) => e.target.style.borderColor = '#6366f1'}
