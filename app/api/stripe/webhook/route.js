@@ -18,9 +18,9 @@ const PLAN_WHATSAPP_ALLOWANCE = {
 // Stripe Price ID → Plan ID mapping
 // ⚠️ REPLACE these with your real Stripe Price IDs
 const PRICE_TO_PLAN = {
-  'price_starter_monthly': 'starter',
-  'price_growth_monthly': 'growth',
-  'price_pro_monthly': 'pro'
+  'price_1T7IMDAKBjsQAW9nAhSH5F2c': 'starter',
+  'price_1T7IMlAKBjsQAW9n6EEg6WvD': 'growth',
+  'price_1T7INOAKBjsQAW9nwuq2yOMV': 'pro'
 };
 
 export async function POST(request) {
