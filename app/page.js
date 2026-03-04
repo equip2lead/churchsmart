@@ -8285,7 +8285,7 @@ function BillingSection({ churchId }) {
       name: 'Free',
       price: 0,
       interval: 'forever',
-      icon: '🆓',
+      icon: '○',
       features: ['Up to 50 members', '1 admin user', '1 location', 'Basic member management', 'Attendance tracking', 'Basic financial tracking', 'Basic reports'],
       excluded: ['Email notifications', 'WhatsApp messaging', 'SMS messaging', 'Data import/export', 'Auto birthday messages', 'Multi-location', 'Advanced reports']
     },
@@ -8294,7 +8294,7 @@ function BillingSection({ churchId }) {
       name: 'Starter',
       price: 9,
       interval: 'month',
-      icon: '🚀',
+      icon: '◆',
       features: ['Up to 200 members', '2 admin users', '1 location', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Basic reports', 'Unlimited email', 'Data import/export', 'Email support (48hr)'],
       excluded: ['WhatsApp messaging', 'SMS messaging', 'Auto birthday messages', 'Multi-location', 'Advanced reports'],
       stripePriceId: 'price_1T7IMDAKBjsQAW9nAhSH5F2c'
@@ -8304,7 +8304,7 @@ function BillingSection({ churchId }) {
       name: 'Growth',
       price: 25,
       interval: 'month',
-      icon: '📈',
+      icon: '◆◆',
       popular: true,
       features: ['Up to 1,000 members', '5 admin users', '3 locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '100 WhatsApp messages/mo', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Email support (24hr)'],
       excluded: ['SMS messaging (contact sales)'],
@@ -8315,7 +8315,7 @@ function BillingSection({ churchId }) {
       name: 'Pro',
       price: 49,
       interval: 'month',
-      icon: '👑',
+      icon: '◆◆◆',
       features: ['Unlimited members', 'Unlimited admin users', 'Unlimited locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '500 WhatsApp messages/mo', 'SMS (contact sales)', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Phone + WhatsApp support'],
       excluded: [],
       stripePriceId: 'price_1T7INOAKBjsQAW9nwuq2yOMV'
@@ -8575,7 +8575,7 @@ function BillingSection({ churchId }) {
                   </div>
                 )}
                 <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                  <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>{plan.icon === 'free' && (<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="8" width="28" height="20" rx="3" stroke="#9ca3af" strokeWidth="2"/><path d="M4 14h28" stroke="#9ca3af" strokeWidth="2"/><circle cx="18" cy="22" r="2" fill="#9ca3af"/></svg>)}{plan.icon === 'starter' && (<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M18 4l4 8h8l-6 5 2 9-8-5-8 5 2-9-6-5h8z" stroke="#6366f1" strokeWidth="2" strokeLinejoin="round"/></svg>)}{plan.icon === 'growth' && (<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M6 28l8-10 6 6 10-14" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M24 10h6v6" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>)}{plan.icon === 'pro' && (<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M18 6l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" fill="#6366f1" stroke="#6366f1" strokeWidth="1.5" strokeLinejoin="round"/></svg>)}</div>
+                  <div style={{ fontSize: '18px', marginBottom: '8px', color: '#6366f1', letterSpacing: '4px' }}>{plan.icon}</div>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700' }}>{plan.name}</h4>
                   <div style={{ fontSize: '32px', fontWeight: '800', color: '#111827' }}>
                     {plan.price === 0 ? 'Free' : `$${plan.price}`}
@@ -8661,15 +8661,6 @@ function BillingSection({ churchId }) {
         </div>
       )}
 
-      {/* Setup Instructions */}
-      {!subscription?.stripe_customer_id && currentPlan.id === 'free' && (
-        <div style={{ backgroundColor: '#fffbeb', borderRadius: '16px', padding: '20px', border: '1px solid #fde68a' }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '600', color: '#92400e' }}>🔧 Stripe Setup Required</h4>
-          <p style={{ margin: 0, fontSize: '13px', color: '#78350f', lineHeight: '1.6' }}>
-            To enable paid plans, configure Stripe: create products/prices in your Stripe Dashboard, update the <code>stripePriceId</code> values, and deploy the API routes.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
