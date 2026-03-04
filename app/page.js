@@ -611,8 +611,46 @@ async function getAuthHeaders() {
   };
 }
 
+// ==========================================
+// QUERY CACHE (reduces duplicate API calls)
+// ==========================================
+const queryCache = new Map();
+const CACHE_TTL = 30000; // 30 seconds
+
+function getCacheKey(table, options) {
+  return `${table}:${JSON.stringify(options)}`;
+}
+
+function getCached(key) {
+  const entry = queryCache.get(key);
+  if (entry && Date.now() - entry.time < CACHE_TTL) return entry.data;
+  queryCache.delete(key);
+  return null;
+}
+
+function setCache(key, data) {
+  queryCache.set(key, { data, time: Date.now() });
+  // Limit cache size
+  if (queryCache.size > 100) {
+    const oldest = queryCache.keys().next().value;
+    queryCache.delete(oldest);
+  }
+}
+
+function invalidateCache(table) {
+  for (const key of queryCache.keys()) {
+    if (key.startsWith(table + ':')) queryCache.delete(key);
+  }
+}
+
 async function supabaseQuery(table, options = {}) {
   if (!isValidTable(table)) { console.error('Invalid table:', table); return []; }
+  
+  // Check cache first
+  const cacheKey = getCacheKey(table, options);
+  const cached = getCached(cacheKey);
+  if (cached !== null) return cached;
+
   const { select = '*', filters = [], order, limit, single = false } = options;
 
   let query = supabase.from(table).select(select);
@@ -630,11 +668,16 @@ async function supabaseQuery(table, options = {}) {
 
   const { data, error } = await query;
   if (error) { console.error(`Query ${table} failed:`, error.message); return single ? null : []; }
-  return single ? (data?.[0] || null) : (data || []);
+  const result = single ? (data?.[0] || null) : (data || []);
+  
+  // Cache the result
+  setCache(cacheKey, result);
+  return result;
 }
 
 async function supabaseInsert(table, data) {
   if (!isValidTable(table)) { console.error('Invalid table:', table); return null; }
+  invalidateCache(table);
   const savedUser = localStorage.getItem('churchsmart_user');
   const churchId = savedUser ? JSON.parse(savedUser).church_id : null;
   const sanitized = sanitizeObject(data);
@@ -647,6 +690,7 @@ async function supabaseInsert(table, data) {
 
 async function supabaseUpdate(table, id, data) {
   if (!isValidTable(table)) { console.error('Invalid table:', table); return null; }
+  invalidateCache(table);
   const sanitized = sanitizeObject(data);
 
   const { data: result, error } = await supabase.from(table).update(sanitized).eq('id', id).select();
@@ -656,6 +700,7 @@ async function supabaseUpdate(table, id, data) {
 
 async function supabaseDelete(table, id) {
   if (!isValidTable(table)) { console.error('Invalid table:', table); return false; }
+  invalidateCache(table);
 
   const { error } = await supabase.from(table).delete().eq('id', id);
   if (error) { console.error(`Delete failed:`, error.message); return false; }
@@ -1190,15 +1235,8 @@ function AppContent() {
         // Resolve slug to church ID
         (async () => {
           try {
-            const churches = await supabaseQuery('churches', { filters: [{ column: 'slug', operator: 'eq', value: connectSlug }] });
-            if (churches && churches.length > 0) {
-              setJoinChurchId(churches[0].id);
-            } else {
-              // Try case-insensitive match
-              const allChurches = await supabaseQuery('churches', {});
-              const match = allChurches?.find(c => c.slug?.toLowerCase() === connectSlug.toLowerCase());
-              if (match) setJoinChurchId(match.id);
-            }
+            const { data } = await supabase.from('churches').select('id').ilike('slug', connectSlug).limit(1);
+            if (data?.length > 0) setJoinChurchId(data[0].id);
           } catch (err) { console.error('Error resolving slug:', err); }
         })();
       }
@@ -2991,15 +3029,19 @@ function DashboardPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [members, visitors, salvations, donations, services, events, activityLogs, locationsData] = await Promise.all([
-        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+      // Use parallel requests with limits — don't fetch ALL records
+      const [members, visitors, salvations, donations, services, events, activityLogs, locationsData, memberCount, donationTotal] = await Promise.all([
+        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,full_name,date_of_birth,location_id,photo_url' }),
         supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'visit_date.desc', limit: 5 }),
         supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc', limit: 5 }),
-        supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'event_date.asc' }),
+        supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,amount,donation_date,location_id' }),
+        supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,name,day_of_week,start_time,is_active' }),
+        supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,title,event_date,start_time,event_type', order: 'event_date.asc' }),
         supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 5 }),
         supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        // Get count separately for stats
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('church_id', CHURCH_ID),
+        supabase.from('donations').select('amount').eq('church_id', CHURCH_ID)
       ]);
       setLocations(locationsData || []);
 
