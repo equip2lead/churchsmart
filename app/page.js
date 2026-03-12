@@ -2041,35 +2041,43 @@ function LoginPage() {
         setStep(2);
       } else if (step === 2) {
         if (!form.church_name) { setError(lang === 'fr' ? 'Le nom de l\'église est requis' : 'Church name is required'); return; }
-        // Send OTP to email
+        // Create Supabase Auth account — this sends OTP code email (using our custom template)
         setLoading(true);
         try {
-          const { error: otpError } = await supabase.auth.signInWithOtp({
+          const { data: authData, error: authError } = await supabase.auth.signUp({
             email: form.email.trim().toLowerCase(),
+            password: form.password,
             options: {
-              shouldCreateUser: true,
+              data: { full_name: form.full_name },
               emailRedirectTo: undefined
             }
           });
-          if (otpError) {
-            setError(otpError.message);
-          } else {
-            setOtpEmail(form.email.trim().toLowerCase());
-            setStep(3);
+
+          if (authError) {
+            if (authError.message?.includes('already registered')) {
+              setError(lang === 'fr' ? 'Cet email est déjà enregistré. Connectez-vous.' : 'This email is already registered. Please sign in.');
+            } else {
+              setError(authError.message);
+            }
+            setLoading(false);
+            return;
           }
+
+          setOtpEmail(form.email.trim().toLowerCase());
+          setStep(3);
         } catch (err) {
           setError('Failed to send verification code');
         }
         setLoading(false);
       } else if (step === 3) {
-        // Verify OTP code
+        // Verify the OTP code from email
         if (!otpCode || otpCode.length !== 8) { setError(lang === 'fr' ? 'Entrez le code à 8 chiffres' : 'Enter the 8-digit code'); return; }
         setLoading(true);
         try {
           const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
             email: otpEmail,
             token: otpCode,
-            type: 'email'
+            type: 'signup'
           });
           if (verifyError) {
             setError(t.invalidCode);
@@ -2077,22 +2085,16 @@ function LoginPage() {
             return;
           }
 
-          // OTP verified — set the password
-          if (verifyData?.session) {
-            await supabase.auth.updateUser({ password: form.password });
-          }
-
-          // Create the church and user profile
+          // Email verified — now create the church and user profile
           const result = await register(form);
           if (result.success) {
-            // Auto-login: sign in with the password we just set
+            // Auto-login with the verified credentials
             await supabase.auth.signOut();
             const { error: loginErr } = await supabase.auth.signInWithPassword({
               email: form.email.trim().toLowerCase(),
               password: form.password
             });
             if (!loginErr) {
-              // Load profile and go straight to dashboard
               const { data: users } = await supabase
                 .from('church_users')
                 .select('*')
@@ -2128,12 +2130,9 @@ function LoginPage() {
     setError(''); setSuccess('');
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: otpEmail,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: undefined
-        }
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: otpEmail
       });
       if (error) { setError(error.message); }
       else { setSuccess(t.codeSent); }
@@ -2447,6 +2446,7 @@ function LoginPage() {
                 </div>
               </>
             )}
+
 
             {/* REGISTER STEP 3 - OTP Verification */}
             {!isLogin && step === 3 && (
