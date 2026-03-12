@@ -847,8 +847,8 @@ function AuthProvider({ children }) {
         is_super_admin: dbUser.is_super_admin || false
       };
 
-      // Update last_login
-      await supabase.from('church_users').update({ last_login: new Date().toISOString() }).eq('id', dbUser.id);
+      // Fire and forget — don't block on last_login update
+      supabase.from('church_users').update({ last_login: new Date().toISOString() }).eq('id', dbUser.id).then(() => {}).catch(() => {});
 
       setUser(sessionUser);
       localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
@@ -871,7 +871,7 @@ function AuthProvider({ children }) {
         }
         return false;
       });
-    }, 6000);
+    }, 3000);
 
     const initSession = async () => {
       try {
@@ -914,46 +914,51 @@ function AuthProvider({ children }) {
     // Listen for auth state changes (login/logout, OAuth callbacks)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        // User clicked reset link — show reset form instead of dashboard
         setPasswordRecovery(true);
         setUser(null);
         localStorage.removeItem('churchsmart_user');
         if (window.location.hash) window.history.replaceState(null, '', window.location.pathname + '?reset=true');
         return;
       }
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user?.email) {
-        // Skip if in password recovery or actively registering
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        localStorage.removeItem('churchsmart_user');
+        return;
+      }
+      // Only load profile on actual sign-in, NOT on token refresh (which happens silently)
+      if (event === 'SIGNED_IN' && session?.user?.email) {
         if (passwordRecovery || registeringRef.current) return;
-        let profile = await loadUserProfile(session.user.email);
-        if (!profile && event === 'SIGNED_IN') {
-          // New Google user with no church_users row — create a minimal one
-          const fullName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email.split('@')[0];
-          const { data: newRow } = await supabase
-            .from('church_users')
-            .insert({
-              auth_id: session.user.id,
-              email: session.user.email,
-              full_name: fullName,
-              role: 'ADMIN',
-              is_active: true
-            })
-            .select()
-            .single();
+        try {
+          let profile = await loadUserProfile(session.user.email);
+          if (!profile) {
+            // New Google user with no church_users row — create a minimal one
+            const fullName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email.split('@')[0];
+            const { data: newRow } = await supabase
+              .from('church_users')
+              .insert({
+                auth_id: session.user.id,
+                email: session.user.email,
+                full_name: fullName,
+                role: 'ADMIN',
+                is_active: true
+              })
+              .select()
+              .single();
 
-          if (newRow) {
-            const sessionUser = {
-              id: newRow.id, email: newRow.email, name: newRow.full_name,
-              role: newRow.role, church_id: null, phone: null, is_super_admin: false
-            };
-            setUser(sessionUser);
-            localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+            if (newRow) {
+              const sessionUser = {
+                id: newRow.id, email: newRow.email, name: newRow.full_name,
+                role: newRow.role, church_id: null, phone: null, is_super_admin: false
+              };
+              setUser(sessionUser);
+              localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+            }
           }
+        } catch (err) {
+          console.warn('ChurchSmart: Auth state change error:', err);
         }
         // Clean OAuth hash fragment
         if (window.location.hash) window.history.replaceState(null, '', window.location.pathname);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        localStorage.removeItem('churchsmart_user');
       }
     });
 
@@ -1182,15 +1187,13 @@ function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    // Clear local state FIRST, then redirect immediately
     localStorage.removeItem('churchsmart_user');
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.warn('SignOut error:', e);
-    }
     setUser(null);
     setPasswordRecovery(false);
-    // Force clean reload to prevent stuck states
+    // Fire and forget — don't wait for Supabase
+    supabase.auth.signOut().catch(() => {});
+    // Force clean reload immediately
     window.location.href = window.location.origin;
   };
 
