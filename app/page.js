@@ -859,26 +859,50 @@ function AuthProvider({ children }) {
 
   // Initialize: check Supabase Auth session on mount
   useEffect(() => {
-    const initSession = async () => {
-      // Check for existing Supabase Auth session (including OAuth redirect returns)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) {
-        const profile = await loadUserProfile(session.user.email);
-        if (!profile) {
-          // Authenticated but no church profile — could be Google user not yet linked
-          // Check localStorage fallback
+    // Safety timeout — never stay on loading screen for more than 6 seconds
+    const safetyTimer = setTimeout(() => {
+      setLoading((current) => {
+        if (current) {
+          console.warn('ChurchSmart: Auth init timed out, falling back to localStorage');
           const savedUser = localStorage.getItem('churchsmart_user');
           if (savedUser) {
             try { setUser(JSON.parse(savedUser)); } catch (e) { localStorage.removeItem('churchsmart_user'); }
           }
         }
-      } else {
-        // No Supabase Auth session — check localStorage for legacy sessions
+        return false;
+      });
+    }, 6000);
+
+    const initSession = async () => {
+      try {
+        // Check for existing Supabase Auth session (including OAuth redirect returns)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.email) {
+          const profile = await loadUserProfile(session.user.email);
+          if (!profile) {
+            // Authenticated but no church profile — could be Google user not yet linked
+            // Check localStorage fallback
+            const savedUser = localStorage.getItem('churchsmart_user');
+            if (savedUser) {
+              try { setUser(JSON.parse(savedUser)); } catch (e) { localStorage.removeItem('churchsmart_user'); }
+            }
+          }
+        } else {
+          // No Supabase Auth session — check localStorage for legacy sessions
+          const savedUser = localStorage.getItem('churchsmart_user');
+          if (savedUser) {
+            try { setUser(JSON.parse(savedUser)); } catch (e) { localStorage.removeItem('churchsmart_user'); }
+          }
+        }
+      } catch (err) {
+        console.error('ChurchSmart: Auth init error:', err);
+        // Fallback to localStorage on any error
         const savedUser = localStorage.getItem('churchsmart_user');
         if (savedUser) {
           try { setUser(JSON.parse(savedUser)); } catch (e) { localStorage.removeItem('churchsmart_user'); }
         }
       }
+      clearTimeout(safetyTimer);
       setLoading(false);
       // Clean up OAuth hash fragment from URL
       if (window.location.hash) {
