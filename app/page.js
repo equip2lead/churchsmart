@@ -1187,13 +1187,14 @@ function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    // Clear local state FIRST, then redirect immediately
+    // Clear local state FIRST
     localStorage.removeItem('churchsmart_user');
     setUser(null);
     setPasswordRecovery(false);
-    // Fire and forget — don't wait for Supabase
-    supabase.auth.signOut().catch(() => {});
-    // Force clean reload immediately
+    // Must await signOut to clear the Supabase session cookie, otherwise
+    // the page reload will find a valid session and log back in
+    try { await Promise.race([supabase.auth.signOut(), new Promise((_, rej) => setTimeout(() => rej('timeout'), 3000))]); } catch (e) { /* timeout or error — continue anyway */ }
+    // Force clean reload
     window.location.href = window.location.origin;
   };
 
@@ -3058,7 +3059,7 @@ function DashboardPage() {
     try {
       // Use parallel requests with limits — don't fetch ALL records
       const [members, visitors, salvations, donations, services, events, activityLogs, locationsData, memberCount, donationTotal] = await Promise.all([
-        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,full_name,date_of_birth,location_id,photo_url' }),
+        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,first_name,last_name,date_of_birth,location_id,photo_url' }),
         supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'visit_date.desc', limit: 5 }),
         supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc', limit: 5 }),
         supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,amount,donation_date,location_id' }),
