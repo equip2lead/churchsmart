@@ -1219,7 +1219,7 @@ export default function ChurchSmartApp() {
     <LanguageProvider>
       <AuthProvider>
       <style dangerouslySetInnerHTML={{ __html: `
-                    
+                    @keyframes cs-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
                                                                                                                                                                                                                                                           @media (max-width: 768px) {
             .sidebar { position: fixed !important; left: -280px !important; top: 0 !important; bottom: 0 !important; width: 260px !important; z-index: 50 !important; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
             .sidebar.open { left: 0 !important; }
@@ -1280,8 +1280,8 @@ function AppContent() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-          <p style={{ color: '#6b7280' }}>Loading ChurchSmart...</p>
+          <div style={{ width: '40px', height: '40px', border: '3px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'cs-spin 0.7s linear infinite', margin: '0 auto 16px' }} />
+          <p style={{ color: '#9ca3af', fontSize: '14px', fontWeight: '500' }}>Loading...</p>
         </div>
       </div>
     );
@@ -2924,7 +2924,7 @@ function SearchBar({ value, onChange, placeholder }) {
 function LoadingSpinner() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '48px' }}>
-      <div style={{ fontSize: '32px' }}>⏳</div>
+      <div style={{ width: '32px', height: '32px', border: '3px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'cs-spin 0.7s linear infinite' }} />
     </div>
   );
 }
