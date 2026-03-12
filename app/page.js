@@ -857,59 +857,54 @@ function AuthProvider({ children }) {
     return null;
   };
 
-  // Initialize: check Supabase Auth session on mount
+  // Initialize: localStorage FIRST for instant load, Supabase session in background
   useEffect(() => {
-    // Safety timeout — never stay on loading screen for more than 6 seconds
-    const safetyTimer = setTimeout(() => {
-      setLoading((current) => {
-        if (current) {
-          console.warn('ChurchSmart: Auth init timed out, falling back to localStorage');
-          const savedUser = localStorage.getItem('churchsmart_user');
-          if (savedUser) {
-            try { setUser(JSON.parse(savedUser)); } catch (e) { localStorage.removeItem('churchsmart_user'); }
-          }
-        }
-        return false;
-      });
-    }, 3000);
+    // Step 1: Instantly load from localStorage (no waiting)
+    const savedUser = localStorage.getItem('churchsmart_user');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+        setLoading(false);
+      } catch (e) {
+        localStorage.removeItem('churchsmart_user');
+      }
+    }
 
+    // Step 2: Verify/refresh Supabase session in background (non-blocking)
     const initSession = async () => {
       try {
-        // Check for existing Supabase Auth session (including OAuth redirect returns)
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.email) {
+          // Session valid — refresh profile silently
           const profile = await loadUserProfile(session.user.email);
-          if (!profile) {
-            // Authenticated but no church profile — could be Google user not yet linked
-            // Check localStorage fallback
-            const savedUser = localStorage.getItem('churchsmart_user');
-            if (savedUser) {
-              try { setUser(JSON.parse(savedUser)); } catch (e) { localStorage.removeItem('churchsmart_user'); }
-            }
+          if (!profile && !savedUser) {
+            // No profile and no localStorage — show login
+            setUser(null);
           }
-        } else {
-          // No Supabase Auth session — check localStorage for legacy sessions
-          const savedUser = localStorage.getItem('churchsmart_user');
-          if (savedUser) {
-            try { setUser(JSON.parse(savedUser)); } catch (e) { localStorage.removeItem('churchsmart_user'); }
-          }
+        } else if (!savedUser) {
+          // No Supabase session and no localStorage — show login
+          setUser(null);
         }
       } catch (err) {
-        console.error('ChurchSmart: Auth init error:', err);
-        // Fallback to localStorage on any error
-        const savedUser = localStorage.getItem('churchsmart_user');
-        if (savedUser) {
-          try { setUser(JSON.parse(savedUser)); } catch (e) { localStorage.removeItem('churchsmart_user'); }
-        }
+        console.warn('ChurchSmart: Background session check failed:', err);
+        // If localStorage had a user, keep it; otherwise show login
+        if (!savedUser) setUser(null);
       }
-      clearTimeout(safetyTimer);
       setLoading(false);
       // Clean up OAuth hash fragment from URL
       if (window.location.hash) {
         window.history.replaceState(null, '', window.location.pathname);
       }
     };
-    initSession();
+
+    // If no saved user, we must wait for Supabase (with a safety timeout)
+    if (!savedUser) {
+      const safetyTimer = setTimeout(() => { setLoading(false); }, 3000);
+      initSession().finally(() => clearTimeout(safetyTimer));
+    } else {
+      // User loaded from localStorage — run Supabase check in background silently
+      initSession();
+    }
 
     // Listen for auth state changes (login/logout, OAuth callbacks)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
