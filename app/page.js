@@ -1360,7 +1360,7 @@ function MemberProfile({ member, onClose, churchId }) {
   const toast = useToast();
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { (async () => { setLoading(true); const d = await supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }, { column: 'member_id', operator: 'eq', value: member.id }], order: 'donation_date.desc', limit: 20 }); setDonations(d || []); setLoading(false); })(); }, [member.id]);
+  useEffect(() => { (async () => { setLoading(true); try { const d = await supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }, { column: 'member_id', operator: 'eq', value: member.id }], order: 'donation_date.desc', limit: 20 }); setDonations(d || []); } catch (error) { console.error('MemberProfile donations fetch error:', error); } finally { setLoading(false); } })(); }, [member.id]);
   const totalGiving = donations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
   const initials = `${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}`;
   const genStatement = () => { if (!donations.length) { toast.warning('No records'); return; } exportToCSV(donations, [{ label: 'Date', key: 'donation_date' },{ label: 'Amount', key: 'amount' },{ label: 'Category', key: 'category' },{ label: 'Method', key: 'payment_method' }], `giving-${member.first_name}-${member.last_name}`); toast.success(t('givingStatement') + ' exported!'); };
@@ -1372,7 +1372,7 @@ function MemberProfile({ member, onClose, churchId }) {
           <h2 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700' }}>{member.first_name} {member.last_name}</h2>
           <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{member.email || ''}{member.email && member.phone ? ' • ' : ''}{member.phone || ''}</p>
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-            <span style={{ padding: '4px 12px', backgroundColor: member.status === 'ACTIVE' ? '#dcfce7' : '#fef3c7', color: member.status === 'ACTIVE' ? '#166534' : '#92400e', borderRadius: '9999px', fontSize: '12px', fontWeight: '600' }}>{member.status}</span>
+            <span style={{ padding: '4px 12px', backgroundColor: member.membership_status === 'ACTIVE' ? '#dcfce7' : '#fef3c7', color: member.membership_status === 'ACTIVE' ? '#166534' : '#92400e', borderRadius: '9999px', fontSize: '12px', fontWeight: '600' }}>{member.membership_status}</span>
             <span style={{ padding: '4px 12px', backgroundColor: '#e0e7ff', color: '#4338ca', borderRadius: '9999px', fontSize: '12px' }}>{member.gender}</span>
             {member.date_of_birth && <span style={{ padding: '4px 12px', backgroundColor: '#f3f4f6', color: '#374151', borderRadius: '9999px', fontSize: '12px' }}>🎂 {member.date_of_birth}</span>}
           </div>
@@ -1542,7 +1542,7 @@ function PublicJoinPage({ churchId }) {
         emergency_contact: form.emergency_contact.trim() || null,
         emergency_phone: form.emergency_phone.trim() || null,
         photo_url: form.photo_url || null,
-        status: 'NEW',
+        membership_status: 'ACTIVE',
         location_id: selectedLocation || null,
         membership_date: new Date().toISOString().split('T')[0],
         notes: 'Self-registered via connect link'
@@ -3141,8 +3141,8 @@ function DashboardPage() {
       setRecentActivity(activityLogs || []);
       setRecentVisitors(filteredVisitors);
       setRecentSalvations(filteredSalvations);
-    } catch (error) { console.error('Error:', error); }
-    setLoading(false);
+    } catch (error) { console.error('Dashboard fetch error:', error); }
+    finally { setLoading(false); }
   };
 
   // Dynamic currency from church settings
@@ -3392,7 +3392,7 @@ function MembersPage() {
 
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', phone: '', date_of_birth: '',
-    gender: 'MALE', address: '', city: '', status: 'ACTIVE', membership_date: '',
+    gender: 'MALE', address: '', city: '', membership_status: 'ACTIVE', membership_date: '',
     location_id: '', notes: ''
   });
 
@@ -3400,20 +3400,25 @@ function MembersPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [membersData, locationsData] = await Promise.all([
-      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc' }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
-    ]);
-    setMembers(membersData || []);
-    setLocations(locationsData || []);
-    setLoading(false);
+    try {
+      const [membersData, locationsData] = await Promise.all([
+        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc' }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      ]);
+      setMembers(membersData || []);
+      setLocations(locationsData || []);
+    } catch (error) {
+      console.error('Members fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetForm = () => {
     const mainCampus = locations.find(l => l.is_main_campus);
     setForm({
       first_name: '', last_name: '', email: '', phone: '', date_of_birth: '',
-      gender: 'MALE', address: '', city: '', status: 'ACTIVE', membership_date: new Date().toISOString().split('T')[0],
+      gender: 'MALE', address: '', city: '', membership_status: 'ACTIVE', membership_date: new Date().toISOString().split('T')[0],
       location_id: mainCampus?.id || '', notes: '', photo_url: ''
     });
     setEditingMember(null);
@@ -3422,7 +3427,7 @@ function MembersPage() {
   const exportMembersCSV = () => {
     const data = (members || []).filter(m => {
       const matchesLocation = filterLocation === 'all' || m.location_id === filterLocation;
-      const matchesStatus = filterStatus === 'all' || m.status === filterStatus;
+      const matchesStatus = filterStatus === 'all' || m.membership_status === filterStatus;
       const matchesSearch = !searchTerm || (m.first_name + ' ' + m.last_name).toLowerCase().includes(searchTerm.toLowerCase()) || (m.phone || '').includes(searchTerm) || (m.email || '').toLowerCase().includes(searchTerm.toLowerCase());
       return matchesLocation && matchesStatus && matchesSearch;
     });
@@ -3432,7 +3437,7 @@ function MembersPage() {
       { label: 'Phone', key: 'phone' },
       { label: 'Email', key: 'email' },
       { label: 'Gender', key: 'gender' },
-      { label: 'Status', key: 'status' },
+      { label: 'Status', key: 'membership_status' },
       { label: 'Membership Date', key: 'membership_date' },
       { label: 'Date of Birth', key: 'date_of_birth' },
       { label: 'Address', key: 'address' },
@@ -3448,7 +3453,7 @@ function MembersPage() {
         first_name: member.first_name || '', last_name: member.last_name || '',
         email: member.email || '', phone: member.phone || '', date_of_birth: member.date_of_birth || '',
         gender: member.gender || 'MALE', address: member.address || '', city: member.city || '',
-        status: member.status || 'ACTIVE', membership_date: member.membership_date || '',
+        membership_status: member.membership_status || 'ACTIVE', membership_date: member.membership_date || '',
         location_id: member.location_id || '', notes: member.notes || '', photo_url: member.photo_url || ''
       });
     } else {
@@ -3511,7 +3516,7 @@ function MembersPage() {
 
   // Filter members
   const filteredMembers = members.filter(m => {
-    if (filterStatus !== 'all' && m.status !== filterStatus) return false;
+    if (filterStatus !== 'all' && m.membership_status !== filterStatus) return false;
     if (filterLocation !== 'all' && m.location_id !== filterLocation) return false;
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
@@ -3524,7 +3529,7 @@ function MembersPage() {
   });
 
   // Stats
-  const totalActive = members.filter(m => m.status === 'ACTIVE').length;
+  const totalActive = members.filter(m => m.membership_status === 'ACTIVE').length;
   const locationStats = locations.map(loc => ({
     ...loc,
     count: members.filter(m => m.location_id === loc.id).length
@@ -3575,7 +3580,7 @@ function MembersPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <StatCard label="Total Members" value={members.length} icon="👥" color="#6366f1" />
         <StatCard label="Active" value={totalActive} icon="✅" color="#10b981" />
-        <StatCard label="Inactive" value={members.filter(m => m.status === 'INACTIVE').length} icon="⏸️" color="#f59e0b" />
+        <StatCard label="Inactive" value={members.filter(m => m.membership_status === 'INACTIVE').length} icon="⏸️" color="#f59e0b" />
         <StatCard label="Locations" value={locations.length} icon="📍" color="#8b5cf6" />
       </div>
 
@@ -3678,7 +3683,7 @@ function MembersPage() {
                       )}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <StatusBadge status={member.status} />
+                      <StatusBadge status={member.membership_status} />
                     </td>
                     <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '14px' }}>
                       {formatDate(member.membership_date || member.created_at)}
@@ -3859,7 +3864,7 @@ function MembersPage() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <FormInput label="📍 Location *" type="select" value={form.location_id} onChange={(e) => setForm({ ...form, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
-          <FormInput label="Status" type="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} options={[{ value: 'ACTIVE', label: '✅ Active' }, { value: 'INACTIVE', label: '⏸️ Inactive' }]} />
+          <FormInput label="Status" type="select" value={form.membership_status} onChange={(e) => setForm({ ...form, membership_status: e.target.value })} options={[{ value: 'ACTIVE', label: '✅ Active' }, { value: 'INACTIVE', label: '⏸️ Inactive' }]} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <FormInput label="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
@@ -3913,16 +3918,21 @@ function VisitorsPage() {
 
   const fetchVisitors = async () => {
     setLoading(true);
-    const [data, locationsData] = await Promise.all([
-      supabaseQuery('visitors', {
-        filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }],
-        order: 'visit_date.desc'
-      }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
-    ]);
-    setVisitors(data || []);
-    setLocations(locationsData || []);
-    setLoading(false);
+    try {
+      const [data, locationsData] = await Promise.all([
+        supabaseQuery('visitors', {
+          filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }],
+          order: 'visit_date.desc'
+        }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      ]);
+      setVisitors(data || []);
+      setLocations(locationsData || []);
+    } catch (error) {
+      console.error('Visitors fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getLocationName = (locationId) => {
@@ -4190,15 +4200,20 @@ function AttendancePage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [attendanceData, servicesData, locationsData] = await Promise.all([
-      supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc' }),
-      supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
-    ]);
-    setAttendance(attendanceData || []);
-    setServices(servicesData || []);
-    setLocations(locationsData || []);
-    setLoading(false);
+    try {
+      const [attendanceData, servicesData, locationsData] = await Promise.all([
+        supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc' }),
+        supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      ]);
+      setAttendance(attendanceData || []);
+      setServices(servicesData || []);
+      setLocations(locationsData || []);
+    } catch (error) {
+      console.error('Attendance fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filter attendance data
@@ -4706,17 +4721,22 @@ function GivingPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [donationsData, expensesData, membersData, locData] = await Promise.all([
-      supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'donation_date.desc' }),
-      supabaseQuery('expenses', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'expense_date.desc' }),
-      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
-    ]);
-    setDonations(donationsData || []);
-    setExpenses(expensesData || []);
-    setMembers(membersData || []);
-    setLocations(locData || []);
-    setLoading(false);
+    try {
+      const [donationsData, expensesData, membersData, locData] = await Promise.all([
+        supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'donation_date.desc' }),
+        supabaseQuery('expenses', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'expense_date.desc' }),
+        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      ]);
+      setDonations(donationsData || []);
+      setExpenses(expensesData || []);
+      setMembers(membersData || []);
+      setLocations(locData || []);
+    } catch (error) {
+      console.error('Giving fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
@@ -5190,7 +5210,7 @@ function SalvationsPage() {
   const [form, setForm] = useState({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: '' });
 
   useEffect(() => { fetchSalvations(); }, []);
-  const fetchSalvations = async () => { setLoading(true); const [data, locData] = await Promise.all([supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc' }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setSalvations(data || []); setLocations(locData || []); setLoading(false); };
+  const fetchSalvations = async () => { setLoading(true); try { const [data, locData] = await Promise.all([supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc' }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setSalvations(data || []); setLocations(locData || []); } catch (error) { console.error('Salvations fetch error:', error); } finally { setLoading(false); } };
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: mainCampus?.id || '' }); setEditingRecord(null); };
   const openModal = (record = null) => { if (record) { setEditingRecord(record); setForm({ full_name: record.full_name || '', phone: record.phone || '', email: record.email || '', gender: record.gender || '', age_group: record.age_group || '', salvation_date: record.salvation_date || '', followup_status: record.followup_status || 'PENDING', followup_notes: record.followup_notes || '', location_id: record.location_id || '' }); } else { resetForm(); } setShowModal(true); };
@@ -5273,7 +5293,7 @@ function GroupsPage() {
   const [form, setForm] = useState({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: '' });
 
   useEffect(() => { fetchGroups(); }, []);
-  const fetchGroups = async () => { setLoading(true); const [data, locData] = await Promise.all([supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setGroups(data || []); setLocations(locData || []); setLoading(false); };
+  const fetchGroups = async () => { setLoading(true); try { const [data, locData] = await Promise.all([supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setGroups(data || []); setLocations(locData || []); } catch (error) { console.error('Groups fetch error:', error); } finally { setLoading(false); } };
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: mainCampus?.id || '' }); setEditingGroup(null); };
   const openModal = (group = null) => { if (group) { setEditingGroup(group); setForm({ name: group.name || '', description: group.description || '', group_type: group.group_type || 'CELL', meeting_day: group.meeting_day || 'WEDNESDAY', meeting_time: group.meeting_time || '18:00', is_active: group.is_active ?? true, location_id: group.location_id || '' }); } else { resetForm(); } setShowModal(true); };
@@ -5364,15 +5384,20 @@ function VolunteersPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [volunteersData, membersData, locData] = await Promise.all([
-      supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
-    ]);
-    setVolunteers(volunteersData || []);
-    setMembers(membersData || []);
-    setLocations(locData || []);
-    setLoading(false);
+    try {
+      const [volunteersData, membersData, locData] = await Promise.all([
+        supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      ]);
+      setVolunteers(volunteersData || []);
+      setMembers(membersData || []);
+      setLocations(locData || []);
+    } catch (error) {
+      console.error('Volunteers fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
@@ -5719,23 +5744,28 @@ function MessagingPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [membersData, visitorsData, groupsData, volunteersData, messagesData, templatesData, locationsData] = await Promise.all([
-      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('messages', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'sent_at.desc', limit: 50 }),
-      supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
-    ]);
-    setMembers(membersData || []);
-    setVisitors(visitorsData || []);
-    setGroups(groupsData || []);
-    setVolunteers(volunteersData || []);
-    setMessageHistory(messagesData || []);
-    setTemplates(templatesData || []);
-    setLocations(locationsData || []);
-    setLoading(false);
+    try {
+      const [membersData, visitorsData, groupsData, volunteersData, messagesData, templatesData, locationsData] = await Promise.all([
+        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('messages', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'sent_at.desc', limit: 50 }),
+        supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      ]);
+      setMembers(membersData || []);
+      setVisitors(visitorsData || []);
+      setGroups(groupsData || []);
+      setVolunteers(volunteersData || []);
+      setMessageHistory(messagesData || []);
+      setTemplates(templatesData || []);
+      setLocations(locationsData || []);
+    } catch (error) {
+      console.error('Messaging fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getLocationName = (locationId) => {
@@ -5747,7 +5777,7 @@ function MessagingPage() {
   const allContacts = [
     ...members.filter(m => m.phone).map(m => ({
       id: m.id, name: `${m.first_name} ${m.last_name}`, phone: m.phone, email: m.email || '',
-      type: 'Member', status: m.status || 'ACTIVE', location_id: m.location_id, ministry: null, group_id: null
+      type: 'Member', status: m.membership_status || 'ACTIVE', location_id: m.location_id, ministry: null, group_id: null
     })),
     ...visitors.filter(v => v.phone).map(v => ({
       id: v.id, name: v.full_name, phone: v.phone, email: v.email || '',
@@ -6332,24 +6362,29 @@ function ReportsPage() {
 
   const fetchAllData = async () => {
     setLoading(true);
-    const [members, visitors, donations, expenses, salvations, attendance, volunteers, groups, locationsData] = await Promise.all([
-      supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('expenses', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
-    ]);
-    setData({
-      members: members || [], visitors: visitors || [], donations: donations || [],
-      expenses: expenses || [], salvations: salvations || [], attendance: attendance || [],
-      volunteers: volunteers || [], groups: groups || []
-    });
-    setLocations(locationsData || []);
-    setLoading(false);
+    try {
+      const [members, visitors, donations, expenses, salvations, attendance, volunteers, groups, locationsData] = await Promise.all([
+        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('expenses', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      ]);
+      setData({
+        members: members || [], visitors: visitors || [], donations: donations || [],
+        expenses: expenses || [], salvations: salvations || [], attendance: attendance || [],
+        volunteers: volunteers || [], groups: groups || []
+      });
+      setLocations(locationsData || []);
+    } catch (error) {
+      console.error('Reports fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getLocationName = (locationId) => {
@@ -6447,7 +6482,7 @@ function ReportsPage() {
         };
       case 'membership':
         return {
-          data: filteredMembers.map(m => ({ 'First Name': m.first_name, 'Last Name': m.last_name, Phone: m.phone || '', Email: m.email || '', Status: m.status || '', Gender: m.gender || '', 'Membership Date': m.membership_date || '', City: m.city || '' })),
+          data: filteredMembers.map(m => ({ 'First Name': m.first_name, 'Last Name': m.last_name, Phone: m.phone || '', Email: m.email || '', Status: m.membership_status || '', Gender: m.gender || '', 'Membership Date': m.membership_date || '', City: m.city || '' })),
           filename: 'membership-report'
         };
       case 'salvations':
@@ -6613,7 +6648,7 @@ function ReportsPage() {
                   <div>
                     <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280' }}>Membership</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Active Members</span><strong>{filteredMembers.filter(m => m.status === 'ACTIVE').length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Active Members</span><strong>{filteredMembers.filter(m => m.membership_status === 'ACTIVE').length}</strong></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>New Visitors</span><strong>{filteredVisitors.length}</strong></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Groups</span><strong>{filteredGroups.length}</strong></div>
                     </div>
@@ -6774,7 +6809,7 @@ function ReportsPage() {
             <div style={{ display: 'grid', gap: '24px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                 <StatCard label="Total Members" value={filteredMembers.length} icon="👥" color="#6366f1" />
-                <StatCard label="Active" value={filteredMembers.filter(m => m.status === 'ACTIVE').length} icon="✅" color="#10b981" />
+                <StatCard label="Active" value={filteredMembers.filter(m => m.membership_status === 'ACTIVE').length} icon="✅" color="#10b981" />
                 <StatCard label="New Visitors" value={filteredVisitors.length} icon="🚶" color="#f59e0b" />
                 <StatCard label="Groups" value={filteredGroups.length} icon="👨‍👩‍👧‍👦" color="#8b5cf6" />
               </div>
@@ -6799,7 +6834,7 @@ function ReportsPage() {
                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{member.first_name} {member.last_name}</td>
                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{member.phone || '—'}</td>
                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{getLocationName(member.location_id)}</td>
-                        <td style={{ padding: '12px 16px' }}><StatusBadge status={member.status} /></td>
+                        <td style={{ padding: '12px 16px' }}><StatusBadge status={member.membership_status} /></td>
                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{formatDate(member.created_at)}</td>
                       </tr>
                     ))}
@@ -6923,17 +6958,22 @@ function CalendarPage() {
 
   const fetchCalendarData = async () => {
     setLoading(true);
-    const [eventsData, servicesData, locationsData, attendanceData] = await Promise.all([
-      supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'event_date.asc' }),
-      supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc' })
-    ]);
-    setEvents(eventsData || []);
-    setServices(servicesData || []);
-    setLocations(locationsData || []);
-    setAttendance(attendanceData || []);
-    setLoading(false);
+    try {
+      const [eventsData, servicesData, locationsData, attendanceData] = await Promise.all([
+        supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'event_date.asc' }),
+        supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc' })
+      ]);
+      setEvents(eventsData || []);
+      setServices(servicesData || []);
+      setLocations(locationsData || []);
+      setAttendance(attendanceData || []);
+    } catch (error) {
+      console.error('Calendar fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Navigation
@@ -7058,11 +7098,12 @@ function CalendarPage() {
     if (!eventForm.title || !eventForm.event_date) { toast.warning('Event title and date are required'); return; }
     setSaving(true);
     try {
+      const cleanedForm = { ...eventForm, location_id: eventForm.location_id || null, start_time: eventForm.start_time || null, end_time: eventForm.end_time || null };
       if (editingEvent) {
-        await supabaseUpdate('events', editingEvent.id, eventForm);
+        await supabaseUpdate('events', editingEvent.id, cleanedForm);
         toast.success(t('savedSuccessfully'));
       } else {
-        await supabaseInsert('events', eventForm);
+        await supabaseInsert('events', cleanedForm);
         toast.success(t('savedSuccessfully'));
       }
       setShowEventModal(false);
@@ -7382,17 +7423,22 @@ function ServicesPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [servicesData, eventsData, locationsData, attendanceData] = await Promise.all([
-      supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'event_date.asc' }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc', limit: 10 })
-    ]);
-    setServices(servicesData || []);
-    setEvents(eventsData || []);
-    setLocations(locationsData || []);
-    setAttendance(attendanceData || []);
-    setLoading(false);
+    try {
+      const [servicesData, eventsData, locationsData, attendanceData] = await Promise.all([
+        supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'event_date.asc' }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc', limit: 10 })
+      ]);
+      setServices(servicesData || []);
+      setEvents(eventsData || []);
+      setLocations(locationsData || []);
+      setAttendance(attendanceData || []);
+    } catch (error) {
+      console.error('Services fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Reset forms
@@ -7455,10 +7501,11 @@ function ServicesPage() {
     if (!eventForm.title || !eventForm.event_date) { toast.warning('Event title and date are required'); return; }
     setSaving(true);
     try {
+      const cleanedForm = { ...eventForm, location_id: eventForm.location_id || null, start_time: eventForm.start_time || null, end_time: eventForm.end_time || null };
       if (editingEvent) {
-        await supabaseUpdate('events', editingEvent.id, eventForm);
+        await supabaseUpdate('events', editingEvent.id, cleanedForm);
       } else {
-        await supabaseInsert('events', eventForm);
+        await supabaseInsert('events', cleanedForm);
       }
       setShowEventModal(false);
       resetEventForm();
@@ -7915,7 +7962,7 @@ function SuperAdminPage() {
       setChurches(Array.isArray(churchesData) ? churchesData : []);
       setAllUsers(Array.isArray(usersData) ? usersData : []);
     } catch (error) { console.error('Super admin fetch error:', error); }
-    setLoading(false);
+    finally { setLoading(false); }
   };
 
   const viewChurchDetails = async (church) => {
@@ -8736,23 +8783,28 @@ function SettingsPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [churchData, locationsData, rolesData, assignmentsData, logsData, automationData, templatesData] = await Promise.all([
-      supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
-      supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('user_roles', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('user_role_assignments', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 50 }),
-      supabaseQuery('automation_settings', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-      supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
-    ]);
-    setChurch(churchData);
-    setLocations(locationsData || []);
-    setRoles(rolesData || []);
-    setRoleAssignments(assignmentsData || []);
-    setActivityLogs(logsData || []);
-    setAutomationSettings(automationData || []);
-    setMessageTemplates(templatesData || []);
-    setLoading(false);
+    try {
+      const [churchData, locationsData, rolesData, assignmentsData, logsData, automationData, templatesData] = await Promise.all([
+        supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('user_roles', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('user_role_assignments', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 50 }),
+        supabaseQuery('automation_settings', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      ]);
+      setChurch(churchData);
+      setLocations(locationsData || []);
+      setRoles(rolesData || []);
+      setRoleAssignments(assignmentsData || []);
+      setActivityLogs(logsData || []);
+      setAutomationSettings(automationData || []);
+      setMessageTemplates(templatesData || []);
+    } catch (error) {
+      console.error('Settings fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ============ CHURCH INFO HANDLERS ============
