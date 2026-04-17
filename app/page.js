@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, createContext, useContext } from 'r
 import { createClient } from '@supabase/supabase-js';
 import { canAccessFeature, getPlanLimits } from '../lib/featureGating';
 import UpgradePrompt from '../components/UpgradePrompt';
+import Papa from 'papaparse';
 
 // ==========================================
 // SUPABASE CONFIG
@@ -3547,6 +3548,110 @@ function MembersPage({ plan, onNavigate }) {
   const [filterLocation, setFilterLocation] = useState('all');
   const [viewingMember, setViewingMember] = useState(null);
   const [memberPage, setMemberPage] = useState(1);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importStep, setImportStep] = useState('upload'); // upload | mapping | importing | done
+  const [importData, setImportData] = useState([]);
+  const [importHeaders, setImportHeaders] = useState([]);
+  const [importMapping, setImportMapping] = useState({});
+  const [importResult, setImportResult] = useState(null);
+
+  const MEMBER_FIELDS = [
+    { key: 'first_name', label: 'First Name', required: true },
+    { key: 'last_name', label: 'Last Name', required: true },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'gender', label: 'Gender' },
+    { key: 'date_of_birth', label: 'Date of Birth' },
+    { key: 'city', label: 'City' },
+    { key: 'address', label: 'Address' },
+    { key: 'membership_status', label: 'Membership Status' },
+    { key: 'membership_date', label: 'Membership Date' },
+  ];
+
+  const autoMapHeaders = (headers) => {
+    const mapping = {};
+    const aliases = {
+      first_name: ['first_name', 'firstname', 'first name', 'prenom', 'prénom'],
+      last_name: ['last_name', 'lastname', 'last name', 'nom', 'surname'],
+      email: ['email', 'e-mail', 'mail', 'courriel'],
+      phone: ['phone', 'telephone', 'tel', 'mobile', 'téléphone'],
+      gender: ['gender', 'sex', 'sexe', 'genre'],
+      date_of_birth: ['date_of_birth', 'dob', 'birthday', 'birth_date', 'date de naissance'],
+      city: ['city', 'ville', 'town'],
+      address: ['address', 'adresse'],
+      membership_status: ['membership_status', 'status', 'statut'],
+      membership_date: ['membership_date', 'join_date', 'joined', 'date adhésion'],
+    };
+    headers.forEach(h => {
+      const lower = h.toLowerCase().trim();
+      for (const [field, names] of Object.entries(aliases)) {
+        if (names.includes(lower) && !mapping[field]) { mapping[field] = h; break; }
+      }
+    });
+    return mapping;
+  };
+
+  const handleFileUpload = (file) => {
+    if (!file || !file.name.endsWith('.csv')) { toast.warning('Please upload a .csv file'); return; }
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (result) => {
+        if (!result.data || result.data.length === 0) { toast.warning('CSV is empty'); return; }
+        setImportHeaders(result.meta.fields || []);
+        setImportData(result.data);
+        setImportMapping(autoMapHeaders(result.meta.fields || []));
+        setImportStep('mapping');
+      },
+      error: (err) => toast.error('Failed to parse CSV: ' + err.message)
+    });
+  };
+
+  const runImport = async () => {
+    setImportStep('importing');
+    let imported = 0, skipped = 0, errors = 0;
+    const existingEmails = new Set(members.filter(m => m.email).map(m => m.email.toLowerCase()));
+
+    for (const row of importData) {
+      const mapped = {};
+      for (const [field, csvCol] of Object.entries(importMapping)) {
+        if (csvCol) mapped[field] = (row[csvCol] || '').trim();
+      }
+      if (!mapped.first_name && !mapped.last_name) { skipped++; continue; }
+      if (mapped.email && existingEmails.has(mapped.email.toLowerCase())) { skipped++; continue; }
+      try {
+        const insertRow = {
+          church_id: CHURCH_ID,
+          first_name: mapped.first_name || '',
+          last_name: mapped.last_name || '',
+          email: mapped.email || null,
+          phone: mapped.phone || null,
+          gender: (mapped.gender || '').toUpperCase() === 'FEMALE' ? 'FEMALE' : 'MALE',
+          date_of_birth: mapped.date_of_birth || null,
+          city: mapped.city || null,
+          address: mapped.address || null,
+          membership_status: ['ACTIVE','INACTIVE','DECEASED','TRANSFERRED'].includes((mapped.membership_status || '').toUpperCase()) ? mapped.membership_status.toUpperCase() : 'ACTIVE',
+          membership_date: mapped.membership_date || new Date().toISOString().split('T')[0],
+        };
+        await supabase.from('members').insert(insertRow);
+        if (mapped.email) existingEmails.add(mapped.email.toLowerCase());
+        imported++;
+      } catch { errors++; }
+    }
+    setImportResult({ imported, skipped, errors });
+    setImportStep('done');
+    fetchData();
+  };
+
+  const downloadTemplate = () => {
+    const csv = '\uFEFF' + 'first_name,last_name,email,phone,gender,date_of_birth,city,address,membership_status,membership_date\nJohn,Doe,john@example.com,+237600000000,MALE,1990-05-15,Douala,123 Main St,ACTIVE,2024-01-01\nJane,Smith,jane@example.com,+237611111111,FEMALE,1985-08-20,Yaoundé,,ACTIVE,2024-03-15\n';
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = 'churchsmart-member-import-template.csv';
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
 
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', phone: '', date_of_birth: '',
@@ -3728,6 +3833,7 @@ function MembersPage({ plan, onNavigate }) {
         actions={
           <div style={{ display: 'flex', gap: '10px' }}>
             {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 {t('exportCSV')}</Button>}
+            {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportData([]); setImportResult(null); }}>📤 Import CSV</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 Import CSV</Button>}
             <Button variant="secondary" onClick={() => setShowInviteModal(true)}>🔗 Invite Link</Button>
             <Button onClick={() => openModal()}>➕ {t('addMember')}</Button>
           </div>
@@ -4034,6 +4140,69 @@ function MembersPage({ plan, onNavigate }) {
           <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
         </div>
+      </Modal>
+
+      {/* Import CSV Modal */}
+      <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title="📤 Import Members from CSV">
+        {importStep === 'upload' && (
+          <div>
+            <div
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#4f46e5'; }}
+              onDragLeave={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; }}
+              onDrop={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#d1d5db'; handleFileUpload(e.dataTransfer.files[0]); }}
+              onClick={() => document.getElementById('csv-file-input').click()}
+              style={{ border: '2px dashed #d1d5db', borderRadius: '12px', padding: '40px', textAlign: 'center', cursor: 'pointer', backgroundColor: '#f9fafb', marginBottom: '16px' }}>
+              <p style={{ margin: '0 0 8px', fontSize: '32px' }}>📁</p>
+              <p style={{ margin: '0 0 4px', fontWeight: '600', color: '#374151' }}>Drag & drop a CSV file here</p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>or click to browse</p>
+              <input id="csv-file-input" type="file" accept=".csv" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e.target.files[0])} />
+            </div>
+            <button onClick={downloadTemplate} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', color: '#4f46e5', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>📋 Download CSV Template</button>
+          </div>
+        )}
+        {importStep === 'mapping' && (
+          <div>
+            <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#6b7280' }}>Found {importData.length} rows. Map your CSV columns to member fields:</p>
+            <div style={{ display: 'grid', gap: '8px', marginBottom: '16px' }}>
+              {MEMBER_FIELDS.map(f => (
+                <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ width: '140px', fontSize: '13px', fontWeight: '500', color: '#374151' }}>{f.label}{f.required ? ' *' : ''}</span>
+                  <select value={importMapping[f.key] || ''} onChange={(e) => setImportMapping({ ...importMapping, [f.key]: e.target.value })} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '13px' }}>
+                    <option value="">— skip —</option>
+                    {importHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Preview (first 5 rows):</p>
+            <div style={{ overflowX: 'auto', marginBottom: '16px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead><tr style={{ backgroundColor: '#f9fafb' }}>{MEMBER_FIELDS.filter(f => importMapping[f.key]).map(f => <th key={f.key} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>{f.label}</th>)}</tr></thead>
+                <tbody>{importData.slice(0, 5).map((row, i) => <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>{MEMBER_FIELDS.filter(f => importMapping[f.key]).map(f => <td key={f.key} style={{ padding: '6px 8px', color: '#374151' }}>{row[importMapping[f.key]] || '—'}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <Button variant="secondary" onClick={() => setImportStep('upload')}>Back</Button>
+              <Button onClick={runImport} disabled={!importMapping.first_name && !importMapping.last_name}>Import {importData.length} Members</Button>
+            </div>
+          </div>
+        )}
+        {importStep === 'importing' && (
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <div style={{ width: '40px', height: '40px', border: '4px solid #e5e7eb', borderTop: '4px solid #4f46e5', borderRadius: '50%', animation: 'cs-spin 1s linear infinite', margin: '0 auto 16px' }} />
+            <p style={{ margin: 0, fontWeight: '500', color: '#374151' }}>Importing members...</p>
+          </div>
+        )}
+        {importStep === 'done' && importResult && (
+          <div style={{ textAlign: 'center', padding: '24px' }}>
+            <p style={{ fontSize: '48px', margin: '0 0 12px' }}>✅</p>
+            <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>Import Complete</h3>
+            <p style={{ margin: '0 0 4px', fontSize: '15px', color: '#10b981', fontWeight: '600' }}>{importResult.imported} members imported</p>
+            {importResult.skipped > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#f59e0b' }}>{importResult.skipped} rows skipped (empty name or duplicate email)</p>}
+            {importResult.errors > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#ef4444' }}>{importResult.errors} rows failed</p>}
+            <Button onClick={() => setShowImportModal(false)} style={{ marginTop: '16px' }}>Close</Button>
+          </div>
+        )}
       </Modal>
 
       {/* Delete Confirmation */}
@@ -9317,6 +9486,7 @@ function SettingsPage() {
     { id: 'roles', label: '👥 User Roles', icon: '👥' },
     { id: 'logs', label: '📜 Activity Logs', icon: '📜' },
     { id: 'data', label: '📦 Data Export', icon: '📦' },
+    { id: 'help', label: '❓ Help', icon: '❓' },
     { id: 'account', label: '👤 Account', icon: '👤' },
   ];
 
@@ -9964,6 +10134,64 @@ function SettingsPage() {
           )}
           {activeSection === 'data' && user?.role !== 'ADMIN' && (
             <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Data export is only available to Admin users.</div>
+          )}
+
+          {/* ============ HELP & SUPPORT ============ */}
+          {activeSection === 'help' && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+              {[
+                { title: 'Getting Started', desc: 'Set up your church profile, add members, and configure your first service. The onboarding wizard on your dashboard guides you step by step.', items: [
+                  { q: 'How do I complete setup?', a: 'Go to your Dashboard — the Getting Started checklist shows what to do next. Complete all 6 steps to fully set up your church.' },
+                  { q: 'How do I add team members?', a: 'Go to Settings > User Roles. Create roles with specific permissions, then assign them to team members by email.' },
+                ]},
+                { title: 'Managing Members', desc: 'Add, edit, import, and manage your church members. Track membership status, birthdays, and contact information.', items: [
+                  { q: 'How do I add a member?', a: 'Go to Members and click "Add Member". Fill in their details and save. You can also import members in bulk using the "Import CSV" button.' },
+                  { q: 'How do I import members from a spreadsheet?', a: 'Click "Import CSV" on the Members page. Download the template, fill it with your data, upload, map columns, and confirm. Requires Starter plan.' },
+                  { q: 'How do I convert a visitor to a member?', a: 'On the Visitors page, click "Convert to Member" next to any visitor. Their info will be copied to a new member record.' },
+                ]},
+                { title: 'Tracking Attendance', desc: 'Create services, record weekly attendance with breakdowns by gender and age group, and track trends over time.', items: [
+                  { q: 'How do I set up services?', a: 'Go to Services & Events and click "Add Service". Set the name, day of week, time, and location.' },
+                  { q: 'How do I record attendance?', a: 'Go to Attendance, select the service and date, enter the counts (men, women, children), and save.' },
+                ]},
+                { title: 'Managing Finances', desc: 'Track tithes, offerings, and expenses. Generate financial reports and giving statements for members.', items: [
+                  { q: 'How do I record a donation?', a: 'Go to Giving > Income tab and click "Add Donation". Select the member, amount, category (tithe, offering, etc.), and payment method.' },
+                  { q: 'How do I track expenses?', a: 'Go to Giving > Expenses tab (requires Starter plan). Add expenses with category, amount, and vendor details.' },
+                  { q: 'How do I generate a giving statement?', a: 'Open a member\'s profile and click "Giving Statement". This exports their donation history as a CSV.' },
+                ]},
+                { title: 'Communication', desc: 'Send SMS, WhatsApp, and email messages to your congregation. Segment by groups, location, or membership status.', items: [
+                  { q: 'Which messaging channels are available?', a: 'Email is available on Starter+, WhatsApp on Growth+, and SMS on Pro. Go to Messaging to compose and send.' },
+                  { q: 'How do I send birthday messages?', a: 'Go to Settings > Automation and enable automatic birthday messages. Set your preferred channel and message template.' },
+                ]},
+                { title: 'Settings & Administration', desc: 'Manage your church profile, locations, user roles, billing, and data exports.', items: [
+                  { q: 'How do I change my subscription plan?', a: 'Go to Settings > Billing. Choose a plan and click Upgrade. Payment is processed securely via Stripe.' },
+                  { q: 'How do I export all my data?', a: 'Go to Settings > Data Export and click "Export All Data". This downloads CSV files for all your church records. Admin role required.' },
+                ]},
+              ].map((section, si) => (
+                <div key={si} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '600' }}>{section.title}</h3>
+                  <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#6b7280' }}>{section.desc}</p>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {section.items.map((item, ii) => (
+                      <details key={ii} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                        <summary style={{ padding: '12px 16px', cursor: 'pointer', fontWeight: '500', fontSize: '14px', color: '#1f2937', backgroundColor: '#f9fafb' }}>{item.q}</summary>
+                        <p style={{ padding: '12px 16px', margin: 0, fontSize: '14px', color: '#4b5563', lineHeight: '1.6', borderTop: '1px solid #e5e7eb' }}>{item.a}</p>
+                      </details>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Support Contact */}
+              <div style={{ backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '700', color: '#312e81' }}>Need more help?</h3>
+                <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#4338ca' }}>Our support team is here to help you get the most out of ChurchSmart.</p>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <a href="https://wa.me/237674991704" target="_blank" rel="noopener noreferrer" style={{ padding: '10px 20px', backgroundColor: '#25d366', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>💬 WhatsApp Support</a>
+                  <a href="mailto:contact@churchsmartnow.com" style={{ padding: '10px 20px', backgroundColor: '#4f46e5', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>📧 Email Support</a>
+                  <a href="https://www.churchsmartnow.com#faq" target="_blank" rel="noopener noreferrer" style={{ padding: '10px 20px', backgroundColor: 'white', color: '#4f46e5', border: '1px solid #c7d2fe', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>📖 FAQ</a>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ============ ACCOUNT ============ */}
