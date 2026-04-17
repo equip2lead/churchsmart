@@ -1237,6 +1237,50 @@ function useAuth() {
 // ==========================================
 // MAIN APP COMPONENT
 // ==========================================
+// ==========================================
+// COOKIE CONSENT BANNER + GOOGLE ANALYTICS
+// ==========================================
+function CookieConsentBanner() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const consent = localStorage.getItem('cookie_consent');
+    if (!consent) {
+      setVisible(true);
+    } else if (consent === 'accepted') {
+      loadGA();
+    }
+  }, []);
+
+  const loadGA = () => {
+    const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+    if (!GA_ID || typeof window === 'undefined') return;
+    if (document.getElementById('ga-script')) return;
+    const s = document.createElement('script');
+    s.id = 'ga-script';
+    s.async = true;
+    s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { window.dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', GA_ID);
+  };
+
+  const accept = () => { localStorage.setItem('cookie_consent', 'accepted'); setVisible(false); loadGA(); };
+  const decline = () => { localStorage.setItem('cookie_consent', 'declined'); setVisible(false); };
+
+  if (!visible) return null;
+  return (
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#1f2937', color: '#e5e7eb', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', zIndex: 9999, fontSize: '14px', boxShadow: '0 -2px 8px rgba(0,0,0,0.15)' }}>
+      <p style={{ margin: 0, flex: '1 1 300px' }}>We use cookies to improve your experience and analyze site traffic.</p>
+      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+        <button onClick={decline} style={{ padding: '8px 20px', border: '1px solid #6b7280', borderRadius: '8px', backgroundColor: 'transparent', color: '#d1d5db', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>Decline</button>
+        <button onClick={accept} style={{ padding: '8px 20px', border: 'none', borderRadius: '8px', backgroundColor: '#4f46e5', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Accept</button>
+      </div>
+    </div>
+  );
+}
+
 export default function ChurchSmartApp() {
   return (
     <ToastProvider>
@@ -1265,6 +1309,7 @@ export default function ChurchSmartApp() {
         `}} />
         <PermissionsProvider>
         <AppContent />
+        <CookieConsentBanner />
         </PermissionsProvider>
       </AuthProvider>
     </LanguageProvider>
