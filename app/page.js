@@ -833,6 +833,7 @@ function AuthProvider({ children }) {
       .select('*')
       .eq('email', authEmail.toLowerCase())
       .eq('is_active', true)
+      .order('church_id', { nullsFirst: false })
       .limit(1);
 
     if (users && users.length > 0) {
@@ -920,33 +921,50 @@ function AuthProvider({ children }) {
         localStorage.removeItem('churchsmart_user');
         return;
       }
-      // Only load profile on actual sign-in, NOT on token refresh (which happens silently)
-      if (event === 'SIGNED_IN' && session?.user?.email) {
+      // Load profile on sign-in or initial session (OAuth redirect fires INITIAL_SESSION in Supabase v2)
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user?.email) {
         if (passwordRecovery || registeringRef.current) return;
         try {
           let profile = await loadUserProfile(session.user.email);
           if (!profile) {
-            // New Google user with no church_users row — create a minimal one
-            const fullName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email.split('@')[0];
-            const { data: newRow } = await supabase
+            // Before creating a new row, check if one already exists (case-insensitive, including inactive)
+            const { data: existingRows } = await supabase
               .from('church_users')
-              .insert({
-                auth_id: session.user.id,
-                email: session.user.email,
-                full_name: fullName,
-                role: 'ADMIN',
-                is_active: true
-              })
-              .select()
-              .single();
+              .select('*')
+              .ilike('email', session.user.email)
+              .order('church_id', { nullsFirst: false })
+              .limit(1);
 
-            if (newRow) {
-              const sessionUser = {
-                id: newRow.id, email: newRow.email, name: newRow.full_name,
-                role: newRow.role, church_id: null, phone: null, is_super_admin: false
-              };
-              setUser(sessionUser);
-              localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+            if (existingRows && existingRows.length > 0) {
+              // Row exists — reactivate and update auth_id, then reload profile
+              const existing = existingRows[0];
+              await supabase.from('church_users')
+                .update({ is_active: true, auth_id: session.user.id })
+                .eq('id', existing.id);
+              profile = await loadUserProfile(session.user.email);
+            } else {
+              // Truly new Google user — create a minimal church_users row
+              const fullName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email.split('@')[0];
+              const { data: newRow } = await supabase
+                .from('church_users')
+                .insert({
+                  auth_id: session.user.id,
+                  email: session.user.email,
+                  full_name: fullName,
+                  role: 'ADMIN',
+                  is_active: true
+                })
+                .select()
+                .single();
+
+              if (newRow) {
+                const sessionUser = {
+                  id: newRow.id, email: newRow.email, name: newRow.full_name,
+                  role: newRow.role, church_id: null, phone: null, is_super_admin: false
+                };
+                setUser(sessionUser);
+                localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+              }
             }
           }
         } catch (err) {
