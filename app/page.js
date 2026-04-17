@@ -7995,17 +7995,46 @@ function SuperAdminPage() {
 
   useEffect(() => { fetchAllData(); }, []);
 
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [planEdits, setPlanEdits] = useState({});
+  const [savingPlan, setSavingPlan] = useState(null);
+
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [churchesData, usersData] = await Promise.all([
+      const [churchesData, usersData, subsData] = await Promise.all([
         supabaseQuery('churches'),
-        supabaseQuery('church_users', { select: '*' })
+        supabaseQuery('church_users', { select: '*' }),
+        supabaseQuery('subscriptions')
       ]);
       setChurches(Array.isArray(churchesData) ? churchesData : []);
       setAllUsers(Array.isArray(usersData) ? usersData : []);
+      setSubscriptions(Array.isArray(subsData) ? subsData : []);
     } catch (error) { console.error('Super admin fetch error:', error); }
     finally { setLoading(false); }
+  };
+
+  const getChurchPlan = (churchId) => {
+    const sub = subscriptions.find(s => s.church_id === churchId);
+    return sub?.plan || 'free';
+  };
+
+  const handlePlanChange = async (churchId) => {
+    const newPlan = planEdits[churchId];
+    if (!newPlan) return;
+    setSavingPlan(churchId);
+    try {
+      const existing = subscriptions.find(s => s.church_id === churchId);
+      if (existing) {
+        await supabase.from('subscriptions').update({ plan: newPlan }).eq('church_id', churchId);
+      } else {
+        await supabase.from('subscriptions').insert({ church_id: churchId, plan: newPlan, status: 'active' });
+      }
+      toast.success('Plan updated');
+      setPlanEdits(prev => { const next = { ...prev }; delete next[churchId]; return next; });
+      fetchAllData();
+    } catch (error) { toast.error(error.message); }
+    setSavingPlan(null);
   };
 
   const viewChurchDetails = async (church) => {
@@ -8144,6 +8173,7 @@ function SuperAdminPage() {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
           <button onClick={() => { setActiveView('overview'); setSelectedChurch(null); }} style={{ padding: '10px 20px', border: activeView === 'overview' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeView === 'overview' ? '#eef2ff' : 'white', color: activeView === 'overview' ? '#6366f1' : '#6b7280', fontWeight: activeView === 'overview' ? '600' : '400', cursor: 'pointer', fontSize: '14px' }}>⛪ All Churches</button>
           <button onClick={() => setActiveView('users')} style={{ padding: '10px 20px', border: activeView === 'users' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeView === 'users' ? '#eef2ff' : 'white', color: activeView === 'users' ? '#6366f1' : '#6b7280', fontWeight: activeView === 'users' ? '600' : '400', cursor: 'pointer', fontSize: '14px' }}>👥 All Users</button>
+          <button onClick={() => setActiveView('subscriptions')} style={{ padding: '10px 20px', border: activeView === 'subscriptions' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeView === 'subscriptions' ? '#eef2ff' : 'white', color: activeView === 'subscriptions' ? '#6366f1' : '#6b7280', fontWeight: activeView === 'subscriptions' ? '600' : '400', cursor: 'pointer', fontSize: '14px' }}>💳 Subscriptions</button>
           <button onClick={() => setShowAddChurch(true)} style={{ padding: '10px 20px', border: '1px solid #10b981', borderRadius: '10px', backgroundColor: '#ecfdf5', color: '#10b981', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>➕ Add Church</button>
         </div>
   
@@ -8311,6 +8341,58 @@ function SuperAdminPage() {
           </div>
         )}
   
+        {/* Subscriptions View */}
+        {activeView === 'subscriptions' && (
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💳 Church Subscriptions</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#6b7280' }}>Manage subscription plans for all churches</p>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ backgroundColor: '#f9fafb' }}>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Church</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>City</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Current Plan</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Change Plan</th>
+                  <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {churches.map((church, i) => {
+                  const current = getChurchPlan(church.id);
+                  const edited = planEdits[church.id];
+                  const changed = edited && edited !== current;
+                  return (
+                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <p style={{ margin: 0, fontWeight: '500' }}>{church.name}</p>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#6b7280' }}>{church.city || '—'}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '4px 12px', borderRadius: '9999px', fontSize: '12px', fontWeight: '600', backgroundColor: current === 'free' ? '#f3f4f6' : current === 'starter' ? '#dbeafe' : current === 'growth' ? '#dcfce7' : '#fae8ff', color: current === 'free' ? '#374151' : current === 'starter' ? '#1e40af' : current === 'growth' ? '#166534' : '#86198f' }}>{current.toUpperCase()}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <select value={edited || current} onChange={(e) => setPlanEdits(prev => ({ ...prev, [church.id]: e.target.value }))} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white', cursor: 'pointer' }}>
+                          <option value="free">FREE</option>
+                          <option value="starter">STARTER ($9/mo)</option>
+                          <option value="growth">GROWTH ($25/mo)</option>
+                          <option value="pro">PRO ($49/mo)</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        {changed && (
+                          <button onClick={() => handlePlanChange(church.id)} disabled={savingPlan === church.id} style={{ padding: '6px 16px', border: 'none', borderRadius: '8px', backgroundColor: '#4f46e5', color: 'white', fontSize: '13px', fontWeight: '500', cursor: savingPlan === church.id ? 'not-allowed' : 'pointer', opacity: savingPlan === church.id ? 0.6 : 1 }}>{savingPlan === church.id ? 'Saving...' : 'Save'}</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {/* Church Detail View */}
         {activeView === 'church-detail' && selectedChurch && (
           <div>
