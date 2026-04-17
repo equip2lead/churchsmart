@@ -1200,11 +1200,10 @@ function AuthProvider({ children }) {
         return { success: false, error: 'Please enter a valid email address' };
       }
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: window.location.origin
+        redirectTo: 'https://app.churchsmartnow.com'
       });
-      if (error) {
-        return { success: false, error: error.message };
-      }
+      // Always return success — don't reveal whether the email exists (security best practice)
+      if (error) console.warn('Password reset error (hidden from user):', error.message);
       return { success: true };
     } catch (err) {
       return { success: false, error: 'Failed to send reset email. Please try again.' };
@@ -2321,7 +2320,12 @@ function LoginPage() {
                     setSuccess(t.passwordUpdated);
                     setShowResetForm(false);
                     if (setPasswordRecovery) setPasswordRecovery(false);
-                    await supabase.auth.signOut();
+                    // Re-login automatically — Supabase session is still valid after updateUser
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.user?.email) {
+                      // Session exists — will be picked up by onAuthStateChange
+                      window.location.href = '/';
+                    }
                   }
                   setLoading(false);
                 }}
