@@ -1079,6 +1079,8 @@ function AuthProvider({ children }) {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
 
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 30);
       const { data: newChurch, error: churchError } = await supabase
         .from('churches')
         .insert({
@@ -1089,7 +1091,8 @@ function AuthProvider({ children }) {
           pastor_name: userData.church_pastor || null,
           phone: userData.church_phone || null,
           email: userData.church_email || null,
-          currency: userData.church_currency || 'XAF'
+          currency: userData.church_currency || 'XAF',
+          trial_end: trialEnd.toISOString()
         })
         .select()
         .single();
@@ -1802,6 +1805,8 @@ function GoogleChurchSetup({ user }) {
     try {
       const slug = form.church_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 30);
       const { data: newChurch, error: churchError } = await supabase
         .from('churches')
         .insert({
@@ -1812,7 +1817,8 @@ function GoogleChurchSetup({ user }) {
           pastor_name: form.church_pastor || null,
           phone: form.church_phone || null,
           email: form.church_email || null,
-          currency: form.church_currency || 'XAF'
+          currency: form.church_currency || 'XAF',
+          trial_end: trialEnd.toISOString()
         })
         .select()
         .single();
@@ -2560,6 +2566,7 @@ function Dashboard() {
   const [churchLogo, setChurchLogo] = useState('');
   const [churchName, setChurchName] = useState('');
   const [churchPlan, setChurchPlan] = useState('free');
+  const [trialExpiredBanner, setTrialExpiredBanner] = useState(false);
 
   // Fetch church branding and subscription plan
   useEffect(() => {
@@ -2572,6 +2579,15 @@ function Dashboard() {
       if (ch) {
         setChurchLogo(ch.logo_url || '');
         setChurchName(ch.name || '');
+        // Check trial expiry
+        if (ch.trial_end) {
+          setTrialExpiredBanner(new Date(ch.trial_end) < new Date());
+        } else if (ch.created_at) {
+          // Fallback for churches created before trial_end column existed
+          const created = new Date(ch.created_at);
+          created.setDate(created.getDate() + 30);
+          setTrialExpiredBanner(created < new Date());
+        }
       }
       setChurchPlan((sub?.plan || 'free').toLowerCase());
     };
@@ -2622,7 +2638,7 @@ function Dashboard() {
         {/* Menu Items */}
         <nav style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
           {menuItems.map(item => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+            <button key={item.id} data-tab={item.id} onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 768) setSidebarOpen(false); }}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: sidebarOpen ? '10px 16px' : '10px', margin: '2px 0', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', backgroundColor: activeTab === item.id ? '#eef2ff' : 'transparent', color: activeTab === item.id ? '#6366f1' : '#4b5563', fontWeight: activeTab === item.id ? '600' : '400', justifyContent: sidebarOpen ? 'flex-start' : 'center', transition: 'all 0.2s' }}>
               <span style={{ fontSize: '18px' }}>{item.icon}</span>
               {sidebarOpen && item.label}
@@ -2662,6 +2678,13 @@ function Dashboard() {
 
         {/* Page Content */}
         <main className="main-page" style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+          {/* Trial expired banner */}
+          {churchPlan === 'free' && trialExpiredBanner && (
+            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '14px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+              <p style={{ margin: 0, fontSize: '14px', color: '#991b1b' }}>Your 30-day free trial has ended. <strong>Upgrade to continue using ChurchSmart.</strong></p>
+              <button onClick={() => setActiveTab('settings')} style={{ padding: '8px 20px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>View Plans</button>
+            </div>
+          )}
           {activeTab === 'dashboard' && <DashboardPage />}
           {activeTab === 'members' && <PermissionGate permission="members" fallback={<NoAccessPage module="Members" />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
           {activeTab === 'visitors' && <PermissionGate permission="visitors" fallback={<NoAccessPage module="Visitors" />}><VisitorsPage /></PermissionGate>}
@@ -3071,6 +3094,11 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState([]);
   const [filterLocation, setFilterLocation] = useState('all');
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('churchsmart_onboarding_dismissed') === 'true';
+    return false;
+  });
+  const [onboardingCounts, setOnboardingCounts] = useState({ members: 0, services: 0, donations: 0 });
 
   useEffect(() => { fetchData(); }, [filterLocation]);
 
@@ -3161,6 +3189,7 @@ function DashboardPage() {
       const combined = [...upcomingServices, ...upcomingEvents].sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 6);
 
       setStats({ members: members?.length || 0, visitors: (visitors || []).length, salvations: (salvations || []).length, donations: totalDonations });
+      setOnboardingCounts({ members: members?.length || 0, services: (services || []).length, donations: (donations || []).length });
       setUpcomingBirthdays(birthdayMembers);
       setUpcomingItems(combined);
       setRecentActivity(activityLogs || []);
@@ -3221,6 +3250,21 @@ function DashboardPage() {
 
       {loading ? <LoadingSpinner /> : (
         <>
+          {/* Onboarding Checklist */}
+          {!onboardingDismissed && (onboardingCounts.members === 0 || onboardingCounts.services === 0 || onboardingCounts.donations === 0) && (
+            <div style={{ backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '24px', marginBottom: '24px', position: 'relative' }}>
+              <button onClick={() => { setOnboardingDismissed(true); localStorage.setItem('churchsmart_onboarding_dismissed', 'true'); }} style={{ position: 'absolute', top: '12px', right: '12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '18px', color: '#6b7280' }} title="Dismiss">✕</button>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#312e81' }}>Getting Started</h3>
+              <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#4338ca' }}>Complete these steps to set up your church</p>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '18px' }}>✅</span><span style={{ color: '#166534', fontWeight: '500' }}>Create your church</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '18px' }}>{onboardingCounts.members > 0 ? '✅' : '☐'}</span><span style={{ color: onboardingCounts.members > 0 ? '#166534' : '#374151', fontWeight: '500' }}>Add your first members</span>{onboardingCounts.members === 0 && <button onClick={() => { const e = document.querySelector('[data-tab="members"]'); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>Go</button>}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '18px' }}>{onboardingCounts.services > 0 ? '✅' : '☐'}</span><span style={{ color: onboardingCounts.services > 0 ? '#166534' : '#374151', fontWeight: '500' }}>Set up a service</span>{onboardingCounts.services === 0 && <button onClick={() => { const e = document.querySelector('[data-tab="services"]'); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>Go</button>}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '18px' }}>{onboardingCounts.donations > 0 ? '✅' : '☐'}</span><span style={{ color: onboardingCounts.donations > 0 ? '#166534' : '#374151', fontWeight: '500' }}>Record your first donation</span>{onboardingCounts.donations === 0 && <button onClick={() => { const e = document.querySelector('[data-tab="giving"]'); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>Go</button>}</div>
+              </div>
+            </div>
+          )}
+
           {/* Stats Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '24px' }}>
             <StatCard label={t('totalMembers')} value={stats.members} icon="👥" color="#6366f1" trend="+5%" />
@@ -4033,6 +4077,34 @@ function VisitorsPage() {
     setSaving(false);
   };
 
+  const handleConvertToMember = async (visitor) => {
+    if (visitor.converted_to_member_id) { toast.info('Already converted'); return; }
+    setSaving(true);
+    try {
+      const nameParts = (visitor.full_name || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      const { data: newMember } = await supabase.from('members').insert({
+        church_id: CHURCH_ID,
+        first_name: firstName,
+        last_name: lastName,
+        email: visitor.email || null,
+        phone: visitor.phone || null,
+        city: visitor.city || null,
+        location_id: visitor.location_id || null,
+        membership_status: 'ACTIVE',
+        membership_date: new Date().toISOString().split('T')[0],
+        notes: 'Converted from visitor'
+      }).select().single();
+      if (newMember) {
+        await supabase.from('visitors').update({ converted_to_member_id: newMember.id }).eq('id', visitor.id);
+        toast.success(`${visitor.full_name} converted to member`);
+        fetchVisitors();
+      }
+    } catch (error) { toast.error('Conversion failed: ' + error.message); }
+    setSaving(false);
+  };
+
   const handleDelete = async () => {
     if (!deleteConfirm) return;
     await supabaseDelete('visitors', deleteConfirm.id);
@@ -4073,6 +4145,7 @@ function VisitorsPage() {
     { header: t('howHeard'), key: 'how_heard', render: (row) => <span style={{ color: '#6b7280' }}>{row.how_heard_about_us || '—'}</span> },
     { header: t('status'), key: 'status', render: (row) => <StatusBadge status={row.followup_status} /> },
     { header: t('firstTime'), key: 'first_time', render: (row) => row.is_first_time ? '✅' : '🔄' },
+    { header: 'Convert', key: 'convert', render: (row) => row.converted_to_member_id ? <span style={{ padding: '4px 10px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>Converted</span> : <button onClick={(e) => { e.stopPropagation(); handleConvertToMember(row); }} disabled={saving} style={{ padding: '4px 12px', border: '1px solid #6366f1', borderRadius: '8px', backgroundColor: '#eef2ff', color: '#4f46e5', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>Convert to Member</button> },
   ];
 
   return (
@@ -9129,6 +9202,17 @@ function SettingsPage() {
   const getRoleName = (roleId) => roles.find(r => r.id === roleId)?.name || 'Unknown';
   const getAutomationSetting = (type) => automationSettings.find(a => a.automation_type === type);
   const formatDateTime = (dateStr) => new Date(dateStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const timeAgo = (dateStr) => {
+    const seconds = Math.floor((new Date() - new Date(dateStr)) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return formatDateTime(dateStr);
+  };
 
   const filteredLogs = activityLogs.filter(log => {
     if (logFilters.action !== 'all' && log.action !== logFilters.action) return false;
@@ -9143,6 +9227,7 @@ function SettingsPage() {
     { id: 'automation', label: '🤖 Automation', icon: '🤖' },
     { id: 'roles', label: '👥 User Roles', icon: '👥' },
     { id: 'logs', label: '📜 Activity Logs', icon: '📜' },
+    { id: 'data', label: '📦 Data Export', icon: '📦' },
     { id: 'account', label: '👤 Account', icon: '👤' },
   ];
 
@@ -9706,25 +9791,90 @@ function SettingsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLogs.map((log, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{ padding: '4px 10px', backgroundColor: log.action === 'CREATE' ? '#dcfce7' : log.action === 'UPDATE' ? '#fef3c7' : '#fef2f2', color: log.action === 'CREATE' ? '#166534' : log.action === 'UPDATE' ? '#92400e' : '#991b1b', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}>
-                          {log.action === 'CREATE' ? '➕' : log.action === 'UPDATE' ? '✏️' : '🗑️'} {log.action}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{log.entity_type}</p>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{log.entity_name || '—'}</p>
-                      </td>
-                      <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '14px' }}>{log.user_name || log.user_email || 'System'}</td>
-                      <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '13px' }}>{formatDateTime(log.created_at)}</td>
-                    </tr>
-                  ))}
+                  {filteredLogs.map((log, i) => {
+                    const userName = log.user_name || log.user_email || 'System';
+                    const initials = userName.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                    return (
+                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ padding: '4px 10px', backgroundColor: log.action === 'CREATE' ? '#dcfce7' : log.action === 'UPDATE' ? '#fef3c7' : '#fef2f2', color: log.action === 'CREATE' ? '#166534' : log.action === 'UPDATE' ? '#92400e' : '#991b1b', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}>
+                            {log.action === 'CREATE' ? '➕' : log.action === 'UPDATE' ? '✏️' : '🗑️'} {log.action}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{log.entity_type}</p>
+                          <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{log.entity_name || '—'}</p>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', flexShrink: 0 }}>{initials}</span>
+                            <span style={{ color: '#374151', fontSize: '14px' }}>{userName}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '13px' }} title={formatDateTime(log.created_at)}>{timeAgo(log.created_at)}</td>
+                      </tr>
+                    );
+                  })}
                   {filteredLogs.length === 0 && <tr><td colSpan="4" style={{ padding: '32px', textAlign: 'center', color: '#6b7280' }}>No activity logs found</td></tr>}
                 </tbody>
               </table>
             </div>
+          )}
+
+          {/* ============ DATA EXPORT ============ */}
+          {activeSection === 'data' && user?.role === 'ADMIN' && (
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>📦 Export All Church Data</h3>
+              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Download a ZIP file containing CSV exports of all your church data: members, visitors, donations, attendance, events, and groups.</p>
+              <button onClick={async () => {
+                if (!confirm('This will export all your church data as CSV files in a ZIP archive. Continue?')) return;
+                setSaving(true);
+                try {
+                  const [membersD, visitorsD, donationsD, attendanceD, eventsD, groupsD] = await Promise.all([
+                    supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+                    supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+                    supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+                    supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+                    supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+                    supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+                  ]);
+                  const makeCsv = (data) => {
+                    if (!data || data.length === 0) return '';
+                    const headers = Object.keys(data[0]);
+                    const rows = data.map(r => headers.map(h => { let v = r[h] ?? ''; return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','));
+                    return '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+                  };
+                  const files = [
+                    { name: 'members.csv', content: makeCsv(membersD || []) },
+                    { name: 'visitors.csv', content: makeCsv(visitorsD || []) },
+                    { name: 'donations.csv', content: makeCsv(donationsD || []) },
+                    { name: 'attendance.csv', content: makeCsv(attendanceD || []) },
+                    { name: 'events.csv', content: makeCsv(eventsD || []) },
+                    { name: 'groups.csv', content: makeCsv(groupsD || []) }
+                  ].filter(f => f.content);
+                  // Download each CSV individually (ZIP requires a library)
+                  files.forEach(f => {
+                    const blob = new Blob([f.content], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `churchsmart-${f.name.replace('.csv', '')}-${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                  });
+                  toast.success(`${files.length} CSV files exported`);
+                } catch (err) { toast.error('Export failed: ' + err.message); }
+                setSaving(false);
+              }} disabled={saving} style={{ padding: '12px 28px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+                {saving ? '⏳ Exporting...' : '📦 Export All Data'}
+              </button>
+              <p style={{ margin: '12px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>Files are exported as individual CSVs with UTF-8 encoding for Excel compatibility.</p>
+            </div>
+          )}
+          {activeSection === 'data' && user?.role !== 'ADMIN' && (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Data export is only available to Admin users.</div>
           )}
 
           {/* ============ ACCOUNT ============ */}
