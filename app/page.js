@@ -1272,7 +1272,7 @@ function CookieConsentBanner() {
 
   if (!visible) return null;
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#1f2937', color: '#e5e7eb', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', zIndex: 9999, fontSize: '14px', boxShadow: '0 -2px 8px rgba(0,0,0,0.15)' }}>
+    <div className="cs-cookie-banner" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#1f2937', color: '#e5e7eb', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', zIndex: 9999, fontSize: '14px', boxShadow: '0 -2px 8px rgba(0,0,0,0.15)' }}>
       <p style={{ margin: 0, flex: '1 1 300px' }}>We use cookies to improve your experience and analyze site traffic.</p>
       <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
         <button onClick={decline} style={{ padding: '8px 20px', border: '1px solid #6b7280', borderRadius: '8px', backgroundColor: 'transparent', color: '#d1d5db', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>Decline</button>
@@ -2818,7 +2818,7 @@ function Modal({ isOpen, onClose, title, children, width = '500px' }) {
   
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: width, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div className="cs-modal-body" style={{ backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: width, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>{title}</h3>
           <button onClick={onClose} style={{ padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '20px' }}>✕</button>
@@ -2832,7 +2832,7 @@ function Modal({ isOpen, onClose, title, children, width = '500px' }) {
 }
 
 function FormInput({ label, type = 'text', value, onChange, placeholder, required, options }) {
-  const inputStyle = { width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
+  const inputStyle = { width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' };
   
   return (
     <div style={{ marginBottom: '16px' }}>
@@ -2945,12 +2945,12 @@ function DataTable({ columns, data, onEdit, onDelete, onSMS, emptyMessage = 'No 
 
   return (
     <>
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div className="cs-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
         <thead style={{ backgroundColor: '#f9fafb' }}>
           <tr>
             {columns.map((col, i) => (
-              <th key={i} style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>
+              <th key={i} style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                 {col.header}
               </th>
             ))}
@@ -3831,7 +3831,7 @@ function MembersPage({ plan, onNavigate }) {
         title={`👥 ${t('members')}`}
         subtitle={`Manage your ${members.length} church members across ${locations.length} locations`}
         actions={
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div className="cs-btn-row" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 {t('exportCSV')}</Button>}
             {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportData([]); setImportResult(null); }}>📤 Import CSV</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 Import CSV</Button>}
             <Button variant="secondary" onClick={() => setShowInviteModal(true)}>🔗 Invite Link</Button>
@@ -9507,7 +9507,7 @@ function SettingsPage() {
       <PageHeader title={`⚙️ ${t('settings')}`} subtitle="Manage your church settings, users, and automation" />
 
       {/* Settings Navigation */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+      <div className="cs-tab-row" style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
         {sections.map(section => (
           <button
             key={section.id}
