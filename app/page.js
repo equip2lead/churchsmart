@@ -1178,6 +1178,10 @@ function AuthProvider({ children }) {
         }
       }
 
+      // Welcome email stub — connect to Resend/SendGrid later
+      console.log(`TODO: Send welcome email to ${userData.email}`);
+      supabase.from('churches').update({ welcome_email_sent: true }).eq('id', newChurch.id).then(() => {}).catch(() => {});
+
       registeringRef.current = false;
       return { success: true };
     } catch (error) {
@@ -1217,7 +1221,7 @@ function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, forgotPassword, passwordRecovery, setPasswordRecovery, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, register, forgotPassword, passwordRecovery, setPasswordRecovery, loading, loadUserProfile }}>
       {children}
     </AuthContext.Provider>
   );
@@ -1766,7 +1770,7 @@ function PublicJoinPage({ churchId }) {
 // GOOGLE CHURCH SETUP (for new Google users with no church)
 // ==========================================
 function GoogleChurchSetup({ user }) {
-  const { logout } = useAuth();
+  const { logout, loadUserProfile } = useAuth();
   const toast = useToast();
   const [lang, setLang] = useState('en');
   const [loading, setLoading] = useState(false);
@@ -1847,9 +1851,13 @@ function GoogleChurchSetup({ user }) {
         return;
       }
 
-      // Reload page to pick up updated profile
+      // Welcome email stub — connect to Resend/SendGrid later
+      console.log(`TODO: Send welcome email to ${user.email}`);
+      supabase.from('churches').update({ welcome_email_sent: true }).eq('id', newChurch.id).then(() => {}).catch(() => {});
+
+      // Re-load profile so user.church_id is set → redirects to dashboard
       toast.success('Church created! Loading your dashboard...');
-      setTimeout(() => window.location.reload(), 1000);
+      await loadUserProfile(user.email);
     } catch (err) {
       toast.error(err.message);
     }
@@ -3098,7 +3106,7 @@ function DashboardPage() {
     if (typeof window !== 'undefined') return localStorage.getItem('churchsmart_onboarding_dismissed') === 'true';
     return false;
   });
-  const [onboardingCounts, setOnboardingCounts] = useState({ members: 0, services: 0, donations: 0 });
+  const [onboardingCounts, setOnboardingCounts] = useState({ members: 0, services: 0, donations: 0, profileComplete: false, teamMembers: 0 });
 
   useEffect(() => { fetchData(); }, [filterLocation]);
 
@@ -3189,7 +3197,18 @@ function DashboardPage() {
       const combined = [...upcomingServices, ...upcomingEvents].sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 6);
 
       setStats({ members: members?.length || 0, visitors: (visitors || []).length, salvations: (salvations || []).length, donations: totalDonations });
-      setOnboardingCounts({ members: members?.length || 0, services: (services || []).length, donations: (donations || []).length });
+      // Onboarding: also check church profile completeness and team size
+      const [churchProfile, teamUsers] = await Promise.all([
+        supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
+        supabaseQuery('church_users', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+      ]);
+      setOnboardingCounts({
+        members: members?.length || 0,
+        services: (services || []).length,
+        donations: (donations || []).length,
+        profileComplete: !!(churchProfile?.pastor_name && churchProfile?.city),
+        teamMembers: (teamUsers || []).length
+      });
       setUpcomingBirthdays(birthdayMembers);
       setUpcomingItems(combined);
       setRecentActivity(activityLogs || []);
@@ -3251,19 +3270,34 @@ function DashboardPage() {
       {loading ? <LoadingSpinner /> : (
         <>
           {/* Onboarding Checklist */}
-          {!onboardingDismissed && (onboardingCounts.members === 0 || onboardingCounts.services === 0 || onboardingCounts.donations === 0) && (
-            <div style={{ backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '24px', marginBottom: '24px', position: 'relative' }}>
-              <button onClick={() => { setOnboardingDismissed(true); localStorage.setItem('churchsmart_onboarding_dismissed', 'true'); }} style={{ position: 'absolute', top: '12px', right: '12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '18px', color: '#6b7280' }} title="Dismiss">✕</button>
-              <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#312e81' }}>Getting Started</h3>
-              <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#4338ca' }}>Complete these steps to set up your church</p>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '18px' }}>✅</span><span style={{ color: '#166534', fontWeight: '500' }}>Create your church</span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '18px' }}>{onboardingCounts.members > 0 ? '✅' : '☐'}</span><span style={{ color: onboardingCounts.members > 0 ? '#166534' : '#374151', fontWeight: '500' }}>Add your first members</span>{onboardingCounts.members === 0 && <button onClick={() => { const e = document.querySelector('[data-tab="members"]'); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>Go</button>}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '18px' }}>{onboardingCounts.services > 0 ? '✅' : '☐'}</span><span style={{ color: onboardingCounts.services > 0 ? '#166534' : '#374151', fontWeight: '500' }}>Set up a service</span>{onboardingCounts.services === 0 && <button onClick={() => { const e = document.querySelector('[data-tab="services"]'); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>Go</button>}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '18px' }}>{onboardingCounts.donations > 0 ? '✅' : '☐'}</span><span style={{ color: onboardingCounts.donations > 0 ? '#166534' : '#374151', fontWeight: '500' }}>Record your first donation</span>{onboardingCounts.donations === 0 && <button onClick={() => { const e = document.querySelector('[data-tab="giving"]'); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>Go</button>}</div>
+          {(() => {
+            const steps = [
+              { done: true, label: 'Create your church' },
+              { done: onboardingCounts.profileComplete, label: 'Update church profile', tab: 'settings' },
+              { done: onboardingCounts.members > 0, label: 'Add your first members', tab: 'members' },
+              { done: onboardingCounts.teamMembers > 1, label: 'Invite team members', tab: 'settings' },
+              { done: onboardingCounts.services > 0, label: 'Set up a service', tab: 'services' },
+              { done: onboardingCounts.donations > 0, label: 'Record your first donation', tab: 'giving' },
+            ];
+            const allDone = steps.every(s => s.done);
+            if (onboardingDismissed || allDone) return null;
+            return (
+              <div style={{ backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '24px', marginBottom: '24px', position: 'relative' }}>
+                <button onClick={() => { setOnboardingDismissed(true); localStorage.setItem('churchsmart_onboarding_dismissed', 'true'); }} style={{ position: 'absolute', top: '12px', right: '12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '18px', color: '#6b7280' }} title="Dismiss">✕</button>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#312e81' }}>Getting Started</h3>
+                <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#4338ca' }}>Complete these steps to set up your church ({steps.filter(s => s.done).length}/{steps.length})</p>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {steps.map((step, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '18px' }}>{step.done ? '✅' : '☐'}</span>
+                      <span style={{ color: step.done ? '#166534' : '#374151', fontWeight: '500' }}>{step.label}</span>
+                      {!step.done && step.tab && <button onClick={() => { const e = document.querySelector(`[data-tab="${step.tab}"]`); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>Go</button>}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Stats Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '24px' }}>
