@@ -2,7 +2,7 @@
   "name": "ChurchSmart",
   "short_name": "ChurchSmart",
   "description": "All-in-One Church Management Platform",
-  "start_url": "/",
+  "start_url": "/?pwa=true",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4F46E5",
