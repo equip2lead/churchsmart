@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessFeature, getPlanLimits } from '../lib/featureGating';
+import UpgradePrompt from '../components/UpgradePrompt';
 
 // ==========================================
 // SUPABASE CONFIG
@@ -2557,16 +2559,21 @@ function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth > 768 : true);
   const [churchLogo, setChurchLogo] = useState('');
   const [churchName, setChurchName] = useState('');
+  const [churchPlan, setChurchPlan] = useState('free');
 
-  // Fetch church branding
+  // Fetch church branding and subscription plan
   useEffect(() => {
     const fetchBranding = async () => {
       if (!CHURCH_ID) return;
-      const ch = await supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true });
+      const [ch, sub] = await Promise.all([
+        supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
+        supabaseQuery('subscriptions', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], single: true })
+      ]);
       if (ch) {
         setChurchLogo(ch.logo_url || '');
         setChurchName(ch.name || '');
       }
+      setChurchPlan((sub?.plan || 'free').toLowerCase());
     };
     fetchBranding();
   }, [CHURCH_ID]);
@@ -2656,16 +2663,16 @@ function Dashboard() {
         {/* Page Content */}
         <main className="main-page" style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
           {activeTab === 'dashboard' && <DashboardPage />}
-          {activeTab === 'members' && <PermissionGate permission="members" fallback={<NoAccessPage module="Members" />}><MembersPage /></PermissionGate>}
+          {activeTab === 'members' && <PermissionGate permission="members" fallback={<NoAccessPage module="Members" />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
           {activeTab === 'visitors' && <PermissionGate permission="visitors" fallback={<NoAccessPage module="Visitors" />}><VisitorsPage /></PermissionGate>}
           {activeTab === 'attendance' && <PermissionGate permission="attendance" fallback={<NoAccessPage module="Attendance" />}><AttendancePage /></PermissionGate>}
           {activeTab === 'calendar' && <CalendarPage />}
-          {activeTab === 'giving' && <PermissionGate permission="giving" fallback={<NoAccessPage module="Giving & Finance" />}><GivingPage /></PermissionGate>}
+          {activeTab === 'giving' && <PermissionGate permission="giving" fallback={<NoAccessPage module="Giving & Finance" />}><GivingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
           {activeTab === 'salvations' && <PermissionGate permission="salvations" fallback={<NoAccessPage module="Salvations" />}><SalvationsPage /></PermissionGate>}
-          {activeTab === 'groups' && <PermissionGate permission="groups" fallback={<NoAccessPage module="Groups" />}><GroupsPage /></PermissionGate>}
-          {activeTab === 'volunteers' && <PermissionGate permission="groups" fallback={<NoAccessPage module="Volunteers" />}><VolunteersPage /></PermissionGate>}
-          {activeTab === 'messaging' && <PermissionGate permission="members" fallback={<NoAccessPage module="Messaging" />}><MessagingPage /></PermissionGate>}
-          {activeTab === 'reports' && <ReportsPage />}
+          {activeTab === 'groups' && (canAccessFeature(churchPlan, 'groups') ? <PermissionGate permission="groups" fallback={<NoAccessPage module="Groups" />}><GroupsPage /></PermissionGate> : <UpgradePrompt feature="groups" featureLabel="Groups & Cell Management" onNavigate={setActiveTab} />)}
+          {activeTab === 'volunteers' && (canAccessFeature(churchPlan, 'volunteers') ? <PermissionGate permission="groups" fallback={<NoAccessPage module="Volunteers" />}><VolunteersPage /></PermissionGate> : <UpgradePrompt feature="volunteers" featureLabel="Volunteer Management" onNavigate={setActiveTab} />)}
+          {activeTab === 'messaging' && <PermissionGate permission="members" fallback={<NoAccessPage module="Messaging" />}><MessagingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
+          {activeTab === 'reports' && <ReportsPage plan={churchPlan} onNavigate={setActiveTab} />}
           {activeTab === 'services' && <PermissionGate permission="services" fallback={<NoAccessPage module="Services & Events" />}><ServicesPage /></PermissionGate>}
           {activeTab === 'settings' && <PermissionGate permission="settings" fallback={<NoAccessPage module="Settings" />}><SettingsPage /></PermissionGate>}
           {activeTab === 'superadmin' && <SuperAdminPage />}
@@ -3390,7 +3397,7 @@ function DashboardPage() {
 // ==========================================
 // MEMBERS PAGE - With Location Support
 // ==========================================
-function MembersPage() {
+function MembersPage({ plan, onNavigate }) {
   const { t } = useLanguage();
   const toast = useToast();
   const { user } = useAuth();
@@ -3587,7 +3594,7 @@ function MembersPage() {
         subtitle={`Manage your ${members.length} church members across ${locations.length} locations`}
         actions={
           <div style={{ display: 'flex', gap: '10px' }}>
-            <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button>
+            {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 {t('exportCSV')}</Button>}
             <Button variant="secondary" onClick={() => setShowInviteModal(true)}>🔗 Invite Link</Button>
             <Button onClick={() => openModal()}>➕ {t('addMember')}</Button>
           </div>
@@ -4708,7 +4715,7 @@ function AttendancePage() {
 // ==========================================
 // GIVING PAGE - With Charts
 // ==========================================
-function GivingPage() {
+function GivingPage({ plan, onNavigate }) {
   const { t } = useLanguage();
   const toast = useToast();
   const { user } = useAuth();
@@ -5055,7 +5062,10 @@ function GivingPage() {
           )}
 
           {/* EXPENSES TAB */}
-          {activeTab === 'expenses' && (
+          {activeTab === 'expenses' && !canAccessFeature(plan, 'expenses') && (
+            <UpgradePrompt feature="expenses" featureLabel="Expense Tracking" onNavigate={onNavigate} />
+          )}
+          {activeTab === 'expenses' && canAccessFeature(plan, 'expenses') && (
             <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
               <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📤 Expenses</h3>
@@ -5723,7 +5733,7 @@ function VolunteersPage() {
 // ==========================================
 // MESSAGING PAGE
 // ==========================================
-function MessagingPage() {
+function MessagingPage({ plan, onNavigate }) {
   const { t } = useLanguage();
   const toast = useToast();
   const { user } = useAuth();
@@ -5957,19 +5967,23 @@ function MessagingPage() {
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Channel</label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     {[
-                      { id: 'SMS', icon: '📱', label: 'SMS', color: '#10b981' },
-                      { id: 'WHATSAPP', icon: '💬', label: 'WhatsApp', color: '#25d366' },
-                      { id: 'EMAIL', icon: '📧', label: 'Email', color: '#6366f1' }
-                    ].map(ch => (
-                      <button key={ch.id} onClick={() => setMessage({ ...message, type: ch.id })} style={{
-                        flex: 1, padding: '14px', border: message.type === ch.id ? `2px solid ${ch.color}` : '1px solid #e5e7eb',
-                        borderRadius: '12px', backgroundColor: message.type === ch.id ? `${ch.color}15` : 'white',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s'
-                      }}>
-                        <span style={{ fontSize: '20px' }}>{ch.icon}</span>
-                        <span style={{ fontWeight: message.type === ch.id ? '600' : '400', color: message.type === ch.id ? ch.color : '#6b7280', fontSize: '14px' }}>{ch.label}</span>
-                      </button>
-                    ))}
+                      { id: 'SMS', icon: '📱', label: 'SMS', color: '#10b981', feature: 'sms' },
+                      { id: 'WHATSAPP', icon: '💬', label: 'WhatsApp', color: '#25d366', feature: 'messaging_whatsapp' },
+                      { id: 'EMAIL', icon: '📧', label: 'Email', color: '#6366f1', feature: 'messaging_email' }
+                    ].map(ch => {
+                      const locked = !canAccessFeature(plan, ch.feature);
+                      return (
+                        <button key={ch.id} onClick={() => locked ? (onNavigate && onNavigate('settings')) : setMessage({ ...message, type: ch.id })} style={{
+                          flex: 1, padding: '14px', border: message.type === ch.id && !locked ? `2px solid ${ch.color}` : '1px solid #e5e7eb',
+                          borderRadius: '12px', backgroundColor: locked ? '#f9fafb' : (message.type === ch.id ? `${ch.color}15` : 'white'),
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s',
+                          opacity: locked ? 0.6 : 1
+                        }}>
+                          <span style={{ fontSize: '20px' }}>{locked ? '🔒' : ch.icon}</span>
+                          <span style={{ fontWeight: message.type === ch.id && !locked ? '600' : '400', color: locked ? '#9ca3af' : (message.type === ch.id ? ch.color : '#6b7280'), fontSize: '14px' }}>{ch.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -6360,7 +6374,7 @@ function MessagingPage() {
 // ==========================================
 // REPORTS PAGE
 // ==========================================
-function ReportsPage() {
+function ReportsPage({ plan, onNavigate }) {
   const { t } = useLanguage();
   const toast = useToast();
   const { user } = useAuth();
@@ -6550,14 +6564,21 @@ function ReportsPage() {
     toast.success('CSV exported!');
   };
 
+  const hasBasicReports = canAccessFeature(plan, 'reports_basic');
+  const hasAdvancedReports = canAccessFeature(plan, 'reports_advanced');
+
   const reportTypes = [
-    { id: 'overview', label: '📊 Overview', icon: '📊' },
-    { id: 'financial', label: '💰 Financial', icon: '💰' },
-    { id: 'attendance', label: '👥 Attendance', icon: '👥' },
-    { id: 'membership', label: '📋 Membership', icon: '📋' },
-    { id: 'salvations', label: '❤️ Salvations', icon: '❤️' },
-    { id: 'volunteers', label: '🙋‍♂️ Volunteers', icon: '🙋‍♂️' },
+    { id: 'overview', label: '📊 Overview', icon: '📊', advanced: false },
+    { id: 'financial', label: '💰 Financial', icon: '💰', advanced: true },
+    { id: 'attendance', label: '👥 Attendance', icon: '👥', advanced: true },
+    { id: 'membership', label: '📋 Membership', icon: '📋', advanced: false },
+    { id: 'salvations', label: '❤️ Salvations', icon: '❤️', advanced: true },
+    { id: 'volunteers', label: '🙋‍♂️ Volunteers', icon: '🙋‍♂️', advanced: true },
   ];
+
+  if (!hasBasicReports) {
+    return <UpgradePrompt feature="reports_basic" featureLabel="Reports & Analytics" onNavigate={onNavigate} />;
+  }
 
   return (
     <div>
@@ -6567,7 +6588,7 @@ function ReportsPage() {
         actions={
           <div style={{ display: 'flex', gap: '12px' }}>
             <Button variant="secondary" onClick={handlePrint}>🖨️ Print</Button>
-            <Button variant="secondary" onClick={handleExportCSV}>📥 Export CSV</Button>
+            {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={handleExportCSV}>📥 Export CSV</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 Export CSV</Button>}
           </div>
         }
       />
@@ -6614,24 +6635,28 @@ function ReportsPage() {
 
       {/* Report Type Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        {reportTypes.map(report => (
-          <button
-            key={report.id}
-            onClick={() => setActiveReport(report.id)}
-            style={{
-              padding: '10px 20px',
-              border: activeReport === report.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
-              borderRadius: '10px',
-              backgroundColor: activeReport === report.id ? '#eef2ff' : 'white',
-              color: activeReport === report.id ? '#6366f1' : '#6b7280',
-              fontWeight: activeReport === report.id ? '600' : '400',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            {report.label}
-          </button>
-        ))}
+        {reportTypes.map(report => {
+          const locked = report.advanced && !hasAdvancedReports;
+          return (
+            <button
+              key={report.id}
+              onClick={() => locked ? (onNavigate && onNavigate('settings')) : setActiveReport(report.id)}
+              style={{
+                padding: '10px 20px',
+                border: !locked && activeReport === report.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                borderRadius: '10px',
+                backgroundColor: locked ? '#f9fafb' : (activeReport === report.id ? '#eef2ff' : 'white'),
+                color: locked ? '#9ca3af' : (activeReport === report.id ? '#6366f1' : '#6b7280'),
+                fontWeight: !locked && activeReport === report.id ? '600' : '400',
+                cursor: 'pointer',
+                fontSize: '14px',
+                opacity: locked ? 0.6 : 1
+              }}
+            >
+              {locked ? '🔒 ' : ''}{report.label}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? <LoadingSpinner /> : (
@@ -8350,7 +8375,7 @@ const PLAN_LIMITS = {
   pro:     { members: Infinity, admins: Infinity,  locations: Infinity, email: true,  whatsapp: 500, sms: 'contact_sales', reports: 'advanced', import_export: true,  auto_birthday: true,  multi_location: true  }
 };
 
-function getPlanLimits(planId) {
+function getBillingPlanLimits(planId) {
   return PLAN_LIMITS[planId] || PLAN_LIMITS.free;
 }
 
@@ -8530,7 +8555,7 @@ function BillingSection({ churchId }) {
   };
 
   const currentPlan = plans.find(p => p.id === (subscription?.plan || 'free')) || plans[0];
-  const planLimits = getPlanLimits(currentPlan.id);
+  const planLimits = getBillingPlanLimits(currentPlan.id);
   const whatsappUsed = credits?.whatsapp_used_this_month || 0;
   const whatsappTotal = (credits?.monthly_whatsapp_allowance || 0) + (credits?.bonus_credits || 0);
   const whatsappPercent = whatsappTotal > 0 ? Math.min(100, Math.round((whatsappUsed / whatsappTotal) * 100)) : 0;
