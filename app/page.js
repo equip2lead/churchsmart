@@ -1178,9 +1178,12 @@ function AuthProvider({ children }) {
         }
       }
 
-      // Welcome email stub — connect to Resend/SendGrid later
-      console.log(`TODO: Send welcome email to ${userData.email}`);
-      supabase.from('churches').update({ welcome_email_sent: true }).eq('id', newChurch.id).then(() => {}).catch(() => {});
+      // Send welcome email (fire-and-forget — don't block registration)
+      fetch('/api/email/welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userData.email, churchName: userData.church_name, adminName: userData.full_name })
+      }).then(() => supabase.from('churches').update({ welcome_email_sent: true }).eq('id', newChurch.id)).catch(() => {});
 
       registeringRef.current = false;
       return { success: true };
@@ -1851,9 +1854,12 @@ function GoogleChurchSetup({ user }) {
         return;
       }
 
-      // Welcome email stub — connect to Resend/SendGrid later
-      console.log(`TODO: Send welcome email to ${user.email}`);
-      supabase.from('churches').update({ welcome_email_sent: true }).eq('id', newChurch.id).then(() => {}).catch(() => {});
+      // Send welcome email (fire-and-forget — don't block setup)
+      fetch('/api/email/welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, churchName: form.church_name, adminName: user.name })
+      }).then(() => supabase.from('churches').update({ welcome_email_sent: true }).eq('id', newChurch.id)).catch(() => {});
 
       // Re-load profile so user.church_id is set → redirects to dashboard
       toast.success('Church created! Loading your dashboard...');
