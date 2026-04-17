@@ -1986,7 +1986,7 @@ function LoginPage() {
       messaging: 'SMS & WhatsApp', messagingDesc: 'Automated birthday messages & bulk communication',
       volunteers: 'Volunteer Management', volunteersDesc: 'Organize ministries, schedules & team leaders',
       multiLoc: 'Multi-Location', multiLocDesc: 'Manage multiple campuses from one dashboard',
-      footer: '© 2026 ChurchSmart • Built with ❤️ for Churches in Africa',
+      footer: '© 2026 ChurchSmart by DigiSmart Africa',
       // Step 2
       churchInfo: 'Church Information', churchInfoDesc: 'Tell us about your church',
       churchName: 'Church Name *', churchAddress: 'Address', churchCity: 'City',
@@ -2012,7 +2012,7 @@ function LoginPage() {
       messaging: 'SMS & WhatsApp', messagingDesc: 'Messages d\'anniversaire automatiques et communication en masse',
       volunteers: 'Gestion des Bénévoles', volunteersDesc: 'Organiser les ministères, horaires et chefs d\'équipe',
       multiLoc: 'Multi-Sites', multiLocDesc: 'Gérer plusieurs campus depuis un seul tableau de bord',
-      footer: '© 2026 ChurchSmart • Fait avec ❤️ pour les Églises d\'Afrique',
+      footer: '© 2026 ChurchSmart par DigiSmart Africa',
       orContinueWith: 'ou continuer avec',
       googleSignIn: 'Se connecter avec Google',
       googleLinkNeeded: 'Compte Google non lié à une église. Inscrivez-vous d\'abord ou contactez votre administrateur.',
@@ -9706,10 +9706,7 @@ function SettingsPage() {
 
               {/* App Info */}
               <div style={{ backgroundColor: '#f9fafb', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>✝</div>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 'bold' }}>ChurchSmart</h3>
-                <p style={{ margin: 0, color: '#6b7280' }}>Version 2.5.0 • Connected to Supabase</p>
-                <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#9ca3af' }}>Built with ❤️ for churches in Cameroon</p>
+                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>&copy; 2026 ChurchSmart by DigiSmart Africa</p>
               </div>
             </div>
           )}
