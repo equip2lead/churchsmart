@@ -1423,7 +1423,7 @@ function exportToCSV(data, columns, filename) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(url), 100);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 // ==========================================
@@ -6528,7 +6528,7 @@ function ReportsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
     toast.success('CSV exported!');
   };
 
