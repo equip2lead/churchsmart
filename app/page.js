@@ -2827,23 +2827,20 @@ function Dashboard() {
   const { user, logout } = useAuth();
   const { t, language, changeLanguage } = useLanguage();
   const CHURCH_ID = user?.church_id;
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // If a plan was pre-selected from the landing page, go straight to billing
+  const initialTab = (() => {
+    if (typeof window !== 'undefined') {
+      const sp = localStorage.getItem('selected_plan');
+      if (sp && ['starter', 'growth', 'pro'].includes(sp)) return 'settings';
+    }
+    return 'dashboard';
+  })();
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth > 768 : true);
   const [churchLogo, setChurchLogo] = useState('');
   const [churchName, setChurchName] = useState('');
   const [churchPlan, setChurchPlan] = useState('free');
   const [trialExpiredBanner, setTrialExpiredBanner] = useState(false);
-
-  // If a plan was pre-selected from the landing page, redirect to billing
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const selectedPlan = localStorage.getItem('selected_plan');
-      if (selectedPlan && ['starter', 'growth', 'pro'].includes(selectedPlan)) {
-        setActiveTab('settings');
-        // Don't clear yet — BillingSection will read and clear it
-      }
-    }
-  }, []);
 
   // Fetch church branding and subscription plan
   useEffect(() => {
@@ -9224,6 +9221,23 @@ function BillingSection({ churchId }) {
         </div>
       )}
 
+      {/* Pre-selected Plan CTA */}
+      {highlightedPlan && (() => {
+        const hp = plans.find(p => p.id === highlightedPlan);
+        if (!hp || hp.id === currentPlan.id) return null;
+        return (
+          <div style={{ backgroundColor: '#f0fdf4', border: '2px solid #10b981', borderRadius: '16px', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '700', color: '#166534' }}>You selected the {hp.name} plan</h3>
+              <p style={{ margin: 0, fontSize: '14px', color: '#15803d' }}>Subscribe now to unlock all {hp.name} features for your church.</p>
+            </div>
+            <button onClick={() => handleUpgrade(hp)} disabled={upgrading} style={{ padding: '14px 32px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: upgrading ? 'not-allowed' : 'pointer', opacity: upgrading ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+              {upgrading ? '⏳ Redirecting...' : `Subscribe to ${hp.name} — $${hp.price}/mo`}
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Current Plan Card */}
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
@@ -9438,7 +9452,10 @@ function SettingsPage() {
   const [messageTemplates, setMessageTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeSection, setActiveSection] = useState('general');
+  const [activeSection, setActiveSection] = useState(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('selected_plan')) return 'billing';
+    return 'general';
+  });
   const [editingChurch, setEditingChurch] = useState(false);
   const [churchForm, setChurchForm] = useState({});
   const [editingAccount, setEditingAccount] = useState(false);
