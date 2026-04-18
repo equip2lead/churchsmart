@@ -1,3 +1,5 @@
+// Rate limiting: Vercel provides basic DDoS protection. If abuse is detected,
+// add next-rate-limit or upstash/ratelimit middleware here.
 import { createClient } from '@supabase/supabase-js';
 import { sendTrialReminderEmail } from '../../../../lib/notifications';
 

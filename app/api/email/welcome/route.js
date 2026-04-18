@@ -1,3 +1,5 @@
+// Rate limiting: Vercel provides basic DDoS protection. If abuse is detected,
+// add next-rate-limit or upstash/ratelimit middleware here.
 import { sendWelcomeEmail } from '../../../../lib/notifications';
 
 export async function POST(request) {

@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const TWILIO_ACCOUNT_SID = "AC78c756ffdae6e6090f4772729f3379c2";
-const TWILIO_AUTH_TOKEN = "84c8145e34a7b72b46dd2febbc8efb8f";
-const TWILIO_PHONE_NUMBER = "+14137281889";
+// Credentials must be set as Supabase Edge Function secrets:
+//   supabase secrets set TWILIO_ACCOUNT_SID=AC... TWILIO_AUTH_TOKEN=... TWILIO_PHONE_NUMBER=+1...
+const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID") || "";
+const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN") || "";
+const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER") || "";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

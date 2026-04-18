@@ -9,10 +9,12 @@ import Papa from 'papaparse';
 // ==========================================
 // SUPABASE CONFIG
 // ==========================================
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ntngwrtbbgetobinwvxd.supabase.co';
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50bmd3cnRiYmdldG9iaW53dnhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTc3NTIsImV4cCI6MjA4NTMzMzc1Mn0.uvMWB2zwd4LYJM1P1jpov5rG83L62Eqbe7Bko9kI_1Q';
+// All credentials must come from environment variables (set in Vercel dashboard).
+// NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SUPABASE_ANON_KEY = SUPABASE_KEY;
-const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL || 'https://ntngwrtbbgetobinwvxd.supabase.co/functions/v1/send-message';
+const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL;
 
 // Initialize Supabase client (handles JWT auth automatically)
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
