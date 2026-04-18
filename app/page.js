@@ -400,6 +400,23 @@ const translations = {
     selectOption: 'Select...',
     selectLocation: 'Select location...',
     manageSubscription: 'Manage your ChurchSmart subscription',
+
+    // Empty states
+    emptyMembers: 'Your congregation starts here. Add your first member to get started.',
+    emptyDonations: 'Every gift matters. Record your first tithe or offering.',
+    emptyAttendance: 'Track who\'s showing up. Record your first service attendance.',
+    emptyVisitors: 'Every visitor is a potential member. Start tracking today.',
+
+    // Success celebrations
+    memberAdded: 'Member added successfully!',
+    attendanceRecorded: 'Attendance recorded! Great job tracking your church.',
+    donationRecorded: 'Donation recorded! Your records are up to date.',
+    allSetup: "You're all set! Your church is ready to grow.",
+
+    // Time-based greetings
+    goodMorning: 'Good morning',
+    goodAfternoon: 'Good afternoon',
+    goodEvening: 'Good evening',
   },
   fr: {
     // General
@@ -777,6 +794,23 @@ const translations = {
     selectOption: 'Sélectionner...',
     selectLocation: 'Sélectionner un campus...',
     manageSubscription: 'Gérer votre abonnement ChurchSmart',
+
+    // Empty states
+    emptyMembers: 'Votre congrégation commence ici. Ajoutez votre premier membre pour démarrer.',
+    emptyDonations: 'Chaque don compte. Enregistrez votre première dîme ou offrande.',
+    emptyAttendance: 'Suivez qui est présent. Enregistrez votre première présence au culte.',
+    emptyVisitors: 'Chaque visiteur est un membre potentiel. Commencez le suivi aujourd\'hui.',
+
+    // Success celebrations
+    memberAdded: 'Membre ajouté avec succès!',
+    attendanceRecorded: 'Présence enregistrée! Excellent suivi de votre église.',
+    donationRecorded: 'Don enregistré! Vos registres sont à jour.',
+    allSetup: 'Tout est prêt! Votre église est prête à grandir.',
+
+    // Time-based greetings
+    goodMorning: 'Bonjour',
+    goodAfternoon: 'Bon après-midi',
+    goodEvening: 'Bonsoir',
   }
 };
 
@@ -2925,11 +2959,39 @@ function LoginPage() {
           <div style={{ marginTop: '20px', textAlign: 'center' }}>
             <p style={{ fontSize: '12px', color: '#9ca3af' }}>🔒 {t.secure}</p>
           </div>
+
+          {/* Testimonial */}
+          <TestimonialRotator lang={lang} />
         </div>
       </div>
     </div>
   );
 }
+
+function TestimonialRotator({ lang }) {
+  const quotes = [
+    { en: '"ChurchSmart changed how we manage our church."', fr: '"ChurchSmart a transformé la gestion de notre église."', author: 'Pastor, Douala' },
+    { en: '"Finally, a tool built for African churches."', fr: '"Enfin, un outil conçu pour les églises africaines."', author: 'Church Admin, Yaoundé' },
+    { en: '"Our giving tracking has never been easier."', fr: '"Le suivi des offrandes n\'a jamais été aussi facile."', author: 'Finance Team, Abuja' },
+  ];
+  const [idx, setIdx] = useState(0);
+  const [fade, setFade] = useState(true);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFade(false);
+      setTimeout(() => { setIdx(i => (i + 1) % quotes.length); setFade(true); }, 300);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+  const q = quotes[idx];
+  return (
+    <div style={{ marginTop: '24px', textAlign: 'center', opacity: fade ? 1 : 0, transition: 'opacity 0.3s', minHeight: '60px' }}>
+      <p style={{ margin: '0 0 4px', fontSize: '13px', fontStyle: 'italic', color: '#6b7280' }}>{lang === 'fr' ? q.fr : q.en}</p>
+      <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>— {q.author}</p>
+    </div>
+  );
+}
+
 // ==========================================
 // DASHBOARD (Main App after login)
 // ==========================================
@@ -3092,13 +3154,30 @@ function Dashboard() {
 // REUSABLE COMPONENTS
 // ==========================================
 function StatCard({ label, value, icon, color = '#6366f1', trend }) {
+  const [display, setDisplay] = useState(0);
+  const isNumber = typeof value === 'number';
+  useEffect(() => {
+    if (!isNumber) { setDisplay(value); return; }
+    if (value === 0) { setDisplay(0); return; }
+    let start = 0;
+    const step = Math.max(1, Math.floor(value / 20));
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= value) { setDisplay(value); clearInterval(timer); }
+      else setDisplay(start);
+    }, 25);
+    return () => clearInterval(timer);
+  }, [value, isNumber]);
   return (
-    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
+    <div
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }}
+      style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>{label}</p>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', margin: 0, color: '#111827' }}>{value}</p>
-          {trend && <p style={{ fontSize: '12px', color: trend.startsWith('+') ? '#10b981' : '#ef4444', margin: '8px 0 0 0' }}>{trend}</p>}
+          <p style={{ fontSize: '28px', fontWeight: 'bold', margin: 0, color: '#111827' }}>{isNumber ? display : value}</p>
+          {trend && <p style={{ fontSize: '12px', color: typeof trend === 'string' && trend.startsWith('+') ? '#10b981' : '#ef4444', margin: '8px 0 0 0' }}>{trend}</p>}
         </div>
         <div style={{ width: '48px', height: '48px', backgroundColor: `${color}15`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
           {icon}
@@ -3483,6 +3562,7 @@ function DashboardPage() {
     return false;
   });
   const [onboardingCounts, setOnboardingCounts] = useState({ members: 0, services: 0, donations: 0, profileComplete: false, teamMembers: 0 });
+  const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => { fetchData(); }, [filterLocation]);
 
@@ -3578,13 +3658,22 @@ function DashboardPage() {
         supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
         supabaseQuery('church_users', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
       ]);
-      setOnboardingCounts({
+      const newCounts = {
         members: members?.length || 0,
         services: (services || []).length,
         donations: (donations || []).length,
         profileComplete: !!(churchProfile?.pastor_name && churchProfile?.city),
         teamMembers: (teamUsers || []).length
-      });
+      };
+      setOnboardingCounts(newCounts);
+      // Show celebration if all onboarding steps are done and user hasn't seen it
+      if (newCounts.members > 0 && newCounts.services > 0 && newCounts.donations > 0 && newCounts.profileComplete && newCounts.teamMembers > 1) {
+        if (!localStorage.getItem('churchsmart_celebration_shown')) {
+          setShowCelebration(true);
+          localStorage.setItem('churchsmart_celebration_shown', 'true');
+          setTimeout(() => setShowCelebration(false), 4000);
+        }
+      }
       setUpcomingBirthdays(birthdayMembers);
       setUpcomingItems(combined);
       setRecentActivity(activityLogs || []);
@@ -3627,9 +3716,29 @@ function DashboardPage() {
 
   return (
     <div>
-      <PageHeader 
+      {/* Onboarding completion celebration */}
+      {showCelebration && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', animation: 'cs-fade-in 0.3s' }}>
+          <div style={{ textAlign: 'center', backgroundColor: 'white', borderRadius: '24px', padding: '48px', maxWidth: '400px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <p style={{ fontSize: '64px', margin: '0 0 16px' }}>🎉</p>
+            <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{t('allSetup')}</h2>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '16px' }}>
+              {[...Array(12)].map((_, i) => (
+                <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][i % 6], animation: `cs-confetti 0.6s ease-out ${i * 0.05}s both` }} />
+              ))}
+            </div>
+          </div>
+          <style dangerouslySetInnerHTML={{ __html: '@keyframes cs-fade-in{from{opacity:0}to{opacity:1}} @keyframes cs-confetti{0%{transform:translateY(0) scale(0)}50%{transform:translateY(-20px) scale(1.5)}100%{transform:translateY(0) scale(1)}}' }} />
+        </div>
+      )}
+      <PageHeader
         title={`📊 ${t('dashboard')}`}
-        subtitle={`${t('welcomeBack')} ${t('churchOverview')}`}
+        subtitle={(() => {
+          const hour = new Date().getHours();
+          const greeting = hour < 12 ? t('goodMorning') : hour < 17 ? t('goodAfternoon') : t('goodEvening');
+          const name = user?.name?.split(' ')[0] || '';
+          return `${greeting}${name ? ', ' + name : ''} 👋 ${t('churchOverview')}`;
+        })()}
         actions={<Button onClick={fetchData} variant="secondary">🔄 Refresh</Button>}
       />
 
@@ -4064,8 +4173,10 @@ function MembersPage({ plan, onNavigate }) {
       const data = { ...form, location_id: form.location_id || null };
       if (editingMember) {
         await supabaseUpdate('members', editingMember.id, data);
+        toast.success(t('savedSuccessfully'));
       } else {
         await supabaseInsert('members', data);
+        toast.success(`🎉 ${t('memberAdded')}`);
       }
       setShowModal(false);
       resetForm();
@@ -4281,8 +4392,9 @@ function MembersPage({ plan, onNavigate }) {
                 {filteredMembers.length === 0 && (
                   <tr>
                     <td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
-                      <span style={{ fontSize: '48px' }}>👥</span>
-                      <p>{t('noResults')}</p>
+                      <span style={{ fontSize: '48px', display: 'block', marginBottom: '12px' }}>👥</span>
+                      <p style={{ fontSize: '16px', fontWeight: '500', color: '#374151', margin: '0 0 8px' }}>{members.length === 0 ? t('emptyMembers') : t('noResults')}</p>
+                      {members.length === 0 && <button onClick={() => openModal()} style={{ marginTop: '12px', padding: '10px 24px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>➕ {t('addMember')}</button>}
                     </td>
                   </tr>
                 )}
@@ -4799,7 +4911,7 @@ function VisitorsPage() {
           </select>
         </div>
         {loading ? <LoadingSpinner /> : (
-          <DataTable columns={columns} data={filteredVisitors} onEdit={openModal} onDelete={setDeleteConfirm} onSMS={openSMSModal} />
+          <DataTable columns={columns} data={filteredVisitors} onEdit={openModal} onDelete={setDeleteConfirm} onSMS={openSMSModal} emptyMessage={t('emptyVisitors')} />
         )}
       </div>
 
@@ -4991,14 +5103,16 @@ function AttendancePage() {
       };
       if (editingRecord) {
         await supabaseUpdate('attendance_records', editingRecord.id, data);
+        toast.success(t('savedSuccessfully'));
       } else {
         await supabaseInsert('attendance_records', data);
+        toast.success(`✅ ${t('attendanceRecorded')}`);
       }
       setShowModal(false);
       resetForm();
       fetchData();
     } catch (error) {
-      toast.info('Error saving: ' + error.message);
+      toast.info(t('errorSaving') + ': ' + error.message);
     }
     setSaving(false);
   };
@@ -5483,8 +5597,8 @@ function GivingPage({ plan, onNavigate }) {
     setSaving(true);
     try {
       const data = { ...donationForm, amount: parseFloat(donationForm.amount) };
-      if (editingItem) { await supabaseUpdate('donations', editingItem.id, data); }
-      else { await supabaseInsert('donations', data); }
+      if (editingItem) { await supabaseUpdate('donations', editingItem.id, data); toast.success(t('savedSuccessfully')); }
+      else { await supabaseInsert('donations', data); toast.success(`💰 ${t('donationRecorded')}`); }
       setShowModal(false); resetDonationForm(); fetchData();
     } catch (error) { toast.error(error.message); }
     setSaving(false);
