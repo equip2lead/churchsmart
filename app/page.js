@@ -267,6 +267,82 @@ const translations = {
     givingHistory: 'Giving History',
     givingStatement: 'Giving Statement',
     page: 'Page',
+
+    // Onboarding
+    gettingStarted: 'Getting Started',
+    completeSteps: 'Complete these steps to set up your church',
+    createChurch: 'Create your church',
+    updateProfile: 'Update church profile',
+    addFirstMembers: 'Add your first members',
+    inviteTeam: 'Invite team members',
+    setupService: 'Set up a service',
+    recordFirstDonation: 'Record your first donation',
+    go: 'Go',
+
+    // Trial
+    trialEnded: 'Your 30-day free trial has ended.',
+    upgradeToUse: 'Upgrade to continue using ChurchSmart.',
+    viewPlans: 'View Plans',
+
+    // Cookie consent
+    cookieText: 'We use cookies to improve your experience and analyze site traffic.',
+    accept: 'Accept',
+    decline: 'Decline',
+
+    // CSV Import
+    importCSV: 'Import CSV',
+    downloadTemplate: 'Download CSV Template',
+    dragDropCSV: 'Drag & drop a CSV file here',
+    orClickBrowse: 'or click to browse',
+    columnMapping: 'Map your CSV columns to member fields',
+    skipColumn: '— skip —',
+    previewRows: 'Preview (first 5 rows)',
+    importMembers: 'Import',
+    importComplete: 'Import Complete',
+    membersImported: 'members imported',
+    rowsSkipped: 'rows skipped (empty name or duplicate email)',
+    rowsFailed: 'rows failed',
+    importing: 'Importing members...',
+    foundRows: 'Found',
+    rows: 'rows',
+
+    // Feature gating
+    featureRequires: 'This feature is available on the',
+    planAndAbove: 'plan and above.',
+    upgradeToUnlock: 'Upgrade to unlock it for your church.',
+    viewPlansUpgrade: 'View Plans & Upgrade',
+
+    // Settings sections
+    general: 'General',
+    locations: 'Locations',
+    automation: 'Automation',
+    userRoles: 'User Roles',
+    activityLogs: 'Activity Logs',
+    dataExport: 'Data Export',
+    helpSupport: 'Help & Support',
+    account: 'Account',
+    billing: 'Billing',
+    exportAllData: 'Export All Church Data',
+    exportAllDesc: 'Download a ZIP file containing CSV exports of all your church data.',
+    exportAllBtn: 'Export All Data',
+    exporting: 'Exporting...',
+    csvExported: 'CSV files exported',
+
+    // Help page
+    needMoreHelp: 'Need more help?',
+    supportDesc: 'Our support team is here to help you get the most out of ChurchSmart.',
+    whatsappSupport: 'WhatsApp Support',
+    emailSupport: 'Email Support',
+    faq: 'FAQ',
+
+    // Subscriptions
+    subscriptions: 'Subscriptions',
+    currentPlan: 'Current Plan',
+    changePlan: 'Change Plan',
+
+    // Members extras
+    inviteLink: 'Invite Link',
+    converted: 'Converted',
   },
   fr: {
     // General
@@ -513,6 +589,82 @@ const translations = {
     givingHistory: 'Historique des Offrandes',
     givingStatement: 'Relevé des Offrandes',
     page: 'Page',
+
+    // Onboarding
+    gettingStarted: 'Démarrage',
+    completeSteps: 'Complétez ces étapes pour configurer votre église',
+    createChurch: 'Créer votre église',
+    updateProfile: 'Mettre à jour le profil',
+    addFirstMembers: 'Ajouter vos premiers membres',
+    inviteTeam: "Inviter des membres d'équipe",
+    setupService: 'Configurer un culte',
+    recordFirstDonation: 'Enregistrer votre premier don',
+    go: 'Aller',
+
+    // Trial
+    trialEnded: 'Votre essai gratuit de 30 jours est terminé.',
+    upgradeToUse: 'Mettez à niveau pour continuer à utiliser ChurchSmart.',
+    viewPlans: 'Voir les Plans',
+
+    // Cookie consent
+    cookieText: 'Nous utilisons des cookies pour améliorer votre expérience et analyser le trafic.',
+    accept: 'Accepter',
+    decline: 'Refuser',
+
+    // CSV Import
+    importCSV: 'Importer CSV',
+    downloadTemplate: 'Télécharger le Modèle CSV',
+    dragDropCSV: 'Glissez-déposez un fichier CSV ici',
+    orClickBrowse: 'ou cliquez pour parcourir',
+    columnMapping: 'Associez vos colonnes CSV aux champs membres',
+    skipColumn: '— ignorer —',
+    previewRows: 'Aperçu (5 premières lignes)',
+    importMembers: 'Importer',
+    importComplete: 'Importation Terminée',
+    membersImported: 'membres importés',
+    rowsSkipped: 'lignes ignorées (nom vide ou email en double)',
+    rowsFailed: 'lignes échouées',
+    importing: 'Importation en cours...',
+    foundRows: 'Trouvé',
+    rows: 'lignes',
+
+    // Feature gating
+    featureRequires: 'Cette fonctionnalité est disponible sur le plan',
+    planAndAbove: 'et supérieur.',
+    upgradeToUnlock: 'Mettez à niveau pour la débloquer.',
+    viewPlansUpgrade: 'Voir les Plans & Mettre à Niveau',
+
+    // Settings sections
+    general: 'Général',
+    locations: 'Campus',
+    automation: 'Automatisation',
+    userRoles: 'Rôles Utilisateurs',
+    activityLogs: "Journal d'Activité",
+    dataExport: 'Export de Données',
+    helpSupport: 'Aide & Support',
+    account: 'Compte',
+    billing: 'Facturation',
+    exportAllData: 'Exporter Toutes les Données',
+    exportAllDesc: 'Téléchargez un fichier ZIP contenant les exports CSV de toutes vos données.',
+    exportAllBtn: 'Exporter Toutes les Données',
+    exporting: 'Exportation...',
+    csvExported: 'fichiers CSV exportés',
+
+    // Help page
+    needMoreHelp: "Besoin d'aide supplémentaire?",
+    supportDesc: "Notre équipe est là pour vous aider à tirer le meilleur parti de ChurchSmart.",
+    whatsappSupport: 'Support WhatsApp',
+    emailSupport: 'Support Email',
+    faq: 'FAQ',
+
+    // Subscriptions
+    subscriptions: 'Abonnements',
+    currentPlan: 'Plan Actuel',
+    changePlan: 'Changer de Plan',
+
+    // Members extras
+    inviteLink: "Lien d'Invitation",
+    converted: 'Converti',
   }
 };
 
@@ -1244,6 +1396,7 @@ function useAuth() {
 // COOKIE CONSENT BANNER + GOOGLE ANALYTICS
 // ==========================================
 function CookieConsentBanner() {
+  const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const consent = localStorage.getItem('cookie_consent');
@@ -1275,10 +1428,10 @@ function CookieConsentBanner() {
   if (!visible) return null;
   return (
     <div className="cs-cookie-banner" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#1f2937', color: '#e5e7eb', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', zIndex: 9999, fontSize: '14px', boxShadow: '0 -2px 8px rgba(0,0,0,0.15)' }}>
-      <p style={{ margin: 0, flex: '1 1 300px' }}>We use cookies to improve your experience and analyze site traffic.</p>
+      <p style={{ margin: 0, flex: '1 1 300px' }}>{t('cookieText')}</p>
       <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-        <button onClick={decline} style={{ padding: '8px 20px', border: '1px solid #6b7280', borderRadius: '8px', backgroundColor: 'transparent', color: '#d1d5db', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>Decline</button>
-        <button onClick={accept} style={{ padding: '8px 20px', border: 'none', borderRadius: '8px', backgroundColor: '#4f46e5', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Accept</button>
+        <button onClick={decline} style={{ padding: '8px 20px', border: '1px solid #6b7280', borderRadius: '8px', backgroundColor: 'transparent', color: '#d1d5db', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>{t('decline')}</button>
+        <button onClick={accept} style={{ padding: '8px 20px', border: 'none', borderRadius: '8px', backgroundColor: '#4f46e5', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>{t('accept')}</button>
       </div>
     </div>
   );
@@ -2747,8 +2900,8 @@ function Dashboard() {
           {/* Trial expired banner */}
           {churchPlan === 'free' && trialExpiredBanner && (
             <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '14px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-              <p style={{ margin: 0, fontSize: '14px', color: '#991b1b' }}>Your 30-day free trial has ended. <strong>Upgrade to continue using ChurchSmart.</strong></p>
-              <button onClick={() => setActiveTab('settings')} style={{ padding: '8px 20px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>View Plans</button>
+              <p style={{ margin: 0, fontSize: '14px', color: '#991b1b' }}>{t('trialEnded')} <strong>{t('upgradeToUse')}</strong></p>
+              <button onClick={() => setActiveTab('settings')} style={{ padding: '8px 20px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('viewPlans')}</button>
             </div>
           )}
           {activeTab === 'dashboard' && <DashboardPage />}
@@ -3330,26 +3483,26 @@ function DashboardPage() {
           {/* Onboarding Checklist */}
           {(() => {
             const steps = [
-              { done: true, label: 'Create your church' },
-              { done: onboardingCounts.profileComplete, label: 'Update church profile', tab: 'settings' },
-              { done: onboardingCounts.members > 0, label: 'Add your first members', tab: 'members' },
-              { done: onboardingCounts.teamMembers > 1, label: 'Invite team members', tab: 'settings' },
-              { done: onboardingCounts.services > 0, label: 'Set up a service', tab: 'services' },
-              { done: onboardingCounts.donations > 0, label: 'Record your first donation', tab: 'giving' },
+              { done: true, label: t('createChurch') },
+              { done: onboardingCounts.profileComplete, label: t('updateProfile'), tab: 'settings' },
+              { done: onboardingCounts.members > 0, label: t('addFirstMembers'), tab: 'members' },
+              { done: onboardingCounts.teamMembers > 1, label: t('inviteTeam'), tab: 'settings' },
+              { done: onboardingCounts.services > 0, label: t('setupService'), tab: 'services' },
+              { done: onboardingCounts.donations > 0, label: t('recordFirstDonation'), tab: 'giving' },
             ];
             const allDone = steps.every(s => s.done);
             if (onboardingDismissed || allDone) return null;
             return (
               <div style={{ backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '24px', marginBottom: '24px', position: 'relative' }}>
                 <button onClick={() => { setOnboardingDismissed(true); localStorage.setItem('churchsmart_onboarding_dismissed', 'true'); }} style={{ position: 'absolute', top: '12px', right: '12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '18px', color: '#6b7280' }} title="Dismiss">✕</button>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#312e81' }}>Getting Started</h3>
-                <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#4338ca' }}>Complete these steps to set up your church ({steps.filter(s => s.done).length}/{steps.length})</p>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#312e81' }}>{t('gettingStarted')}</h3>
+                <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#4338ca' }}>{t('completeSteps')} ({steps.filter(s => s.done).length}/{steps.length})</p>
                 <div style={{ display: 'grid', gap: '10px' }}>
                   {steps.map((step, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{ fontSize: '18px' }}>{step.done ? '✅' : '☐'}</span>
                       <span style={{ color: step.done ? '#166534' : '#374151', fontWeight: '500' }}>{step.label}</span>
-                      {!step.done && step.tab && <button onClick={() => { const e = document.querySelector(`[data-tab="${step.tab}"]`); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>Go</button>}
+                      {!step.done && step.tab && <button onClick={() => { const e = document.querySelector(`[data-tab="${step.tab}"]`); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>{t('go')}</button>}
                     </div>
                   ))}
                 </div>
@@ -3835,7 +3988,7 @@ function MembersPage({ plan, onNavigate }) {
         actions={
           <div className="cs-btn-row" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 {t('exportCSV')}</Button>}
-            {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportData([]); setImportResult(null); }}>📤 Import CSV</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 Import CSV</Button>}
+            {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportData([]); setImportResult(null); }}>📤 {t('importCSV')}</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 {t('importCSV')}</Button>}
             <Button variant="secondary" onClick={() => setShowInviteModal(true)}>🔗 Invite Link</Button>
             <Button onClick={() => openModal()}>➕ {t('addMember')}</Button>
           </div>
@@ -4145,7 +4298,7 @@ function MembersPage({ plan, onNavigate }) {
       </Modal>
 
       {/* Import CSV Modal */}
-      <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title="📤 Import Members from CSV">
+      <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title={`📤 ${t('importCSV')}`}>
         {importStep === 'upload' && (
           <div>
             <div
@@ -4155,28 +4308,28 @@ function MembersPage({ plan, onNavigate }) {
               onClick={() => document.getElementById('csv-file-input').click()}
               style={{ border: '2px dashed #d1d5db', borderRadius: '12px', padding: '40px', textAlign: 'center', cursor: 'pointer', backgroundColor: '#f9fafb', marginBottom: '16px' }}>
               <p style={{ margin: '0 0 8px', fontSize: '32px' }}>📁</p>
-              <p style={{ margin: '0 0 4px', fontWeight: '600', color: '#374151' }}>Drag & drop a CSV file here</p>
-              <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>or click to browse</p>
+              <p style={{ margin: '0 0 4px', fontWeight: '600', color: '#374151' }}>{t('dragDropCSV')}</p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>{t('orClickBrowse')}</p>
               <input id="csv-file-input" type="file" accept=".csv" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e.target.files[0])} />
             </div>
-            <button onClick={downloadTemplate} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', color: '#4f46e5', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>📋 Download CSV Template</button>
+            <button onClick={downloadTemplate} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', color: '#4f46e5', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>📋 {t('downloadTemplate')}</button>
           </div>
         )}
         {importStep === 'mapping' && (
           <div>
-            <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#6b7280' }}>Found {importData.length} rows. Map your CSV columns to member fields:</p>
+            <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#6b7280' }}>{t('foundRows')} {importData.length} {t('rows')}. {t('columnMapping')}:</p>
             <div style={{ display: 'grid', gap: '8px', marginBottom: '16px' }}>
               {MEMBER_FIELDS.map(f => (
                 <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ width: '140px', fontSize: '13px', fontWeight: '500', color: '#374151' }}>{f.label}{f.required ? ' *' : ''}</span>
                   <select value={importMapping[f.key] || ''} onChange={(e) => setImportMapping({ ...importMapping, [f.key]: e.target.value })} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '13px' }}>
-                    <option value="">— skip —</option>
+                    <option value="">{t('skipColumn')}</option>
                     {importHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
               ))}
             </div>
-            <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Preview (first 5 rows):</p>
+            <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>{t('previewRows')}:</p>
             <div style={{ overflowX: 'auto', marginBottom: '16px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead><tr style={{ backgroundColor: '#f9fafb' }}>{MEMBER_FIELDS.filter(f => importMapping[f.key]).map(f => <th key={f.key} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>{f.label}</th>)}</tr></thead>
@@ -4185,23 +4338,23 @@ function MembersPage({ plan, onNavigate }) {
             </div>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <Button variant="secondary" onClick={() => setImportStep('upload')}>Back</Button>
-              <Button onClick={runImport} disabled={!importMapping.first_name && !importMapping.last_name}>Import {importData.length} Members</Button>
+              <Button onClick={runImport} disabled={!importMapping.first_name && !importMapping.last_name}>{t('importMembers')} {importData.length} {t('members')}</Button>
             </div>
           </div>
         )}
         {importStep === 'importing' && (
           <div style={{ textAlign: 'center', padding: '32px' }}>
             <div style={{ width: '40px', height: '40px', border: '4px solid #e5e7eb', borderTop: '4px solid #4f46e5', borderRadius: '50%', animation: 'cs-spin 1s linear infinite', margin: '0 auto 16px' }} />
-            <p style={{ margin: 0, fontWeight: '500', color: '#374151' }}>Importing members...</p>
+            <p style={{ margin: 0, fontWeight: '500', color: '#374151' }}>{t('importing')}</p>
           </div>
         )}
         {importStep === 'done' && importResult && (
           <div style={{ textAlign: 'center', padding: '24px' }}>
             <p style={{ fontSize: '48px', margin: '0 0 12px' }}>✅</p>
-            <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>Import Complete</h3>
-            <p style={{ margin: '0 0 4px', fontSize: '15px', color: '#10b981', fontWeight: '600' }}>{importResult.imported} members imported</p>
-            {importResult.skipped > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#f59e0b' }}>{importResult.skipped} rows skipped (empty name or duplicate email)</p>}
-            {importResult.errors > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#ef4444' }}>{importResult.errors} rows failed</p>}
+            <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{t('importComplete')}</h3>
+            <p style={{ margin: '0 0 4px', fontSize: '15px', color: '#10b981', fontWeight: '600' }}>{importResult.imported} {t('membersImported')}</p>
+            {importResult.skipped > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#f59e0b' }}>{importResult.skipped} {t('rowsSkipped')}</p>}
+            {importResult.errors > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#ef4444' }}>{importResult.errors} {t('rowsFailed')}</p>}
             <Button onClick={() => setShowImportModal(false)} style={{ marginTop: '16px' }}>Close</Button>
           </div>
         )}
@@ -4405,7 +4558,7 @@ function VisitorsPage() {
     { header: t('howHeard'), key: 'how_heard', render: (row) => <span style={{ color: '#6b7280' }}>{row.how_heard_about_us || '—'}</span> },
     { header: t('status'), key: 'status', render: (row) => <StatusBadge status={row.followup_status} /> },
     { header: t('firstTime'), key: 'first_time', render: (row) => row.is_first_time ? '✅' : '🔄' },
-    { header: 'Convert', key: 'convert', render: (row) => row.converted_to_member_id ? <span style={{ padding: '4px 10px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>Converted</span> : <button onClick={(e) => { e.stopPropagation(); handleConvertToMember(row); }} disabled={saving} style={{ padding: '4px 12px', border: '1px solid #6366f1', borderRadius: '8px', backgroundColor: '#eef2ff', color: '#4f46e5', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>Convert to Member</button> },
+    { header: t('convertToMember'), key: 'convert', render: (row) => row.converted_to_member_id ? <span style={{ padding: '4px 10px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{t('converted')}</span> : <button onClick={(e) => { e.stopPropagation(); handleConvertToMember(row); }} disabled={saving} style={{ padding: '4px 12px', border: '1px solid #6366f1', borderRadius: '8px', backgroundColor: '#eef2ff', color: '#4f46e5', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>{t('convertToMember')}</button> },
   ];
 
   return (
@@ -9481,15 +9634,15 @@ function SettingsPage() {
   });
 
   const sections = [
-    { id: 'general', label: '⚙️ General', icon: '⚙️' },
-    { id: 'billing', label: '💳 Billing', icon: '💳' },
-    { id: 'locations', label: '📍 Locations', icon: '📍' },
-    { id: 'automation', label: '🤖 Automation', icon: '🤖' },
-    { id: 'roles', label: '👥 User Roles', icon: '👥' },
-    { id: 'logs', label: '📜 Activity Logs', icon: '📜' },
-    { id: 'data', label: '📦 Data Export', icon: '📦' },
-    { id: 'help', label: '❓ Help', icon: '❓' },
-    { id: 'account', label: '👤 Account', icon: '👤' },
+    { id: 'general', label: `⚙️ ${t('general')}`, icon: '⚙️' },
+    { id: 'billing', label: `💳 ${t('billing')}`, icon: '💳' },
+    { id: 'locations', label: `📍 ${t('locations')}`, icon: '📍' },
+    { id: 'automation', label: `🤖 ${t('automation')}`, icon: '🤖' },
+    { id: 'roles', label: `👥 ${t('userRoles')}`, icon: '👥' },
+    { id: 'logs', label: `📜 ${t('activityLogs')}`, icon: '📜' },
+    { id: 'data', label: `📦 ${t('dataExport')}`, icon: '📦' },
+    { id: 'help', label: `❓ ${t('helpSupport')}`, icon: '❓' },
+    { id: 'account', label: `👤 ${t('account')}`, icon: '👤' },
   ];
 
   const permissionsList = [
@@ -10085,8 +10238,8 @@ function SettingsPage() {
           {/* ============ DATA EXPORT ============ */}
           {activeSection === 'data' && user?.role === 'ADMIN' && (
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>📦 Export All Church Data</h3>
-              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Download a ZIP file containing CSV exports of all your church data: members, visitors, donations, attendance, events, and groups.</p>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>📦 {t('exportAllData')}</h3>
+              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>{t('exportAllDesc')}</p>
               <button onClick={async () => {
                 if (!confirm('This will export all your church data as CSV files in a ZIP archive. Continue?')) return;
                 setSaving(true);
@@ -10129,7 +10282,7 @@ function SettingsPage() {
                 } catch (err) { toast.error('Export failed: ' + err.message); }
                 setSaving(false);
               }} disabled={saving} style={{ padding: '12px 28px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-                {saving ? '⏳ Exporting...' : '📦 Export All Data'}
+                {saving ? `⏳ ${t('exporting')}` : `📦 ${t('exportAllBtn')}`}
               </button>
               <p style={{ margin: '12px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>Files are exported as individual CSVs with UTF-8 encoding for Excel compatibility.</p>
             </div>
@@ -10185,12 +10338,12 @@ function SettingsPage() {
 
               {/* Support Contact */}
               <div style={{ backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
-                <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '700', color: '#312e81' }}>Need more help?</h3>
-                <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#4338ca' }}>Our support team is here to help you get the most out of ChurchSmart.</p>
+                <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '700', color: '#312e81' }}>{t('needMoreHelp')}</h3>
+                <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#4338ca' }}>{t('supportDesc')}</p>
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <a href="https://wa.me/237674991704" target="_blank" rel="noopener noreferrer" style={{ padding: '10px 20px', backgroundColor: '#25d366', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>💬 WhatsApp Support</a>
-                  <a href="mailto:contact@churchsmartnow.com" style={{ padding: '10px 20px', backgroundColor: '#4f46e5', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>📧 Email Support</a>
-                  <a href="https://www.churchsmartnow.com#faq" target="_blank" rel="noopener noreferrer" style={{ padding: '10px 20px', backgroundColor: 'white', color: '#4f46e5', border: '1px solid #c7d2fe', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>📖 FAQ</a>
+                  <a href="https://wa.me/237674991704" target="_blank" rel="noopener noreferrer" style={{ padding: '10px 20px', backgroundColor: '#25d366', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>💬 {t('whatsappSupport')}</a>
+                  <a href="mailto:contact@churchsmartnow.com" style={{ padding: '10px 20px', backgroundColor: '#4f46e5', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>📧 {t('emailSupport')}</a>
+                  <a href="https://www.churchsmartnow.com#faq" target="_blank" rel="noopener noreferrer" style={{ padding: '10px 20px', backgroundColor: 'white', color: '#4f46e5', border: '1px solid #c7d2fe', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>📖 {t('faq')}</a>
                 </div>
               </div>
             </div>
