@@ -40,6 +40,30 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        {/* Branded splash screen — visible before JS bundle loads */}
+        <div id="splash-screen" style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: '#ffffff', flexDirection: 'column', gap: '24px',
+          transition: 'opacity 0.3s ease-out'
+        }}>
+          <span style={{
+            fontSize: '28px', fontWeight: '700', letterSpacing: '-0.5px',
+            color: '#4F46E5'
+          }}>ChurchSmart</span>
+          <div style={{
+            width: '36px', height: '36px',
+            border: '3px solid #e0e7ff', borderTopColor: '#4F46E5',
+            borderRadius: '50%',
+            animation: 'cs-splash-spin 0.7s linear infinite'
+          }} />
+          <style dangerouslySetInnerHTML={{ __html:
+            '@keyframes cs-splash-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}'
+          }} />
+        </div>
+        <script dangerouslySetInnerHTML={{ __html:
+          `requestAnimationFrame(function(){var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.style.opacity='0';setTimeout(function(){s.remove()},300)},300)}})`
+        }} />
         {children}
       </body>
     </html>

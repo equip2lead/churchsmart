@@ -1397,6 +1397,45 @@ function useAuth() {
 // ==========================================
 // COOKIE CONSENT BANNER + GOOGLE ANALYTICS
 // ==========================================
+// ==========================================
+// NETWORK STATUS + SERVICE WORKER
+// ==========================================
+function NetworkStatus() {
+  const [offline, setOffline] = useState(false);
+  const [showOnline, setShowOnline] = useState(false);
+
+  useEffect(() => {
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
+    const goOffline = () => setOffline(true);
+    const goOnline = () => {
+      setOffline(false);
+      setShowOnline(true);
+      setTimeout(() => setShowOnline(false), 3000);
+    };
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    setOffline(!navigator.onLine);
+    return () => { window.removeEventListener('offline', goOffline); window.removeEventListener('online', goOnline); };
+  }, []);
+
+  if (!offline && !showOnline) return null;
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 99998, textAlign: 'center',
+      padding: '8px 16px', fontSize: '13px', fontWeight: '500',
+      backgroundColor: offline ? '#fef3c7' : '#dcfce7',
+      color: offline ? '#92400e' : '#166534',
+      transition: 'all 0.3s'
+    }}>
+      {offline ? '📡 You\'re offline. Some features may be limited.' : '✅ You\'re back online!'}
+    </div>
+  );
+}
+
 function CookieConsentBanner() {
   const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
@@ -1466,6 +1505,7 @@ export default function ChurchSmartApp() {
           }
         `}} />
         <PermissionsProvider>
+        <NetworkStatus />
         <AppContent />
         <CookieConsentBanner />
         </PermissionsProvider>
@@ -1482,6 +1522,11 @@ function AppContent() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      // Store pre-selected plan from landing page (?plan=starter, etc.)
+      const planParam = params.get('plan');
+      if (planParam && ['starter', 'growth', 'pro'].includes(planParam.toLowerCase())) {
+        localStorage.setItem('selected_plan', planParam.toLowerCase());
+      }
       const joinId = params.get('join');
       const connectSlug = params.get('connect');
       if (joinId) {
@@ -2788,6 +2833,17 @@ function Dashboard() {
   const [churchName, setChurchName] = useState('');
   const [churchPlan, setChurchPlan] = useState('free');
   const [trialExpiredBanner, setTrialExpiredBanner] = useState(false);
+
+  // If a plan was pre-selected from the landing page, redirect to billing
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const selectedPlan = localStorage.getItem('selected_plan');
+      if (selectedPlan && ['starter', 'growth', 'pro'].includes(selectedPlan)) {
+        setActiveTab('settings');
+        // Don't clear yet — BillingSection will read and clear it
+      }
+    }
+  }, []);
 
   // Fetch church branding and subscription plan
   useEffect(() => {
@@ -8961,6 +9017,16 @@ function BillingSection({ churchId }) {
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
   const [buyingCredits, setBuyingCredits] = useState(false);
+  const [highlightedPlan, setHighlightedPlan] = useState(null);
+
+  // Check for pre-selected plan from landing page
+  useEffect(() => {
+    const selectedPlan = localStorage.getItem('selected_plan');
+    if (selectedPlan) {
+      setHighlightedPlan(selectedPlan);
+      localStorage.removeItem('selected_plan');
+    }
+  }, []);
 
   const plans = [
     {
@@ -9245,14 +9311,21 @@ function BillingSection({ churchId }) {
           {plans.map(plan => {
             const isCurrent = plan.id === currentPlan.id;
             const isDowngrade = plans.indexOf(plan) < plans.indexOf(currentPlan);
+            const isHighlighted = plan.id === highlightedPlan;
             return (
-              <div key={plan.id} style={{
-                border: plan.popular ? '2px solid #6366f1' : '1px solid #e5e7eb',
+              <div key={plan.id} id={`plan-${plan.id}`} ref={isHighlighted ? (el) => { if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); } : undefined} style={{
+                border: isHighlighted ? '2px solid #10b981' : plan.popular ? '2px solid #6366f1' : '1px solid #e5e7eb',
                 borderRadius: '16px', padding: '24px', position: 'relative',
-                backgroundColor: isCurrent ? '#fafaff' : 'white',
-                opacity: isDowngrade ? 0.6 : 1
+                backgroundColor: isCurrent ? '#fafaff' : isHighlighted ? '#f0fdf4' : 'white',
+                opacity: isDowngrade ? 0.6 : 1,
+                boxShadow: isHighlighted ? '0 0 0 3px rgba(16,185,129,0.2)' : 'none'
               }}>
-                {plan.popular && (
+                {isHighlighted && !isCurrent && (
+                  <div style={{ position: 'absolute', top: '-12px', right: '16px', backgroundColor: '#10b981', color: 'white', padding: '2px 12px', borderRadius: '9999px', fontSize: '11px', fontWeight: '600' }}>
+                    SELECTED
+                  </div>
+                )}
+                {plan.popular && !isHighlighted && (
                   <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#6366f1', color: 'white', padding: '2px 12px', borderRadius: '9999px', fontSize: '11px', fontWeight: '600' }}>
                     MOST POPULAR
                   </div>
