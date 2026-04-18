@@ -345,6 +345,61 @@ const translations = {
     // Members extras
     inviteLink: 'Invite Link',
     converted: 'Converted',
+
+    // Page subtitles
+    churchOverview: "Here's what's happening at your church.",
+    manageMembersSubtitle: 'church members across',
+    manageVolunteersSubtitle: 'volunteers across',
+    ministries: 'ministries',
+    trackAttendance: 'Track attendance across all services and locations.',
+    trackFinances: 'Track and manage all church income and expenses',
+    sendMessages: 'Send targeted SMS & WhatsApp messages to your congregation',
+    generateReports: 'Generate and export church reports',
+    manageSettings: 'Manage your church settings, users, and automation',
+    soulsWon: 'souls won',
+    eventsThisMonth: 'events this month',
+    upcomingEventsCount: 'upcoming events',
+    manageLocations: 'Manage your church campuses and branches',
+    managePlatform: 'Manage all churches and users on the platform',
+    superAdminPanel: 'Super Admin Panel',
+
+    // Toast messages
+    csvExportedSuccess: 'CSV exported!',
+    nameRequired: 'Name required',
+    amountRequired: 'Amount is required',
+    firstLastRequired: 'First name and last name are required',
+    namePhoneRequired: 'Name and phone are required',
+    serviceDateRequired: 'Service date is required',
+    amountDescRequired: 'Amount and description are required',
+    churchCreated: 'Church created! Loading your dashboard...',
+    failedCreateChurch: 'Failed to create church. Please try again.',
+    failedLinkAccount: 'Failed to link account. Please try again.',
+    alreadyConverted: 'Already converted',
+    conversionFailed: 'Conversion failed',
+    pleaseUploadCsv: 'Please upload a .csv file',
+    csvEmpty: 'CSV is empty',
+    failedParseCsv: 'Failed to parse CSV',
+    noRecords: 'No records',
+    maxFileSize: 'Max file size is 2MB',
+    uploadFailed: 'Upload failed',
+    errorSaving: 'Error saving',
+    emailRoleRequired: 'Email and role are required',
+    passwordFieldsRequired: 'Please fill in all password fields',
+
+    // Misc UI
+    welcomeBack: 'Welcome back!',
+    accessRestricted: 'Access Restricted',
+    noPermission: "You don't have permission to access",
+    contactAdmin: 'Contact your administrator for access.',
+    poweredBy: 'Powered by',
+    youCanCloseNow: 'You can close this page now.',
+    thankYou: 'Thank you',
+    joinCommunity: 'Please fill in your details to join our community',
+    emergencyContact: 'Emergency Contact',
+    emergencyPhone: 'Emergency Phone',
+    selectOption: 'Select...',
+    selectLocation: 'Select location...',
+    manageSubscription: 'Manage your ChurchSmart subscription',
   },
   fr: {
     // General
@@ -667,6 +722,61 @@ const translations = {
     // Members extras
     inviteLink: "Lien d'Invitation",
     converted: 'Converti',
+
+    // Page subtitles
+    churchOverview: 'Voici ce qui se passe dans votre église.',
+    manageMembersSubtitle: "membres d'église dans",
+    manageVolunteersSubtitle: 'bénévoles dans',
+    ministries: 'ministères',
+    trackAttendance: 'Suivre la présence à travers tous les cultes et campus.',
+    trackFinances: "Suivre et gérer les revenus et dépenses de l'église",
+    sendMessages: 'Envoyer des SMS et WhatsApp ciblés à votre congrégation',
+    generateReports: 'Générer et exporter des rapports',
+    manageSettings: "Gérer les paramètres, utilisateurs et automatisation de votre église",
+    soulsWon: 'âmes gagnées',
+    eventsThisMonth: 'événements ce mois',
+    upcomingEventsCount: 'événements à venir',
+    manageLocations: 'Gérer vos campus et succursales',
+    managePlatform: "Gérer toutes les églises et utilisateurs de la plateforme",
+    superAdminPanel: 'Panneau Super Admin',
+
+    // Toast messages
+    csvExportedSuccess: 'CSV exporté!',
+    nameRequired: 'Nom requis',
+    amountRequired: 'Le montant est requis',
+    firstLastRequired: 'Le prénom et le nom sont requis',
+    namePhoneRequired: 'Le nom et le téléphone sont requis',
+    serviceDateRequired: 'La date du culte est requise',
+    amountDescRequired: 'Le montant et la description sont requis',
+    churchCreated: 'Église créée! Chargement du tableau de bord...',
+    failedCreateChurch: "Échec de la création de l'église. Veuillez réessayer.",
+    failedLinkAccount: 'Échec de la liaison du compte. Veuillez réessayer.',
+    alreadyConverted: 'Déjà converti',
+    conversionFailed: 'Échec de la conversion',
+    pleaseUploadCsv: 'Veuillez télécharger un fichier .csv',
+    csvEmpty: 'Le CSV est vide',
+    failedParseCsv: "Échec de l'analyse du CSV",
+    noRecords: 'Aucun enregistrement',
+    maxFileSize: 'Taille maximale du fichier: 2 Mo',
+    uploadFailed: 'Échec du téléchargement',
+    errorSaving: "Erreur lors de l'enregistrement",
+    emailRoleRequired: "L'email et le rôle sont requis",
+    passwordFieldsRequired: 'Veuillez remplir tous les champs de mot de passe',
+
+    // Misc UI
+    welcomeBack: 'Bon retour!',
+    accessRestricted: 'Accès Restreint',
+    noPermission: "Vous n'avez pas la permission d'accéder à",
+    contactAdmin: 'Contactez votre administrateur pour obtenir un accès.',
+    poweredBy: 'Propulsé par',
+    youCanCloseNow: 'Vous pouvez fermer cette page maintenant.',
+    thankYou: 'Merci',
+    joinCommunity: 'Veuillez remplir vos informations pour rejoindre notre communauté',
+    emergencyContact: "Contact d'Urgence",
+    emergencyPhone: "Téléphone d'Urgence",
+    selectOption: 'Sélectionner...',
+    selectLocation: 'Sélectionner un campus...',
+    manageSubscription: 'Gérer votre abonnement ChurchSmart',
   }
 };
 
@@ -1640,7 +1750,7 @@ function MemberProfile({ member, onClose, churchId }) {
   useEffect(() => { (async () => { setLoading(true); try { const d = await supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }, { column: 'member_id', operator: 'eq', value: member.id }], order: 'donation_date.desc', limit: 20 }); setDonations(d || []); } catch (error) { console.error('MemberProfile donations fetch error:', error); } finally { setLoading(false); } })(); }, [member.id]);
   const totalGiving = donations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
   const initials = `${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}`;
-  const genStatement = () => { if (!donations.length) { toast.warning('No records'); return; } exportToCSV(donations, [{ label: 'Date', key: 'donation_date' },{ label: 'Amount', key: 'amount' },{ label: 'Category', key: 'category' },{ label: 'Method', key: 'payment_method' }], `giving-${member.first_name}-${member.last_name}`); toast.success(t('givingStatement') + ' exported!'); };
+  const genStatement = () => { if (!donations.length) { toast.warning(t('noRecords')); return; } exportToCSV(donations, [{ label: 'Date', key: 'donation_date' },{ label: 'Amount', key: 'amount' },{ label: 'Category', key: 'category' },{ label: 'Method', key: 'payment_method' }], `giving-${member.first_name}-${member.last_name}`); toast.success(t('givingStatement') + ' exported!'); };
   return (
     <div style={{ padding: '8px 0' }}>
       <div style={{ display: 'flex', gap: '24px', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap' }}>
@@ -2078,7 +2188,7 @@ function GoogleChurchSetup({ user }) {
         .single();
 
       if (churchError || !newChurch?.id) {
-        toast.error('Failed to create church. Please try again.');
+        toast.error(t.failedCreateChurch || 'Failed to create church. Please try again.');
         setLoading(false);
         return;
       }
@@ -2096,7 +2206,7 @@ function GoogleChurchSetup({ user }) {
 
       if (updateError) {
         await supabase.from('churches').delete().eq('id', newChurch.id);
-        toast.error('Failed to link account. Please try again.');
+        toast.error(t.failedLinkAccount || 'Failed to link account. Please try again.');
         setLoading(false);
         return;
       }
@@ -2109,7 +2219,7 @@ function GoogleChurchSetup({ user }) {
       }).then(() => supabase.from('churches').update({ welcome_email_sent: true }).eq('id', newChurch.id)).catch(() => {});
 
       // Re-load profile so user.church_id is set → redirects to dashboard
-      toast.success('Church created! Loading your dashboard...');
+      toast.success(t.churchCreated || 'Church created! Loading your dashboard...');
       await loadUserProfile(user.email);
     } catch (err) {
       toast.error(err.message);
@@ -3519,7 +3629,7 @@ function DashboardPage() {
     <div>
       <PageHeader 
         title={`📊 ${t('dashboard')}`}
-        subtitle={`${t('welcome')} back! Here's what's happening at your church.`}
+        subtitle={`${t('welcomeBack')} ${t('churchOverview')}`}
         actions={<Button onClick={fetchData} variant="secondary">🔄 Refresh</Button>}
       />
 
@@ -3802,12 +3912,12 @@ function MembersPage({ plan, onNavigate }) {
   };
 
   const handleFileUpload = (file) => {
-    if (!file || !file.name.endsWith('.csv')) { toast.warning('Please upload a .csv file'); return; }
+    if (!file || !file.name.endsWith('.csv')) { toast.warning(t('pleaseUploadCsv')); return; }
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: (result) => {
-        if (!result.data || result.data.length === 0) { toast.warning('CSV is empty'); return; }
+        if (!result.data || result.data.length === 0) { toast.warning(t('csvEmpty')); return; }
         setImportHeaders(result.meta.fields || []);
         setImportData(result.data);
         setImportMapping(autoMapHeaders(result.meta.fields || []));
@@ -3916,7 +4026,7 @@ function MembersPage({ plan, onNavigate }) {
       { label: 'Address', key: 'address' },
       { label: 'City', key: 'city' },
     ], 'members');
-    toast.success('CSV exported!');
+    toast.success(t('csvExportedSuccess'));
   };
 
   const openModal = (member = null) => {
@@ -3937,7 +4047,7 @@ function MembersPage({ plan, onNavigate }) {
 
   const handleSave = async () => {
     if (!form.first_name || !form.last_name) {
-      toast.warning('First name and last name are required');
+      toast.warning(t('firstLastRequired'));
       return;
     }
     // Duplicate detection
@@ -4039,7 +4149,7 @@ function MembersPage({ plan, onNavigate }) {
     <div>
       <PageHeader
         title={`👥 ${t('members')}`}
-        subtitle={`Manage your ${members.length} church members across ${locations.length} locations`}
+        subtitle={`${members.length} ${t('manageMembersSubtitle')} ${locations.length} ${t('locations')}`}
         actions={
           <div className="cs-btn-row" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 {t('exportCSV')}</Button>}
@@ -4518,7 +4628,7 @@ function VisitorsPage() {
 
   const handleSave = async () => {
     if (!form.full_name || !form.phone) {
-      toast.warning('Name and phone are required');
+      toast.warning(t('namePhoneRequired'));
       return;
     }
     // Duplicate detection
@@ -4546,7 +4656,7 @@ function VisitorsPage() {
   };
 
   const handleConvertToMember = async (visitor) => {
-    if (visitor.converted_to_member_id) { toast.info('Already converted'); return; }
+    if (visitor.converted_to_member_id) { toast.info(t('alreadyConverted')); return; }
     setSaving(true);
     try {
       const nameParts = (visitor.full_name || '').trim().split(/\s+/);
@@ -4630,7 +4740,7 @@ function VisitorsPage() {
             { label: 'Visit Date', key: 'visit_date' },
             { label: 'How Heard', key: 'how_heard_about_us' },
             { label: 'Follow-up', key: 'follow_up_status' },
-          ], 'visitors'); toast.success('CSV exported!');
+          ], 'visitors'); toast.success(t('csvExportedSuccess'));
         }}>📥 {t('exportCSV')}</Button><Button onClick={() => openModal()}>➕ {t('addVisitor')}</Button></div>}
       />
 
@@ -4868,7 +4978,7 @@ function AttendancePage() {
   };
 
   const handleSave = async () => {
-    if (!form.service_date) { toast.warning('Service date is required'); return; }
+    if (!form.service_date) { toast.warning(t('serviceDateRequired')); return; }
     setSaving(true);
     try {
       const data = {
@@ -4907,7 +5017,7 @@ function AttendancePage() {
     <div>
       <PageHeader 
         title={`📊 ${t('attendance')}`}
-        subtitle="Track attendance across all services and locations."
+        subtitle={t('trackAttendance')}
         actions={
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
@@ -4954,7 +5064,7 @@ function AttendancePage() {
                 { label: 'Children', key: 'children_count' },
                 { label: 'First Timers', key: 'first_timers_count' },
                 { label: 'Total', accessor: r => (r.men_count||0) + (r.women_count||0) + (r.children_count||0) },
-              ], 'attendance'); toast.success('CSV exported!');
+              ], 'attendance'); toast.success(t('csvExportedSuccess'));
             }}>📥 {t('exportCSV')}</Button>
             <Button onClick={() => openModal()}>➕ {t('recordAttendance')}</Button>
           </div>
@@ -5369,7 +5479,7 @@ function GivingPage({ plan, onNavigate }) {
   };
 
   const handleSaveDonation = async () => {
-    if (!donationForm.amount) { toast.warning('Amount is required'); return; }
+    if (!donationForm.amount) { toast.warning(t('amountRequired')); return; }
     setSaving(true);
     try {
       const data = { ...donationForm, amount: parseFloat(donationForm.amount) };
@@ -5381,7 +5491,7 @@ function GivingPage({ plan, onNavigate }) {
   };
 
   const handleSaveExpense = async () => {
-    if (!expenseForm.amount || !expenseForm.description) { toast.warning('Amount and description are required'); return; }
+    if (!expenseForm.amount || !expenseForm.description) { toast.warning(t('amountDescRequired')); return; }
     setSaving(true);
     try {
       const data = { ...expenseForm, amount: parseFloat(expenseForm.amount) };
@@ -5456,7 +5566,7 @@ function GivingPage({ plan, onNavigate }) {
     <div>
       <PageHeader
         title={`💰 ${t('giving')}`}
-        subtitle="Track and manage all church income and expenses"
+        subtitle={t('trackFinances')}
         actions={
           <div style={{ display: 'flex', gap: '12px' }}>
             <Button variant="secondary" onClick={() => {
@@ -5474,7 +5584,7 @@ function GivingPage({ plan, onNavigate }) {
                 { label: 'Category', key: 'category' },
               ];
               exportToCSV(data, cols, activeTab === 'income' ? 'donations' : 'expenses');
-              toast.success('CSV exported!');
+              toast.success(t('csvExportedSuccess'));
             }}>📥 {t('exportCSV')}</Button>
             {activeTab === 'income' && <Button variant="secondary" onClick={() => { const bd={}; (donations||[]).forEach(d => { const n=d.donor_name||'Anonymous'; if(!bd[n])bd[n]=[]; bd[n].push(d); }); const rows=Object.entries(bd).map(([n,ds])=>({donor:n,total:ds.reduce((s,d)=>s+(parseFloat(d.amount)||0),0),count:ds.length,first:ds[ds.length-1]?.donation_date||'',last:ds[0]?.donation_date||''})); exportToCSV(rows,[{label:'Donor',key:'donor'},{label:'Total',key:'total'},{label:'Count',key:'count'},{label:'First',key:'first'},{label:'Last',key:'last'}],'giving-statements'); toast.success(t('givingStatement')+' exported!'); }}>📊 {t('givingStatement')}</Button>}
             {activeTab === 'income' && <Button onClick={() => openDonationModal()}>➕ Add Donation</Button>}
@@ -5783,7 +5893,7 @@ function SalvationsPage() {
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: mainCampus?.id || '' }); setEditingRecord(null); };
   const openModal = (record = null) => { if (record) { setEditingRecord(record); setForm({ full_name: record.full_name || '', phone: record.phone || '', email: record.email || '', gender: record.gender || '', age_group: record.age_group || '', salvation_date: record.salvation_date || '', followup_status: record.followup_status || 'PENDING', followup_notes: record.followup_notes || '', location_id: record.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.full_name) { toast.warning('Name required'); return; } setSaving(true); try { if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, form); } else { await supabaseInsert('salvations', form); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { toast.error(error.message); } setSaving(false); };
+  const handleSave = async () => { if (!form.full_name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, form); } else { await supabaseInsert('salvations', form); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { toast.error(error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('salvations', deleteConfirm.id); setDeleteConfirm(null); fetchSalvations(); };
 
   const filteredSalvations = salvations.filter(function(s) { var loc = filterLocation === 'all' || s.location_id === filterLocation; var search = !searchTerm || (s.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (s.phone || '').includes(searchTerm) || (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()); return loc && search; });
@@ -5798,7 +5908,7 @@ function SalvationsPage() {
 
   return (
     <div>
-      <PageHeader title={`❤️ ${t('salvations')}`} subtitle={`${salvations.length} souls won`} actions={<Button onClick={() => openModal()}>➕ {t('recordSalvation')}</Button>} />
+      <PageHeader title={`❤️ ${t('salvations')}`} subtitle={`${salvations.length} ${t('soulsWon')}`} actions={<Button onClick={() => openModal()}>➕ {t('recordSalvation')}</Button>} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <StatCard label={t('total')} value={filteredSalvations.length} icon="❤️" color="#ef4444" />
         <StatCard label="This Month" value={filteredSalvations.filter(s => new Date(s.salvation_date) > new Date(Date.now() - 30*24*60*60*1000)).length} icon="📅" color="#6366f1" />
@@ -5866,7 +5976,7 @@ function GroupsPage() {
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: mainCampus?.id || '' }); setEditingGroup(null); };
   const openModal = (group = null) => { if (group) { setEditingGroup(group); setForm({ name: group.name || '', description: group.description || '', group_type: group.group_type || 'CELL', meeting_day: group.meeting_day || 'WEDNESDAY', meeting_time: group.meeting_time || '18:00', is_active: group.is_active ?? true, location_id: group.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.name) { toast.warning('Name required'); return; } setSaving(true); try { if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, form); } else { await supabaseInsert('groups', form); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { toast.error(error.message); } setSaving(false); };
+  const handleSave = async () => { if (!form.name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, form); } else { await supabaseInsert('groups', form); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { toast.error(error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('groups', deleteConfirm.id); setDeleteConfirm(null); fetchGroups(); };
 
   const filteredGroups = groups.filter(g => filterLocation === 'all' || g.location_id === filterLocation);
@@ -6082,7 +6192,7 @@ function VolunteersPage() {
     <div>
       <PageHeader
         title="🙋‍♂️ Volunteers"
-        subtitle={`Manage your ${volunteers.length} volunteers across ${ministryStats.length} ministries`}
+        subtitle={`${volunteers.length} ${t('manageVolunteersSubtitle')} ${ministryStats.length} ${t('ministries')}`}
         actions={<Button onClick={() => openModal()}>➕ Add Volunteer</Button>}
       />
 
@@ -6466,7 +6576,7 @@ function MessagingPage({ plan, onNavigate }) {
     <div>
       <PageHeader
         title="💬 Messaging Center"
-        subtitle="Send targeted SMS & WhatsApp messages to your congregation"
+        subtitle={t('sendMessages')}
       />
 
       {/* Stats Bar */}
@@ -7102,7 +7212,7 @@ function ReportsPage({ plan, onNavigate }) {
     link.click();
     document.body.removeChild(link);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toast.success('CSV exported!');
+    toast.success(t('csvExportedSuccess'));
   };
 
   const hasBasicReports = canAccessFeature(plan, 'reports_basic');
@@ -7125,7 +7235,7 @@ function ReportsPage({ plan, onNavigate }) {
     <div>
       <PageHeader
         title="📊 Reports"
-        subtitle="Generate and export church reports"
+        subtitle={t('generateReports')}
         actions={
           <div style={{ display: 'flex', gap: '12px' }}>
             <Button variant="secondary" onClick={handlePrint}>🖨️ Print</Button>
@@ -9243,7 +9353,7 @@ function BillingSection({ churchId }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>💳 Current Plan</h3>
-            <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Manage your ChurchSmart subscription</p>
+            <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{t('manageSubscription')}</p>
           </div>
           {subscription?.stripe_customer_id && (
             <button onClick={handleManageBilling} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#6366f1' }}>
@@ -9751,7 +9861,7 @@ function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title={`⚙️ ${t('settings')}`} subtitle="Manage your church settings, users, and automation" />
+      <PageHeader title={`⚙️ ${t('settings')}`} subtitle={t('manageSettings')} />
 
       {/* Settings Navigation */}
       <div className="cs-tab-row" style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
@@ -9994,7 +10104,7 @@ function SettingsPage() {
               <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📍 Church Locations / Branches</h3>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Manage your church campuses and branches</p>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{t('manageLocations')}</p>
                 </div>
                 <Button onClick={() => openLocationModal()}>➕ Add Location</Button>
               </div>
