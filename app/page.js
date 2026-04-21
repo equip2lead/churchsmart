@@ -400,6 +400,11 @@ const translations = {
     selectOption: 'Select...',
     selectLocation: 'Select location...',
     manageSubscription: 'Manage your ChurchSmart subscription',
+    monthlyLabel: 'Monthly',
+    annualLabel: 'Annual',
+    save20: 'Save 20%',
+    billedAnnually: 'billed annually',
+    perYearSave: 'year (save',
 
     // Empty states
     emptyMembers: 'Your congregation starts here. Add your first member to get started.',
@@ -794,6 +799,11 @@ const translations = {
     selectOption: 'Sélectionner...',
     selectLocation: 'Sélectionner un campus...',
     manageSubscription: 'Gérer votre abonnement ChurchSmart',
+    monthlyLabel: 'Mensuel',
+    annualLabel: 'Annuel',
+    save20: 'Économisez 20%',
+    billedAnnually: 'facturé annuellement',
+    perYearSave: 'an (économisez',
 
     // Empty states
     emptyMembers: 'Votre congrégation commence ici. Ajoutez votre premier membre pour démarrer.',
@@ -1670,6 +1680,11 @@ function AppContent() {
       const planParam = params.get('plan');
       if (planParam && ['starter', 'growth', 'pro'].includes(planParam.toLowerCase())) {
         localStorage.setItem('selected_plan', planParam.toLowerCase());
+      }
+      // Store billing period from landing page (?billing=annual|monthly)
+      const billingParam = params.get('billing');
+      if (billingParam && ['monthly', 'annual'].includes(billingParam.toLowerCase())) {
+        localStorage.setItem('selected_billing', billingParam.toLowerCase());
       }
       const joinId = params.get('join');
       const connectSlug = params.get('connect');
@@ -9239,13 +9254,19 @@ function BillingSection({ churchId }) {
   const [upgrading, setUpgrading] = useState(false);
   const [buyingCredits, setBuyingCredits] = useState(false);
   const [highlightedPlan, setHighlightedPlan] = useState(null);
+  const [billingPeriod, setBillingPeriod] = useState('monthly');
 
-  // Check for pre-selected plan from landing page
+  // Check for pre-selected plan and billing period from landing page
   useEffect(() => {
     const selectedPlan = localStorage.getItem('selected_plan');
     if (selectedPlan) {
       setHighlightedPlan(selectedPlan);
       localStorage.removeItem('selected_plan');
+    }
+    const selectedBilling = localStorage.getItem('selected_billing');
+    if (selectedBilling === 'annual' || selectedBilling === 'monthly') {
+      setBillingPeriod(selectedBilling);
+      localStorage.removeItem('selected_billing');
     }
   }, []);
 
@@ -9263,32 +9284,44 @@ function BillingSection({ churchId }) {
       id: 'starter',
       name: 'Starter',
       price: 9,
+      priceAnnual: 7,
+      annualTotal: 84,
+      annualSavings: 24,
       interval: 'month',
       icon: '◆',
       features: ['Up to 200 members', '2 admin users', '1 location', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Basic reports', 'Unlimited email', 'Data import/export', 'Email support (48hr)'],
       excluded: ['WhatsApp messaging', 'SMS messaging', 'Auto birthday messages', 'Multi-location', 'Advanced reports'],
-      stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER
+      stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER,
+      stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_ANNUAL
     },
     {
       id: 'growth',
       name: 'Growth',
       price: 25,
+      priceAnnual: 20,
+      annualTotal: 240,
+      annualSavings: 60,
       interval: 'month',
       icon: '◆◆',
       popular: true,
       features: ['Up to 1,000 members', '5 admin users', '3 locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '100 WhatsApp messages/mo', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Email support (24hr)'],
       excluded: ['SMS messaging (contact sales)'],
-      stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH
+      stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH,
+      stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH_ANNUAL
     },
     {
       id: 'pro',
       name: 'Pro',
       price: 49,
+      priceAnnual: 39,
+      annualTotal: 468,
+      annualSavings: 120,
       interval: 'month',
       icon: '◆◆◆',
       features: ['Unlimited members', 'Unlimited admin users', 'Unlimited locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '500 WhatsApp messages/mo', 'SMS (contact sales)', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Phone + WhatsApp support'],
       excluded: [],
-      stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO
+      stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO,
+      stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL
     }
   ];
 
@@ -9338,7 +9371,8 @@ function BillingSection({ churchId }) {
 
   const handleUpgrade = async (plan) => {
     if (plan.id === 'free') return;
-    if (!plan.stripePriceId) {
+    const priceId = billingPeriod === 'annual' ? plan.stripePriceIdAnnual : plan.stripePriceId;
+    if (!priceId) {
       toast.warning('Stripe is not configured yet. Contact support to upgrade.');
       return;
     }
@@ -9349,7 +9383,7 @@ function BillingSection({ churchId }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           churchId,
-          priceId: plan.stripePriceId,
+          priceId,
           planId: plan.id,
           customerEmail: JSON.parse(localStorage.getItem('churchsmart_user'))?.email
         })
@@ -9456,7 +9490,7 @@ function BillingSection({ churchId }) {
               <p style={{ margin: 0, fontSize: '14px', color: '#15803d' }}>Subscribe now to unlock all {hp.name} features for your church.</p>
             </div>
             <button onClick={() => handleUpgrade(hp)} disabled={upgrading} style={{ padding: '14px 32px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: upgrading ? 'not-allowed' : 'pointer', opacity: upgrading ? 0.7 : 1, whiteSpace: 'nowrap' }}>
-              {upgrading ? '⏳ Redirecting...' : `Subscribe to ${hp.name} — $${hp.price}/mo`}
+              {upgrading ? '⏳ Redirecting...' : `Subscribe to ${hp.name} — $${billingPeriod === 'annual' ? hp.priceAnnual : hp.price}/mo${billingPeriod === 'annual' ? ` (${t('billedAnnually')})` : ''}`}
             </button>
           </div>
         );
@@ -9544,7 +9578,45 @@ function BillingSection({ churchId }) {
 
       {/* Plans Grid */}
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📦 Available Plans</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📦 Available Plans</h3>
+          {/* Monthly / Annual Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span
+              onClick={() => setBillingPeriod('monthly')}
+              style={{ fontSize: '14px', fontWeight: billingPeriod === 'monthly' ? '700' : '500', color: billingPeriod === 'monthly' ? '#111827' : '#9ca3af', cursor: 'pointer' }}
+            >
+              {t('monthlyLabel')}
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={billingPeriod === 'annual'}
+              onClick={() => setBillingPeriod(billingPeriod === 'annual' ? 'monthly' : 'annual')}
+              style={{
+                position: 'relative', width: '44px', height: '24px', borderRadius: '9999px',
+                border: 'none', cursor: 'pointer', padding: 0,
+                backgroundColor: billingPeriod === 'annual' ? '#6366f1' : '#d1d5db',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: '2px', left: billingPeriod === 'annual' ? '22px' : '2px',
+                width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white',
+                transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+              }} />
+            </button>
+            <span
+              onClick={() => setBillingPeriod('annual')}
+              style={{ fontSize: '14px', fontWeight: billingPeriod === 'annual' ? '700' : '500', color: billingPeriod === 'annual' ? '#111827' : '#9ca3af', cursor: 'pointer' }}
+            >
+              {t('annualLabel')}
+            </span>
+            <span style={{ padding: '2px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: '700', backgroundColor: '#dcfce7', color: '#166534' }}>
+              {t('save20')}
+            </span>
+          </div>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           {plans.map(plan => {
             const isCurrent = plan.id === currentPlan.id;
@@ -9572,11 +9644,16 @@ function BillingSection({ churchId }) {
                   <div style={{ fontSize: '18px', marginBottom: '8px', color: '#6366f1', letterSpacing: '4px' }}>{plan.icon}</div>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700' }}>{plan.name}</h4>
                   <div style={{ fontSize: '32px', fontWeight: '800', color: '#111827' }}>
-                    {plan.price === 0 ? 'Free' : `$${plan.price}`}
+                    {plan.price === 0 ? 'Free' : `$${billingPeriod === 'annual' && plan.priceAnnual ? plan.priceAnnual : plan.price}`}
                   </div>
                   <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#9ca3af' }}>
-                    {plan.price === 0 ? '30-day trial' : 'per month'}
+                    {plan.price === 0 ? '30-day trial' : (billingPeriod === 'annual' && plan.priceAnnual ? `per month, ${t('billedAnnually')}` : 'per month')}
                   </p>
+                  {billingPeriod === 'annual' && plan.annualTotal && (
+                    <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#10b981', fontWeight: '600' }}>
+                      ${plan.annualTotal}/{t('perYearSave')} ${plan.annualSavings})
+                    </p>
+                  )}
                 </div>
                 <div style={{ marginBottom: '20px' }}>
                   {plan.features.map((f, i) => (
