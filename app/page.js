@@ -422,6 +422,12 @@ const translations = {
     goodMorning: 'Good morning',
     goodAfternoon: 'Good afternoon',
     goodEvening: 'Good evening',
+
+    // Access control
+    accessDenied: 'Access Denied',
+    noPermission: "You don't have permission to view this page.",
+    goToDashboard: 'Go to Dashboard',
+    contactAdmin: 'Contact your church administrator for access.',
   },
   fr: {
     // General
@@ -821,6 +827,12 @@ const translations = {
     goodMorning: 'Bonjour',
     goodAfternoon: 'Bon après-midi',
     goodEvening: 'Bonsoir',
+
+    // Access control
+    accessDenied: 'Accès Refusé',
+    noPermission: "Vous n'avez pas la permission de voir cette page.",
+    goToDashboard: 'Aller au Tableau de Bord',
+    contactAdmin: "Contactez votre administrateur d'église pour obtenir l'accès.",
   }
 };
 
@@ -1061,7 +1073,18 @@ async function uploadPhoto(file, bucket = 'avatars') {
 // AUTH CONTEXT
 // ==========================================
 const AuthContext = createContext(null);
-const PermissionsContext = createContext({ permissions: {}, hasPermission: () => true, isAdmin: true });
+const PermissionsContext = createContext({ hasAccess: () => true, hasPermission: () => true, isAdmin: true, isFinanceVisible: true });
+
+const ROLE_ACCESS = {
+  ADMIN: ['dashboard', 'members', 'visitors', 'salvations', 'attendance', 'giving', 'events', 'groups', 'volunteers', 'prayer', 'messaging', 'reports', 'settings'],
+  STAFF: ['dashboard', 'members', 'visitors', 'salvations', 'attendance', 'events', 'groups', 'prayer'],
+  VOLUNTEER: ['dashboard', 'visitors', 'attendance', 'events', 'groups', 'prayer'],
+};
+
+// Legacy module keys (used by older PermissionGate call sites) → canonical page keys
+const MODULE_TO_PAGE = {
+  services: 'events',
+};
 
 function usePermissions() {
   return useContext(PermissionsContext);
@@ -1069,64 +1092,26 @@ function usePermissions() {
 
 function PermissionsProvider({ children }) {
   const { user } = useAuth();
-  const [permissions, setPermissions] = useState({});
-  const [loaded, setLoaded] = useState(false);
+  const isSuperAdmin = !!user?.is_super_admin;
+  const rawRole = (user?.role || 'VOLUNTEER').toUpperCase();
+  const role = ROLE_ACCESS[rawRole] ? rawRole : (rawRole === 'PASTOR' ? 'STAFF' : 'VOLUNTEER');
+  const isAdmin = role === 'ADMIN' || isSuperAdmin;
+  const isFinanceVisible = isAdmin;
 
-  const isAdmin = user?.role === 'ADMIN' || user?.is_super_admin;
-
-  useEffect(() => {
-    if (!user?.id || !user?.church_id) { setPermissions({}); setLoaded(true); return; }
-    if (isAdmin) { setPermissions({}); setLoaded(true); return; } // Admin gets all access
-
-    const fetchPermissions = async () => {
-      try {
-        // Get role assignments for this user
-        const assignments = await supabaseQuery('user_role_assignments', {
-          filters: [
-            { column: 'church_id', operator: 'eq', value: user.church_id },
-            { column: 'user_email', operator: 'eq', value: user.email }
-          ]
-        });
-
-        if (assignments && assignments.length > 0) {
-          // Get the role details for each assignment
-          const roleIds = [...new Set(assignments.map(a => a.role_id).filter(Boolean))];
-          let mergedPermissions = {};
-
-          for (const roleId of roleIds) {
-            const roles = await supabaseQuery('user_roles', {
-              filters: [{ column: 'id', operator: 'eq', value: roleId }]
-            });
-            if (roles && roles[0]?.permissions) {
-              const rolePerms = typeof roles[0].permissions === 'string' ? JSON.parse(roles[0].permissions) : roles[0].permissions;
-              Object.entries(rolePerms).forEach(([key, val]) => {
-                if (val) mergedPermissions[key] = true; // Union of all assigned role permissions
-              });
-            }
-          }
-          setPermissions(mergedPermissions);
-        } else {
-          // No role assignment — STAFF users with no role get basic access (dashboard, calendar only)
-          setPermissions({});
-        }
-      } catch (error) {
-        console.error('Error fetching permissions:', error);
-        setPermissions({});
-      }
-      setLoaded(true);
-    };
-
-    fetchPermissions();
-  }, [user?.id, user?.church_id, user?.email, user?.role, isAdmin]);
+  const hasAccess = (page) => {
+    if (!page) return true;
+    if (isSuperAdmin) return true;
+    return ROLE_ACCESS[role]?.includes(page) || false;
+  };
 
   const hasPermission = (moduleKey) => {
-    if (isAdmin) return true; // Admin & super admin bypass
-    if (!moduleKey) return true; // No permission needed (dashboard, calendar)
-    return !!permissions[moduleKey];
+    if (!moduleKey) return true;
+    const pageKey = MODULE_TO_PAGE[moduleKey] || moduleKey;
+    return hasAccess(pageKey);
   };
 
   return (
-    <PermissionsContext.Provider value={{ permissions, hasPermission, isAdmin, loaded }}>
+    <PermissionsContext.Provider value={{ hasAccess, hasPermission, isAdmin, isFinanceVisible, isSuperAdmin, role }}>
       {children}
     </PermissionsContext.Provider>
   );
@@ -3054,26 +3039,26 @@ function Dashboard() {
     };
     fetchBranding();
   }, [CHURCH_ID]);
-  const { hasPermission } = usePermissions();
+  const { hasAccess } = usePermissions();
 
-  // Map sidebar items to permission keys (null = no permission needed)
+  // Map sidebar items to role access page keys (null = always visible)
   const allMenuItems = [
-    { id: 'dashboard', label: t('dashboard'), icon: '📊', perm: null },
-    { id: 'members', label: t('members'), icon: '👥', perm: 'members' },
-    { id: 'visitors', label: t('visitors'), icon: '🚶', perm: 'visitors' },
-    { id: 'attendance', label: t('attendance'), icon: '📅', perm: 'attendance' },
-    { id: 'calendar', label: t('calendar'), icon: '🗓️', perm: null },
-    { id: 'giving', label: t('giving'), icon: '💰', perm: 'giving' },
-    { id: 'salvations', label: t('salvations'), icon: '❤️', perm: 'salvations' },
-    { id: 'groups', label: t('groups'), icon: '👨‍👩‍👧‍👦', perm: 'groups' },
-    { id: 'volunteers', label: 'Volunteers', icon: '🙋‍♂️', perm: 'groups' },
-    { id: 'messaging', label: 'Messaging', icon: '💬', perm: 'members' },
-    { id: 'reports', label: 'Reports', icon: '📊', perm: null },
-    { id: 'services', label: t('services'), icon: '⛪', perm: 'services' },
-    { id: 'settings', label: t('settings'), icon: '⚙️', perm: 'settings' },
-    ...(user?.is_super_admin ? [{ id: 'superadmin', label: '🛡️ Super Admin', icon: '🛡️', perm: null }] : []),
+    { id: 'dashboard', label: t('dashboard'), icon: '📊', page: 'dashboard' },
+    { id: 'members', label: t('members'), icon: '👥', page: 'members' },
+    { id: 'visitors', label: t('visitors'), icon: '🚶', page: 'visitors' },
+    { id: 'attendance', label: t('attendance'), icon: '📅', page: 'attendance' },
+    { id: 'calendar', label: t('calendar'), icon: '🗓️', page: null },
+    { id: 'giving', label: t('giving'), icon: '💰', page: 'giving' },
+    { id: 'salvations', label: t('salvations'), icon: '❤️', page: 'salvations' },
+    { id: 'groups', label: t('groups'), icon: '👨‍👩‍👧‍👦', page: 'groups' },
+    { id: 'volunteers', label: 'Volunteers', icon: '🙋‍♂️', page: 'volunteers' },
+    { id: 'messaging', label: 'Messaging', icon: '💬', page: 'messaging' },
+    { id: 'reports', label: 'Reports', icon: '📊', page: 'reports' },
+    { id: 'services', label: t('services'), icon: '⛪', page: 'events' },
+    { id: 'settings', label: t('settings'), icon: '⚙️', page: 'settings' },
+    ...(user?.is_super_admin ? [{ id: 'superadmin', label: '🛡️ Super Admin', icon: '🛡️', page: null }] : []),
   ];
-  const menuItems = allMenuItems.filter(item => hasPermission(item.perm));
+  const menuItems = allMenuItems.filter(item => hasAccess(item.page));
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -3147,18 +3132,18 @@ function Dashboard() {
             </div>
           )}
           {activeTab === 'dashboard' && <DashboardPage />}
-          {activeTab === 'members' && <PermissionGate permission="members" fallback={<NoAccessPage module="Members" />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
-          {activeTab === 'visitors' && <PermissionGate permission="visitors" fallback={<NoAccessPage module="Visitors" />}><VisitorsPage /></PermissionGate>}
-          {activeTab === 'attendance' && <PermissionGate permission="attendance" fallback={<NoAccessPage module="Attendance" />}><AttendancePage /></PermissionGate>}
+          {activeTab === 'members' && <PermissionGate permission="members" fallback={<AccessDenied onNavigate={setActiveTab} />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
+          {activeTab === 'visitors' && <PermissionGate permission="visitors" fallback={<AccessDenied onNavigate={setActiveTab} />}><VisitorsPage /></PermissionGate>}
+          {activeTab === 'attendance' && <PermissionGate permission="attendance" fallback={<AccessDenied onNavigate={setActiveTab} />}><AttendancePage /></PermissionGate>}
           {activeTab === 'calendar' && <CalendarPage />}
-          {activeTab === 'giving' && <PermissionGate permission="giving" fallback={<NoAccessPage module="Giving & Finance" />}><GivingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
-          {activeTab === 'salvations' && <PermissionGate permission="salvations" fallback={<NoAccessPage module="Salvations" />}><SalvationsPage /></PermissionGate>}
-          {activeTab === 'groups' && (canAccessFeature(churchPlan, 'groups') ? <PermissionGate permission="groups" fallback={<NoAccessPage module="Groups" />}><GroupsPage /></PermissionGate> : <UpgradePrompt feature="groups" featureLabel="Groups & Cell Management" onNavigate={setActiveTab} />)}
-          {activeTab === 'volunteers' && (canAccessFeature(churchPlan, 'volunteers') ? <PermissionGate permission="groups" fallback={<NoAccessPage module="Volunteers" />}><VolunteersPage /></PermissionGate> : <UpgradePrompt feature="volunteers" featureLabel="Volunteer Management" onNavigate={setActiveTab} />)}
-          {activeTab === 'messaging' && <PermissionGate permission="members" fallback={<NoAccessPage module="Messaging" />}><MessagingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
-          {activeTab === 'reports' && <ReportsPage plan={churchPlan} onNavigate={setActiveTab} />}
-          {activeTab === 'services' && <PermissionGate permission="services" fallback={<NoAccessPage module="Services & Events" />}><ServicesPage /></PermissionGate>}
-          {activeTab === 'settings' && <PermissionGate permission="settings" fallback={<NoAccessPage module="Settings" />}><SettingsPage /></PermissionGate>}
+          {activeTab === 'giving' && <PermissionGate permission="giving" fallback={<AccessDenied onNavigate={setActiveTab} />}><GivingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
+          {activeTab === 'salvations' && <PermissionGate permission="salvations" fallback={<AccessDenied onNavigate={setActiveTab} />}><SalvationsPage /></PermissionGate>}
+          {activeTab === 'groups' && (canAccessFeature(churchPlan, 'groups') ? <PermissionGate permission="groups" fallback={<AccessDenied onNavigate={setActiveTab} />}><GroupsPage /></PermissionGate> : <UpgradePrompt feature="groups" featureLabel="Groups & Cell Management" onNavigate={setActiveTab} />)}
+          {activeTab === 'volunteers' && (canAccessFeature(churchPlan, 'volunteers') ? <PermissionGate permission="volunteers" fallback={<AccessDenied onNavigate={setActiveTab} />}><VolunteersPage /></PermissionGate> : <UpgradePrompt feature="volunteers" featureLabel="Volunteer Management" onNavigate={setActiveTab} />)}
+          {activeTab === 'messaging' && <PermissionGate permission="messaging" fallback={<AccessDenied onNavigate={setActiveTab} />}><MessagingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
+          {activeTab === 'reports' && <PermissionGate permission="reports" fallback={<AccessDenied onNavigate={setActiveTab} />}><ReportsPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
+          {activeTab === 'services' && <PermissionGate permission="events" fallback={<AccessDenied onNavigate={setActiveTab} />}><ServicesPage /></PermissionGate>}
+          {activeTab === 'settings' && <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><SettingsPage /></PermissionGate>}
           {activeTab === 'superadmin' && <SuperAdminPage />}
         </main>
       </div>
@@ -3280,17 +3265,28 @@ function PermissionGate({ permission, children, fallback = null }) {
   return fallback;
 }
 
-function NoAccessPage({ module }) {
+function AccessDenied({ onNavigate }) {
+  const { t } = useLanguage();
+  const goDashboard = () => {
+    if (onNavigate) { onNavigate('dashboard'); return; }
+    const el = typeof document !== 'undefined' ? document.querySelector('[data-tab="dashboard"]') : null;
+    if (el) el.click();
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', textAlign: 'center' }}>
       <span style={{ fontSize: '64px', marginBottom: '16px' }}>🔒</span>
-      <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>Access Restricted</h2>
-      <p style={{ margin: 0, fontSize: '15px', color: '#6b7280', maxWidth: '400px' }}>
-        You don't have permission to access {module || 'this module'}. Contact your church administrator to request access.
-      </p>
+      <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{t('accessDenied')}</h2>
+      <p style={{ margin: 0, fontSize: '15px', color: '#6b7280', maxWidth: '440px' }}>{t('noPermission')}</p>
+      <p style={{ margin: '8px 0 20px', fontSize: '13px', color: '#9ca3af', maxWidth: '440px' }}>{t('contactAdmin')}</p>
+      <button onClick={goDashboard} style={{ padding: '10px 20px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+        {t('goToDashboard')}
+      </button>
     </div>
   );
 }
+
+// Legacy alias — kept so existing PermissionGate call sites continue to work.
+const NoAccessPage = AccessDenied;
 
 // ==========================================
 // UI COMPONENTS
@@ -3561,6 +3557,7 @@ function DashboardPage() {
   const { t } = useLanguage();
   const toast = useToast();
   const { user } = useAuth();
+  const { isFinanceVisible } = usePermissions();
   const CHURCH_ID = user?.church_id;
   const [stats, setStats] = useState({ members: 0, visitors: 0, salvations: 0, donations: 0 });
   const [upcomingBirthdays, setUpcomingBirthdays] = useState([]);
@@ -3804,10 +3801,11 @@ function DashboardPage() {
             <StatCard label={t('totalMembers')} value={stats.members} icon="👥" color="#6366f1" trend="+5%" />
             <StatCard label={t('totalVisitors')} value={stats.visitors} icon="🚶" color="#f59e0b" trend="+3" />
             <StatCard label={t('salvations')} value={stats.salvations} icon="❤️" color="#ef4444" trend="+2" />
-            <StatCard label={t('totalGiving')} value={formatCurrency(stats.donations)} icon="💰" color="#10b981" trend="+8%" />
+            {isFinanceVisible && <StatCard label={t('totalGiving')} value={formatCurrency(stats.donations)} icon="💰" color="#10b981" trend="+8%" />}
           </div>
 
           {/* Weekly Giving Chart */}
+          {isFinanceVisible && (
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
@@ -3820,10 +3818,10 @@ function DashboardPage() {
               {weeklyGiving.map((day, i) => (
                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                   <div style={{ width: '100%', backgroundColor: '#e0e7ff', borderRadius: '8px', position: 'relative', height: '100px', display: 'flex', alignItems: 'flex-end' }}>
-                    <div style={{ 
-                      width: '100%', 
-                      backgroundColor: '#6366f1', 
-                      borderRadius: '8px', 
+                    <div style={{
+                      width: '100%',
+                      backgroundColor: '#6366f1',
+                      borderRadius: '8px',
                       height: `${Math.max((day.amount / maxDayAmount) * 100, 5)}%`,
                       minHeight: day.amount > 0 ? '10px' : '4px',
                       transition: 'height 0.3s ease'
@@ -3835,6 +3833,7 @@ function DashboardPage() {
               ))}
             </div>
           </div>
+          )}
 
           {/* Upcoming Birthdays */}
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
@@ -3870,11 +3869,13 @@ function DashboardPage() {
             {/* Recent Activity */}
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
               <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>⚡ Recent Activity</h3>
-              {recentActivity.length === 0 ? (
+              {(() => {
+                const visibleActivity = isFinanceVisible ? recentActivity : recentActivity.filter(a => a.entity_type !== 'donation');
+                return visibleActivity.length === 0 ? (
                 <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No recent activity</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {recentActivity.map((activity, i) => (
+                  {visibleActivity.map((activity, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                       <div style={{ width: '36px', height: '36px', backgroundColor: '#f3f4f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
                         {activity.entity_type === 'donation' ? '💰' : activity.entity_type === 'attendance' ? '📊' : activity.entity_type === 'salvation' ? '❤️' : activity.entity_type === 'visitor' ? '🚶' : '📝'}
@@ -3887,7 +3888,8 @@ function DashboardPage() {
                     </div>
                   ))}
                 </div>
-              )}
+              );
+              })()}
             </div>
 
             {/* Upcoming Services & Events */}
