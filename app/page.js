@@ -2378,7 +2378,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [step, setStep] = useState(1); // Registration steps: 1=user info, 2=church info, 3=OTP
+  const [step, setStep] = useState(1); // Registration steps: 1=user info + signUp/OTP-send, 2=OTP verify
 
   // Detect password reset redirect
   useEffect(() => {
@@ -2387,7 +2387,7 @@ function LoginPage() {
       setShowResetForm(true);
       window.history.replaceState(null, '', window.location.pathname);
     }
-  }, []); // Registration steps: 1=user info, 2=church info
+  }, []);
 
   const [form, setForm] = useState({
     email: '', password: '', full_name: '', phone: '', confirm_password: '',
@@ -2432,7 +2432,7 @@ function LoginPage() {
       churchPhone: 'Church Phone', churchEmail: 'Church Email', pastorName: 'Senior Pastor',
       denomination: 'Denomination', currency: 'Currency',
       back: '← Back', finishBtn: 'Send Verification Code →', creating: 'Sending...',
-      step1: 'Your Info', step2: 'Church Info', step3: 'Verify'
+      step1: 'Sign Up', step2: 'Verify'
     },
     fr: {
       welcome: 'Bon retour!', signInDesc: 'Connectez-vous pour accéder à votre tableau de bord',
@@ -2469,7 +2469,7 @@ function LoginPage() {
       churchPhone: 'Téléphone de l\'Église', churchEmail: 'Email de l\'Église', pastorName: 'Pasteur Principal',
       denomination: 'Dénomination', currency: 'Devise',
       back: '← Retour', finishBtn: 'Envoyer le Code →', creating: 'Envoi...',
-      step1: 'Vos Infos', step2: 'Info Église', step3: 'Vérifier'
+      step1: 'Inscription', step2: 'Vérifier'
     }
   };
   const t = txt[lang];
@@ -2490,9 +2490,6 @@ function LoginPage() {
         if (form.password !== form.confirm_password) { setError(lang === 'fr' ? 'Les mots de passe ne correspondent pas' : 'Passwords do not match'); return; }
         if (form.password.length < 8) { setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 8 caractères' : 'Password must be at least 8 characters'); return; }
         if (!/[A-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError(lang === 'fr' ? 'Le mot de passe doit contenir une majuscule et un chiffre' : 'Password must include an uppercase letter and a number'); return; }
-        setStep(2);
-      } else if (step === 2) {
-        if (!form.church_name) { setError(lang === 'fr' ? 'Le nom de l\'église est requis' : 'Church name is required'); return; }
         // Create Supabase Auth account — this sends OTP code email (using our custom template)
         setLoading(true);
         try {
@@ -2516,12 +2513,12 @@ function LoginPage() {
           }
 
           setOtpEmail(form.email.trim().toLowerCase());
-          setStep(3);
+          setStep(2);
         } catch (err) {
           setError('Failed to send verification code');
         }
         setLoading(false);
-      } else if (step === 3) {
+      } else if (step === 2) {
         // Verify the OTP code from email
         if (!otpCode || otpCode.length !== 8) { setError(lang === 'fr' ? 'Entrez le code à 8 chiffres' : 'Enter the 8-digit code'); return; }
         setLoading(true);
@@ -2543,30 +2540,11 @@ function LoginPage() {
             await supabase.auth.setSession(verifyData.session);
           }
 
-          // Email verified — now create the church and user profile
-          const result = await register(form);
-          if (result.success) {
-            const { data: users } = await supabase
-              .from('church_users')
-              .select('*')
-              .eq('email', form.email.trim().toLowerCase())
-              .eq('is_active', true)
-              .limit(1);
-            if (users?.length > 0) {
-              const dbUser = users[0];
-              const sessionUser = {
-                id: dbUser.id, email: dbUser.email, name: dbUser.full_name,
-                role: dbUser.role, church_id: dbUser.church_id,
-                phone: dbUser.phone, is_super_admin: dbUser.is_super_admin || false
-              };
-              localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
-              window.location.reload();
-              return;
-            }
-            // Fallback if profile lookup fails after register success
-            setSuccess(lang === 'fr' ? 'Compte créé! Connectez-vous.' : 'Account created! Sign in now.');
-            setIsLogin(true); setStep(1); setOtpCode('');
-          } else { setError(result.error); }
+          // Reload — AuthProvider's onAuthStateChange creates the church_users row
+          // (role='ADMIN', church_id=NULL) on first sign-in, then App routes to
+          // GoogleChurchSetup where the user enters church info exactly once.
+          window.location.reload();
+          return;
         } catch (err) {
           setError(err.message || 'Verification failed');
         }
@@ -2692,11 +2670,6 @@ function LoginPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: step >= 2 ? '#4f46e5' : '#e5e7eb', color: step >= 2 ? 'white' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>2</span>
                 <span style={{ fontSize: '13px', color: step === 2 ? '#4f46e5' : '#6b7280', fontWeight: step === 2 ? '600' : '400' }}>{t.step2}</span>
-              </div>
-              <div style={{ flex: 1, height: '2px', backgroundColor: step >= 3 ? '#4f46e5' : '#e5e7eb' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: step >= 3 ? '#4f46e5' : '#e5e7eb', color: step >= 3 ? 'white' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>3</span>
-                <span style={{ fontSize: '13px', color: step === 3 ? '#4f46e5' : '#6b7280', fontWeight: step === 3 ? '600' : '400' }}>{t.step3}</span>
               </div>
             </div>
           )}
@@ -2839,71 +2812,8 @@ function LoginPage() {
               </>
             )}
 
-            {/* REGISTER STEP 2 - Church Info */}
+            {/* REGISTER STEP 2 - OTP Verification */}
             {!isLogin && step === 2 && (
-              <>
-                <div style={{ padding: '14px 16px', backgroundColor: '#eef2ff', borderRadius: '10px', marginBottom: '20px', border: '1px solid #c7d2fe' }}>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#4338ca', fontWeight: '500' }}>⛪ {t.churchInfoDesc}</p>
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={labelStyle}>{t.churchName}</label>
-                  <input type="text" value={form.church_name} onChange={(e) => setForm({ ...form, church_name: e.target.value })} placeholder="e.g., Fire of God Ministry" style={inputStyle}
-                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={labelStyle}>{t.churchCity}</label>
-                    <input type="text" value={form.church_city} onChange={(e) => setForm({ ...form, church_city: e.target.value })} placeholder="Douala" style={inputStyle}
-                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>{t.denomination}</label>
-                    <input type="text" value={form.church_denomination} onChange={(e) => setForm({ ...form, church_denomination: e.target.value })} placeholder="Pentecostal" style={inputStyle}
-                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
-                  </div>
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={labelStyle}>{t.churchAddress}</label>
-                  <input type="text" value={form.church_address} onChange={(e) => setForm({ ...form, church_address: e.target.value })} placeholder="123 Faith Avenue" style={inputStyle}
-                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={labelStyle}>{t.pastorName}</label>
-                    <input type="text" value={form.church_pastor} onChange={(e) => setForm({ ...form, church_pastor: e.target.value })} placeholder="Pastor John" style={inputStyle}
-                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>{t.currency}</label>
-                    <select value={form.church_currency} onChange={(e) => setForm({ ...form, church_currency: e.target.value })} style={inputStyle}>
-                      <option value="XAF">XAF (CFA Franc)</option>
-                      <option value="NGN">NGN (Naira)</option>
-                      <option value="GHS">GHS (Cedi)</option>
-                      <option value="KES">KES (Shilling)</option>
-                      <option value="USD">USD (Dollar)</option>
-                      <option value="EUR">EUR (Euro)</option>
-                      <option value="GBP">GBP (Pound)</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={labelStyle}>{t.churchPhone}</label>
-                    <input type="tel" value={form.church_phone} onChange={(e) => setForm({ ...form, church_phone: e.target.value })} placeholder="+237..." style={inputStyle}
-                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>{t.churchEmail}</label>
-                    <input type="email" value={form.church_email} onChange={(e) => setForm({ ...form, church_email: e.target.value })} placeholder="info@church.com" style={inputStyle}
-                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
-                  </div>
-                </div>
-              </>
-            )}
-
-
-            {/* REGISTER STEP 3 - OTP Verification */}
-            {!isLogin && step === 3 && (
               <>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                   <div style={{ fontSize: '48px', marginBottom: '12px' }}>📧</div>
@@ -2932,7 +2842,7 @@ function LoginPage() {
 
             {/* Buttons */}
             <div style={{ display: 'flex', gap: '12px' }}>
-              {!isLogin && (step === 2 || step === 3) && (
+              {!isLogin && step === 2 && (
                 <button type="button" onClick={() => setStep(step - 1)}
                   style={{ flex: 1, padding: '14px', backgroundColor: 'white', color: '#6b7280', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
                   {t.back}
@@ -2940,7 +2850,7 @@ function LoginPage() {
               )}
               <button type="submit" disabled={loading}
                 style={{ flex: 1, padding: '14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)' }}>
-                {loading ? `⏳ ${isLogin ? t.signingIn : step === 3 ? t.verifying : t.creating}` : isLogin ? t.signInBtn : step === 1 ? t.createBtn : step === 2 ? t.finishBtn : t.verifyCode}
+                {loading ? `⏳ ${isLogin ? t.signingIn : step === 2 ? t.verifying : t.creating}` : isLogin ? t.signInBtn : step === 1 ? t.finishBtn : t.verifyCode}
               </button>
             </div>
           </form>
