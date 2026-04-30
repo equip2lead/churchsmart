@@ -2181,7 +2181,12 @@ function GoogleChurchSetup({ user }) {
       churchName: 'Church Name *', city: 'City', denomination: 'Denomination',
       pastor: 'Senior Pastor', phone: 'Church Phone', email: 'Church Email',
       currency: 'Currency', create: 'Create My Church →', creating: 'Creating...',
-      logout: 'Sign out', required: 'Church name is required'
+      logout: 'Sign out', required: 'Church name is required',
+      failedCreateChurch: 'Failed to create church. Please try again.',
+      failedLinkAccount: 'Failed to link account. Please try again.',
+      churchCreated: 'Church created! Loading your dashboard...',
+      timeoutError: 'Network timeout — please try again.',
+      unexpectedError: 'Unexpected error — please try again.'
     },
     fr: {
       title: 'Bienvenue sur ChurchSmart!',
@@ -2189,7 +2194,12 @@ function GoogleChurchSetup({ user }) {
       churchName: 'Nom de l\'Église *', city: 'Ville', denomination: 'Dénomination',
       pastor: 'Pasteur Principal', phone: 'Téléphone', email: 'Email de l\'Église',
       currency: 'Devise', create: 'Créer Mon Église →', creating: 'Création...',
-      logout: 'Se déconnecter', required: 'Le nom de l\'église est requis'
+      logout: 'Se déconnecter', required: 'Le nom de l\'église est requis',
+      failedCreateChurch: 'Échec de la création de l\'église. Veuillez réessayer.',
+      failedLinkAccount: 'Échec de la liaison du compte. Veuillez réessayer.',
+      churchCreated: 'Église créée! Chargement de votre tableau de bord...',
+      timeoutError: 'Délai de connexion dépassé — veuillez réessayer.',
+      unexpectedError: 'Erreur inattendue — veuillez réessayer.'
     }
   };
   const t = txt[lang];
@@ -2200,12 +2210,26 @@ function GoogleChurchSetup({ user }) {
   const handleCreate = async () => {
     if (!form.church_name.trim()) { toast.warning(t.required); return; }
     setLoading(true);
+
+    // 15s timeout safety net. Aborts the underlying fetch and rejects the await,
+    // so a hung GoTrue auth lock or stalled network surfaces as a toast instead of an indefinite spinner.
+    const withTimeout = (factory, ms = 15000) => {
+      const controller = new AbortController();
+      const timeout = new Promise((_, reject) => setTimeout(() => {
+        controller.abort();
+        const err = new Error('TIMEOUT');
+        err.name = 'TimeoutError';
+        reject(err);
+      }, ms));
+      return Promise.race([factory(controller.signal), timeout]);
+    };
+
     try {
       const slug = form.church_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + 30);
-      const { data: newChurch, error: churchError } = await supabase
+      const { data: newChurch, error: churchError } = await withTimeout((signal) => supabase
         .from('churches')
         .insert({
           name: form.church_name,
@@ -2219,16 +2243,15 @@ function GoogleChurchSetup({ user }) {
           trial_end: trialEnd.toISOString()
         })
         .select()
-        .single();
+        .single()
+        .abortSignal(signal));
 
       if (churchError || !newChurch?.id) {
-        toast.error(t.failedCreateChurch || 'Failed to create church. Please try again.');
-        setLoading(false);
+        toast.error(t.failedCreateChurch);
         return;
       }
 
-      // Update existing church_users row with church_id
-      const { error: updateError } = await supabase
+      const { error: updateError } = await withTimeout((signal) => supabase
         .from('church_users')
         .update({
           church_id: newChurch.id,
@@ -2236,29 +2259,32 @@ function GoogleChurchSetup({ user }) {
           role: 'ADMIN',
           is_active: true
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .abortSignal(signal));
 
       if (updateError) {
         await supabase.from('churches').delete().eq('id', newChurch.id);
-        toast.error(t.failedLinkAccount || 'Failed to link account. Please try again.');
-        setLoading(false);
+        toast.error(t.failedLinkAccount);
         return;
       }
 
-      // Send welcome email (fire-and-forget — don't block setup)
       fetch('/api/email/welcome', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user.email, churchName: form.church_name, adminName: user.name })
       }).then(() => supabase.from('churches').update({ welcome_email_sent: true }).eq('id', newChurch.id)).catch(() => {});
 
-      // Re-load profile so user.church_id is set → redirects to dashboard
-      toast.success(t.churchCreated || 'Church created! Loading your dashboard...');
+      toast.success(t.churchCreated);
       await loadUserProfile(user.email);
     } catch (err) {
-      toast.error(err.message);
+      if (err?.name === 'TimeoutError') {
+        toast.error(t.timeoutError);
+      } else {
+        toast.error(err?.message || t.unexpectedError);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -2511,37 +2537,34 @@ function LoginPage() {
             return;
           }
 
+          // verifyOtp already establishes the session — adopt it directly.
+          // Manual signOut/signInWithPassword here can deadlock the GoTrue session lock.
+          if (verifyData?.session) {
+            await supabase.auth.setSession(verifyData.session);
+          }
+
           // Email verified — now create the church and user profile
           const result = await register(form);
           if (result.success) {
-            // Auto-login with the verified credentials
-            await supabase.auth.signOut();
-            const { error: loginErr } = await supabase.auth.signInWithPassword({
-              email: form.email.trim().toLowerCase(),
-              password: form.password
-            });
-            if (!loginErr) {
-              const { data: users } = await supabase
-                .from('church_users')
-                .select('*')
-                .eq('email', form.email.trim().toLowerCase())
-                .eq('is_active', true)
-                .limit(1);
-              if (users?.length > 0) {
-                const dbUser = users[0];
-                const sessionUser = {
-                  id: dbUser.id, email: dbUser.email, name: dbUser.full_name,
-                  role: dbUser.role, church_id: dbUser.church_id,
-                  phone: dbUser.phone, is_super_admin: dbUser.is_super_admin || false
-                };
-                localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
-                window.location.reload();
-                return;
-              }
+            const { data: users } = await supabase
+              .from('church_users')
+              .select('*')
+              .eq('email', form.email.trim().toLowerCase())
+              .eq('is_active', true)
+              .limit(1);
+            if (users?.length > 0) {
+              const dbUser = users[0];
+              const sessionUser = {
+                id: dbUser.id, email: dbUser.email, name: dbUser.full_name,
+                role: dbUser.role, church_id: dbUser.church_id,
+                phone: dbUser.phone, is_super_admin: dbUser.is_super_admin || false
+              };
+              localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
+              window.location.reload();
+              return;
             }
-            // Fallback if auto-login fails
+            // Fallback if profile lookup fails after register success
             setSuccess(lang === 'fr' ? 'Compte créé! Connectez-vous.' : 'Account created! Sign in now.');
-            await supabase.auth.signOut();
             setIsLogin(true); setStep(1); setOtpCode('');
           } else { setError(result.error); }
         } catch (err) {
