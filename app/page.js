@@ -2239,7 +2239,10 @@ function GoogleChurchSetup({ user, onClose }) {
       failedLinkAccount: 'Failed to link account. Please try again.',
       churchCreated: '🎉 Church created successfully!',
       timeoutError: 'Network timeout — please try again.',
-      unexpectedError: 'Unexpected error — please try again.'
+      unexpectedError: 'Unexpected error — please try again.',
+      sessionExpired: 'Your session has expired. Please sign in again.',
+      profileNotFound: 'User profile not found. Please contact support.',
+      churchAlreadyExists: 'A church already exists for your account.'
     },
     fr: {
       title: 'Configurer Votre Église',
@@ -2252,7 +2255,10 @@ function GoogleChurchSetup({ user, onClose }) {
       failedLinkAccount: 'Échec de la liaison du compte. Veuillez réessayer.',
       churchCreated: '🎉 Église créée avec succès !',
       timeoutError: 'Délai de connexion dépassé — veuillez réessayer.',
-      unexpectedError: 'Erreur inattendue — veuillez réessayer.'
+      unexpectedError: 'Erreur inattendue — veuillez réessayer.',
+      sessionExpired: 'Votre session a expiré. Veuillez vous reconnecter.',
+      profileNotFound: 'Profil utilisateur introuvable. Veuillez contacter le support.',
+      churchAlreadyExists: 'Une église existe déjà pour votre compte.'
     }
   };
   const t = txt[lang];
@@ -2264,9 +2270,9 @@ function GoogleChurchSetup({ user, onClose }) {
     if (!form.church_name.trim()) { toast.warning(t.required); return; }
     setLoading(true);
 
-    // 15s timeout safety net. Aborts the underlying fetch and rejects the await,
-    // so a hung GoTrue auth lock or stalled network surfaces as a toast instead of an indefinite spinner.
-    const withTimeout = (factory, ms = 15000) => {
+    // 20s timeout safety net for the server round-trip. Server-side path is fast,
+    // but defense-in-depth against a stuck Vercel cold start or flaky last-mile network.
+    const withTimeout = (factory, ms = 20000) => {
       const controller = new AbortController();
       const timeout = new Promise((_, reject) => setTimeout(() => {
         controller.abort();
@@ -2278,48 +2284,42 @@ function GoogleChurchSetup({ user, onClose }) {
     };
 
     try {
-      const slug = form.church_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error(t.sessionExpired);
+        return;
+      }
 
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + 30);
-      const { data: newChurch, error: churchError } = await withTimeout((signal) => supabase
-        .from('churches')
-        .insert({
+      const response = await withTimeout((signal) => fetch('/api/onboarding/create-church', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
           name: form.church_name,
-          slug,
           city: form.church_city || null,
           denomination: form.church_denomination || null,
-          pastor_name: form.church_pastor || null,
-          phone: form.church_phone || null,
-          email: form.church_email || null,
+          senior_pastor: form.church_pastor || null,
           currency: form.church_currency || 'XAF',
-          trial_end: trialEnd.toISOString()
-        })
-        .select()
-        .single()
-        .abortSignal(signal));
+          church_phone: form.church_phone || null,
+          church_email: form.church_email || null
+        }),
+        signal
+      }));
 
-      if (churchError || !newChurch?.id) {
-        toast.error(t.failedCreateChurch);
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        const code = result?.code;
+        if (code === 'NO_AUTH' || code === 'INVALID_AUTH') toast.error(t.sessionExpired);
+        else if (code === 'USER_NOT_FOUND') toast.error(t.profileNotFound);
+        else if (code === 'CHURCH_EXISTS') toast.error(t.churchAlreadyExists);
+        else toast.error(t.failedCreateChurch);
         return;
       }
 
-      const { error: updateError } = await withTimeout((signal) => supabase
-        .from('church_users')
-        .update({
-          church_id: newChurch.id,
-          full_name: user.name || user.email.split('@')[0],
-          role: 'ADMIN',
-          is_active: true
-        })
-        .eq('id', user.id)
-        .abortSignal(signal));
-
-      if (updateError) {
-        await supabase.from('churches').delete().eq('id', newChurch.id);
-        toast.error(t.failedLinkAccount);
-        return;
-      }
+      const newChurch = result.church;
 
       fetch('/api/email/welcome', {
         method: 'POST',
@@ -2331,7 +2331,7 @@ function GoogleChurchSetup({ user, onClose }) {
       await loadUserProfile(user.email);
       if (onClose) onClose();
     } catch (err) {
-      if (err?.name === 'TimeoutError') {
+      if (err?.name === 'TimeoutError' || err?.name === 'AbortError') {
         toast.error(t.timeoutError);
       } else {
         toast.error(err?.message || t.unexpectedError);
