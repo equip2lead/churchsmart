@@ -428,6 +428,14 @@ const translations = {
     noPermission: "You don't have permission to view this page.",
     goToDashboard: 'Go to Dashboard',
     contactAdmin: 'Contact your church administrator for access.',
+
+    // Onboarding (no church yet)
+    welcomeCardTitle: '🎉 Welcome, {name}!',
+    welcomeCardBody: "Let's set up your church to unlock all features.",
+    welcomeCardCta: 'Set Up My Church →',
+    setupRequiredTitle: 'Set up your church first',
+    setupRequiredBody: "Once you've created your church profile, you'll be able to manage {feature} here.",
+    setupRequiredCta: 'Set Up My Church',
   },
   fr: {
     // General
@@ -833,6 +841,14 @@ const translations = {
     noPermission: "Vous n'avez pas la permission de voir cette page.",
     goToDashboard: 'Aller au Tableau de Bord',
     contactAdmin: "Contactez votre administrateur d'église pour obtenir l'accès.",
+
+    // Onboarding (no church yet)
+    welcomeCardTitle: '🎉 Bienvenue, {name} !',
+    welcomeCardBody: 'Configurons votre église pour débloquer toutes les fonctionnalités.',
+    welcomeCardCta: 'Configurer Mon Église →',
+    setupRequiredTitle: "Configurez d'abord votre église",
+    setupRequiredBody: "Une fois votre profil d'église créé, vous pourrez gérer {feature} ici.",
+    setupRequiredCta: 'Configurer Mon Église',
   }
 };
 
@@ -1707,11 +1723,6 @@ function AppContent() {
     return <LoginPage />;
   }
 
-  // Google user who signed in but has no church — show church setup
-  if (!user.church_id) {
-    return <GoogleChurchSetup user={user} />;
-  }
-
   return <Dashboard />;
 }
 
@@ -2163,8 +2174,50 @@ function PublicJoinPage({ churchId }) {
 // ==========================================
 // GOOGLE CHURCH SETUP (for new Google users with no church)
 // ==========================================
-function GoogleChurchSetup({ user }) {
-  const { logout, loadUserProfile } = useAuth();
+function DashboardWelcomeCard({ userName, onOpenSetup }) {
+  const { t } = useLanguage();
+  const firstName = userName?.split(' ')[0] || userName || '';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: '20px' }}>
+      <div style={{ maxWidth: '560px', width: '100%', textAlign: 'center', padding: '48px 32px', backgroundColor: 'white', borderRadius: '20px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', border: '1px solid #eef2ff' }}>
+        <div style={{ fontSize: '64px', marginBottom: '16px' }}>⛪</div>
+        <h1 style={{ margin: '0 0 12px 0', fontSize: '28px', fontWeight: '700', color: '#1f2937' }}>
+          {t('welcomeCardTitle').replace('{name}', firstName)}
+        </h1>
+        <p style={{ margin: '0 0 28px 0', color: '#6b7280', fontSize: '16px', lineHeight: '1.6' }}>
+          {t('welcomeCardBody')}
+        </p>
+        <button onClick={onOpenSetup} style={{ padding: '14px 32px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)' }}>
+          {t('welcomeCardCta')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ChurchSetupRequired({ pageKey, onOpenSetup }) {
+  const { t } = useLanguage();
+  const featureLabel = t(pageKey).toLowerCase();
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: '20px' }}>
+      <div style={{ maxWidth: '480px', width: '100%', textAlign: 'center', padding: '40px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', border: '1px solid #f1f5f9' }}>
+        <div style={{ fontSize: '56px', marginBottom: '16px' }}>⛪</div>
+        <h2 style={{ margin: '0 0 12px 0', fontSize: '22px', fontWeight: '600', color: '#1f2937' }}>
+          {t('setupRequiredTitle')}
+        </h2>
+        <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '15px', lineHeight: '1.6' }}>
+          {t('setupRequiredBody').replace('{feature}', featureLabel)}
+        </p>
+        <button onClick={onOpenSetup} style={{ padding: '12px 28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)' }}>
+          {t('setupRequiredCta')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GoogleChurchSetup({ user, onClose }) {
+  const { loadUserProfile } = useAuth();
   const toast = useToast();
   const [lang, setLang] = useState('en');
   const [loading, setLoading] = useState(false);
@@ -2176,28 +2229,28 @@ function GoogleChurchSetup({ user }) {
 
   const txt = {
     en: {
-      title: 'Welcome to ChurchSmart!',
-      desc: `You're signed in as ${user.email}. Set up your church to get started.`,
+      title: 'Set Up Your Church',
+      desc: 'Tell us about your church to unlock all features.',
       churchName: 'Church Name *', city: 'City', denomination: 'Denomination',
       pastor: 'Senior Pastor', phone: 'Church Phone', email: 'Church Email',
       currency: 'Currency', create: 'Create My Church →', creating: 'Creating...',
-      logout: 'Sign out', required: 'Church name is required',
+      cancel: 'Cancel', close: 'Close', required: 'Church name is required',
       failedCreateChurch: 'Failed to create church. Please try again.',
       failedLinkAccount: 'Failed to link account. Please try again.',
-      churchCreated: 'Church created! Loading your dashboard...',
+      churchCreated: '🎉 Church created successfully!',
       timeoutError: 'Network timeout — please try again.',
       unexpectedError: 'Unexpected error — please try again.'
     },
     fr: {
-      title: 'Bienvenue sur ChurchSmart!',
-      desc: `Vous êtes connecté en tant que ${user.email}. Configurez votre église pour commencer.`,
+      title: 'Configurer Votre Église',
+      desc: 'Parlez-nous de votre église pour débloquer toutes les fonctionnalités.',
       churchName: 'Nom de l\'Église *', city: 'Ville', denomination: 'Dénomination',
       pastor: 'Pasteur Principal', phone: 'Téléphone', email: 'Email de l\'Église',
       currency: 'Devise', create: 'Créer Mon Église →', creating: 'Création...',
-      logout: 'Se déconnecter', required: 'Le nom de l\'église est requis',
+      cancel: 'Annuler', close: 'Fermer', required: 'Le nom de l\'église est requis',
       failedCreateChurch: 'Échec de la création de l\'église. Veuillez réessayer.',
       failedLinkAccount: 'Échec de la liaison du compte. Veuillez réessayer.',
-      churchCreated: 'Église créée! Chargement de votre tableau de bord...',
+      churchCreated: '🎉 Église créée avec succès !',
       timeoutError: 'Délai de connexion dépassé — veuillez réessayer.',
       unexpectedError: 'Erreur inattendue — veuillez réessayer.'
     }
@@ -2276,6 +2329,7 @@ function GoogleChurchSetup({ user }) {
 
       toast.success(t.churchCreated);
       await loadUserProfile(user.email);
+      if (onClose) onClose();
     } catch (err) {
       if (err?.name === 'TimeoutError') {
         toast.error(t.timeoutError);
@@ -2288,8 +2342,9 @@ function GoogleChurchSetup({ user }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '20px' }}>
-      <div style={{ width: '100%', maxWidth: '500px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '40px' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '20px', zIndex: 1000, overflowY: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: '500px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', padding: '40px', position: 'relative', marginTop: '40px', marginBottom: '40px' }}>
+        <button type="button" onClick={onClose} aria-label={t.close} style={{ position: 'absolute', top: '12px', right: '12px', background: 'transparent', border: 'none', fontSize: '24px', lineHeight: 1, cursor: 'pointer', color: '#6b7280', width: '32px', height: '32px', borderRadius: '50%' }}>×</button>
         {/* Language toggle */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '4px' }}>
           <button onClick={() => setLang('en')} style={{ padding: '4px 10px', border: 'none', borderRadius: '6px', backgroundColor: lang === 'en' ? '#eef2ff' : 'transparent', color: lang === 'en' ? '#4f46e5' : '#9ca3af', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>EN</button>
@@ -2353,9 +2408,9 @@ function GoogleChurchSetup({ user }) {
           {loading ? `⏳ ${t.creating}` : t.create}
         </button>
 
-        <button onClick={logout}
+        <button onClick={onClose}
           style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#6b7280', border: 'none', fontSize: '14px', cursor: 'pointer' }}>
-          {t.logout}
+          {t.cancel}
         </button>
       </div>
     </div>
@@ -2946,6 +3001,8 @@ function Dashboard() {
   const [churchName, setChurchName] = useState('');
   const [churchPlan, setChurchPlan] = useState('free');
   const [trialExpiredBanner, setTrialExpiredBanner] = useState(false);
+  const [showChurchSetupModal, setShowChurchSetupModal] = useState(false);
+  const openChurchSetup = () => setShowChurchSetupModal(true);
 
   // Fetch church branding and subscription plan
   useEffect(() => {
@@ -3064,22 +3121,25 @@ function Dashboard() {
               <button onClick={() => setActiveTab('settings')} style={{ padding: '8px 20px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('viewPlans')}</button>
             </div>
           )}
-          {activeTab === 'dashboard' && <DashboardPage />}
-          {activeTab === 'members' && <PermissionGate permission="members" fallback={<AccessDenied onNavigate={setActiveTab} />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
-          {activeTab === 'visitors' && <PermissionGate permission="visitors" fallback={<AccessDenied onNavigate={setActiveTab} />}><VisitorsPage /></PermissionGate>}
-          {activeTab === 'attendance' && <PermissionGate permission="attendance" fallback={<AccessDenied onNavigate={setActiveTab} />}><AttendancePage /></PermissionGate>}
-          {activeTab === 'calendar' && <CalendarPage />}
-          {activeTab === 'giving' && <PermissionGate permission="giving" fallback={<AccessDenied onNavigate={setActiveTab} />}><GivingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
-          {activeTab === 'salvations' && <PermissionGate permission="salvations" fallback={<AccessDenied onNavigate={setActiveTab} />}><SalvationsPage /></PermissionGate>}
-          {activeTab === 'groups' && (canAccessFeature(churchPlan, 'groups') ? <PermissionGate permission="groups" fallback={<AccessDenied onNavigate={setActiveTab} />}><GroupsPage /></PermissionGate> : <UpgradePrompt feature="groups" featureLabel="Groups & Cell Management" onNavigate={setActiveTab} />)}
-          {activeTab === 'volunteers' && (canAccessFeature(churchPlan, 'volunteers') ? <PermissionGate permission="volunteers" fallback={<AccessDenied onNavigate={setActiveTab} />}><VolunteersPage /></PermissionGate> : <UpgradePrompt feature="volunteers" featureLabel="Volunteer Management" onNavigate={setActiveTab} />)}
-          {activeTab === 'messaging' && <PermissionGate permission="messaging" fallback={<AccessDenied onNavigate={setActiveTab} />}><MessagingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
-          {activeTab === 'reports' && <PermissionGate permission="reports" fallback={<AccessDenied onNavigate={setActiveTab} />}><ReportsPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate>}
-          {activeTab === 'services' && <PermissionGate permission="events" fallback={<AccessDenied onNavigate={setActiveTab} />}><ServicesPage /></PermissionGate>}
-          {activeTab === 'settings' && <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><SettingsPage /></PermissionGate>}
+          {activeTab === 'dashboard' && (CHURCH_ID ? <DashboardPage /> : <DashboardWelcomeCard userName={user?.name} onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'members' && (CHURCH_ID ? <PermissionGate permission="members" fallback={<AccessDenied onNavigate={setActiveTab} />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="members" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'visitors' && (CHURCH_ID ? <PermissionGate permission="visitors" fallback={<AccessDenied onNavigate={setActiveTab} />}><VisitorsPage /></PermissionGate> : <ChurchSetupRequired pageKey="visitors" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'attendance' && (CHURCH_ID ? <PermissionGate permission="attendance" fallback={<AccessDenied onNavigate={setActiveTab} />}><AttendancePage /></PermissionGate> : <ChurchSetupRequired pageKey="attendance" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'calendar' && (CHURCH_ID ? <CalendarPage /> : <ChurchSetupRequired pageKey="calendar" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'giving' && (CHURCH_ID ? <PermissionGate permission="giving" fallback={<AccessDenied onNavigate={setActiveTab} />}><GivingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="giving" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'salvations' && (CHURCH_ID ? <PermissionGate permission="salvations" fallback={<AccessDenied onNavigate={setActiveTab} />}><SalvationsPage /></PermissionGate> : <ChurchSetupRequired pageKey="salvations" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'groups' && (CHURCH_ID ? (canAccessFeature(churchPlan, 'groups') ? <PermissionGate permission="groups" fallback={<AccessDenied onNavigate={setActiveTab} />}><GroupsPage /></PermissionGate> : <UpgradePrompt feature="groups" featureLabel="Groups & Cell Management" onNavigate={setActiveTab} />) : <ChurchSetupRequired pageKey="groups" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'volunteers' && (CHURCH_ID ? (canAccessFeature(churchPlan, 'volunteers') ? <PermissionGate permission="volunteers" fallback={<AccessDenied onNavigate={setActiveTab} />}><VolunteersPage /></PermissionGate> : <UpgradePrompt feature="volunteers" featureLabel="Volunteer Management" onNavigate={setActiveTab} />) : <ChurchSetupRequired pageKey="volunteers" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'messaging' && (CHURCH_ID ? <PermissionGate permission="messaging" fallback={<AccessDenied onNavigate={setActiveTab} />}><MessagingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="messaging" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'reports' && (CHURCH_ID ? <PermissionGate permission="reports" fallback={<AccessDenied onNavigate={setActiveTab} />}><ReportsPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="reports" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'services' && (CHURCH_ID ? <PermissionGate permission="events" fallback={<AccessDenied onNavigate={setActiveTab} />}><ServicesPage /></PermissionGate> : <ChurchSetupRequired pageKey="services" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'settings' && (CHURCH_ID ? <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><SettingsPage /></PermissionGate> : <ChurchSetupRequired pageKey="settings" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'superadmin' && <SuperAdminPage />}
         </main>
       </div>
+      {showChurchSetupModal && user && (
+        <GoogleChurchSetup user={user} onClose={() => setShowChurchSetupModal(false)} />
+      )}
     </div>
   );
 }
