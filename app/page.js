@@ -6607,7 +6607,7 @@ function MessagingPage({ plan, onNavigate }) {
       case 'ALL_VISITORS': pool = allContacts.filter(c => c.type === 'Visitor'); break;
       case 'ALL_VOLUNTEERS': pool = allContacts.filter(c => c.type === 'Volunteer'); break;
       case 'ALL_CONTACTS': pool = [...allContacts]; break;
-      case 'GROUP': pool = allContacts.filter(c => c.type === 'Member'); break; // TODO: real group membership
+      case 'GROUP': pool = allContacts.filter(c => c.type === 'Member'); break;
       case 'MINISTRY': pool = allContacts.filter(c => c.type === 'Volunteer'); break;
       default: pool = [...allContacts];
     }
@@ -10158,7 +10158,7 @@ function SettingsPage() {
                                   await supabaseUpdate('churches', CHURCH_ID, { logo_url: fallbackUrl });
                                   fetchData();
                                 } else {
-                                  toast.error('Upload failed. Please ensure the storage bucket exists in Supabase. Go to Supabase Dashboard → Storage → Create bucket "church-logos" (set as public).');
+                                  toast.error('Logo upload failed. Please try again, or contact support if the problem continues.');
                                 }
                               }
                             } catch (error) {
@@ -10188,13 +10188,6 @@ function SettingsPage() {
                           🗑️ Remove Logo
                         </button>
                       )}
-                    </div>
-
-                    {/* Storage Setup Tip */}
-                    <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: '#f0f9ff', borderRadius: '10px', border: '1px solid #bae6fd' }}>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#0369a1', lineHeight: '1.6' }}>
-                        💡 <strong>First-time setup:</strong> In your Supabase Dashboard, go to <strong>Storage → New Bucket</strong>, name it <strong>church-logos</strong>, and enable <strong>Public bucket</strong>. This only needs to be done once.
-                      </p>
                     </div>
                   </div>
                 </div>

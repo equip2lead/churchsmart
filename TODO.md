@@ -1,0 +1,1 @@
+- Implement real group membership in app/page.js (was at L6610)
