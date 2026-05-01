@@ -109,6 +109,8 @@ export async function POST(request) {
       photo_url: photo_url || null,
       membership_status: normMembershipStat,
       location_id: safeLocationId,
+      spouse_id: null,
+      created_by: null,
       membership_date: new Date().toISOString().split('T')[0],
       notes: 'Self-registered via connect link'
     };
