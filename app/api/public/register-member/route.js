@@ -9,6 +9,29 @@ function getSupabase() {
   );
 }
 
+const ENUM_MAPS = {
+  gender:             { valid: ['MALE', 'FEMALE'],
+                        aliases: { M: 'MALE', MASCULIN: 'MALE', HOMME: 'MALE',
+                                   F: 'FEMALE', FEMELLE: 'FEMALE', FEMME: 'FEMALE' } },
+  age_group:          { valid: ['CHILD', 'YOUTH', 'ADULT', 'SENIOR'],
+                        aliases: { ENFANT: 'CHILD', JEUNE: 'YOUTH', ADULTE: 'ADULT', AINE: 'SENIOR' } },
+  membership_status:  { valid: ['ACTIVE', 'INACTIVE', 'DECEASED', 'TRANSFERRED'],
+                        aliases: {} },
+  language_pref:      { valid: ['ENGLISH', 'FRENCH'],
+                        aliases: { EN: 'ENGLISH', ANGLAIS: 'ENGLISH',
+                                   FR: 'FRENCH', FRANCAIS: 'FRENCH', 'FRANÇAIS': 'FRENCH' } }
+};
+
+function normalizeEnum(value, key) {
+  if (value == null || value === '') return null;
+  const upper = String(value).toUpperCase().trim();
+  const cfg = ENUM_MAPS[key];
+  if (!cfg) return null;
+  if (cfg.valid.includes(upper)) return upper;
+  if (cfg.aliases[upper]) return cfg.aliases[upper];
+  return null;
+}
+
 export async function POST(request) {
   const reqId = (typeof crypto !== 'undefined' && crypto.randomUUID)
     ? crypto.randomUUID().slice(0, 8)
@@ -19,8 +42,8 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const {
       churchId, first_name, last_name, email, phone, whatsapp,
-      date_of_birth, gender, address, city, emergency_contact,
-      emergency_phone, photo_url, location_id
+      date_of_birth, gender, age_group, language_pref, address, city,
+      emergency_contact, emergency_phone, photo_url, location_id
     } = body;
 
     if (!churchId) {
@@ -53,40 +76,55 @@ export async function POST(request) {
     console.log(`${tag} church_id=${churchId} ts=${new Date().toISOString()}`);
 
     let safeLocationId = null;
-    if (location_id) {
+    if (location_id && String(location_id).trim()) {
       const { data: loc } = await supabase
         .from('church_locations')
         .select('id')
-        .eq('id', location_id)
+        .eq('id', String(location_id).trim())
         .eq('church_id', churchId)
         .maybeSingle();
-      if (loc) safeLocationId = location_id;
+      if (loc) safeLocationId = loc.id;
     }
+
+    const normGender         = normalizeEnum(gender, 'gender');
+    const normAgeGroup       = normalizeEnum(age_group, 'age_group');
+    const normLanguagePref   = normalizeEnum(language_pref, 'language_pref');
+    const normMembershipStat = normalizeEnum('ACTIVE', 'membership_status');
+
+    const insertPayload = {
+      church_id: churchId,
+      first_name: first_name.trim(),
+      last_name: last_name.trim(),
+      email: email?.trim() || null,
+      phone: phone?.trim() || null,
+      whatsapp: whatsapp?.trim() || null,
+      date_of_birth: date_of_birth || null,
+      gender: normGender,
+      age_group: normAgeGroup,
+      language_pref: normLanguagePref,
+      address: address?.trim() || null,
+      city: city?.trim() || null,
+      emergency_contact: emergency_contact?.trim() || null,
+      emergency_phone: emergency_phone?.trim() || null,
+      photo_url: photo_url || null,
+      membership_status: normMembershipStat,
+      location_id: safeLocationId,
+      membership_date: new Date().toISOString().split('T')[0],
+      notes: 'Self-registered via connect link'
+    };
 
     const { error: insertError } = await supabase
       .from('members')
-      .insert({
-        church_id: churchId,
-        first_name: first_name.trim(),
-        last_name: last_name.trim(),
-        email: email?.trim() || null,
-        phone: phone?.trim() || null,
-        whatsapp: whatsapp?.trim() || null,
-        date_of_birth: date_of_birth || null,
-        gender: gender || 'MALE',
-        address: address?.trim() || null,
-        city: city?.trim() || null,
-        emergency_contact: emergency_contact?.trim() || null,
-        emergency_phone: emergency_phone?.trim() || null,
-        photo_url: photo_url || null,
-        membership_status: 'ACTIVE',
-        location_id: safeLocationId,
-        membership_date: new Date().toISOString().split('T')[0],
-        notes: 'Self-registered via connect link'
-      });
+      .insert(insertPayload);
 
     if (insertError) {
-      console.error(`${tag} insert_failed church_id=${churchId}`, insertError.message);
+      console.error(`${tag} insert_failed`, {
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        church_id: churchId
+      });
       return Response.json({ error: 'Failed to register member', code: 'INSERT_FAILED' }, { status: 500 });
     }
 

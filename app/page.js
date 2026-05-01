@@ -294,6 +294,7 @@ const translations = {
     // CSV Import
     importCSV: 'Import CSV',
     importCsvUpgradeRequired: 'Importing CSV requires the Starter plan or higher.',
+    exportCsvUpgradeRequired: 'Exporting CSV requires the Starter plan or higher.',
     downloadTemplate: 'Download CSV Template',
     dragDropCSV: 'Drag & drop a CSV file here',
     orClickBrowse: 'or click to browse',
@@ -708,6 +709,7 @@ const translations = {
     // CSV Import
     importCSV: 'Importer CSV',
     importCsvUpgradeRequired: "L'importation CSV nécessite le plan Starter ou supérieur.",
+    exportCsvUpgradeRequired: "L'exportation CSV nécessite le plan Starter ou supérieur.",
     downloadTemplate: 'Télécharger le Modèle CSV',
     dragDropCSV: 'Glissez-déposez un fichier CSV ici',
     orClickBrowse: 'ou cliquez pour parcourir',
@@ -4285,7 +4287,7 @@ function MembersPage({ plan, onNavigate }) {
         subtitle={`${members.length} ${t('manageMembersSubtitle')} ${locations.length} ${t('locations')}`}
         actions={
           <div className="cs-btn-row" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 {t('exportCSV')}</Button>}
+            {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button> : <Button variant="secondary" onClick={() => toast.info(t('exportCsvUpgradeRequired'))} style={{ opacity: 0.6 }}>🔒 {t('exportCSV')}</Button>}
             {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportData([]); setImportResult(null); }}>📤 {t('importCSV')}</Button> : <Button variant="secondary" onClick={() => toast.info(t('importCsvUpgradeRequired'))} style={{ opacity: 0.6 }}>🔒 {t('importCSV')}</Button>}
             <Button variant="secondary" onClick={() => setShowInviteModal(true)}>🔗 Invite Link</Button>
             <Button onClick={() => openModal()}>➕ {t('addMember')}</Button>
@@ -4775,10 +4777,11 @@ function VisitorsPage() {
     }
     setSaving(true);
     try {
+      const cleanedForm = { ...form, location_id: form.location_id || null };
       if (editingVisitor) {
-        await supabaseUpdate('visitors', editingVisitor.id, form);
+        await supabaseUpdate('visitors', editingVisitor.id, cleanedForm);
       } else {
-        await supabaseInsert('visitors', form);
+        await supabaseInsert('visitors', cleanedForm);
       }
       setShowModal(false);
       resetForm();
@@ -5117,6 +5120,8 @@ function AttendancePage() {
     try {
       const data = {
         ...form,
+        service_id: form.service_id || null,
+        location_id: form.location_id || null,
         men_count: parseInt(form.men_count) || 0,
         women_count: parseInt(form.women_count) || 0,
         children_count: parseInt(form.children_count) || 0,
@@ -5522,10 +5527,10 @@ function GivingPage({ plan, onNavigate }) {
   const [chartView, setChartView] = useState('monthly');
   const [filterLocation, setFilterLocation] = useState('all');
 
-  const [donationForm, setDonationForm] = useState({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category: 'TITHE', payment_method: 'CASH', notes: '', location_id: '' });
+  const [donationForm, setDonationForm] = useState({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category_type: 'TITHE', payment_method: 'CASH', notes: '', location_id: '' });
   const [expenseForm, setExpenseForm] = useState({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '', location_id: '' });
 
-  const categories = ['TITHE', 'OFFERING', 'DONATION', 'MISSIONS', 'BUILDING', 'SPECIAL', 'OTHER'];
+  const categories = ['TITHE', 'OFFERING', 'THANKSGIVING', 'MISSIONS', 'BUILDING', 'SPECIAL', 'DEVELOPMENT', 'PROJECTS', 'OTHER'];
   const expenseCategories = ['GENERAL', 'BUILDING', 'UTILITIES', 'SALARIES', 'MISSIONS', 'SUPPLIES', 'TRANSPORT', 'EVENTS', 'OTHER'];
   const paymentMethods = ['CASH', 'MOBILE_MONEY', 'BANK_TRANSFER', 'CHECK', 'OTHER'];
 
@@ -5565,12 +5570,12 @@ function GivingPage({ plan, onNavigate }) {
   // Category breakdown for pie chart
   const categoryTotals = categories.map(cat => ({
     category: cat,
-    amount: filteredDonations.filter(d => d.category === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+    amount: filteredDonations.filter(d => d.category_type === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
   })).filter(c => c.amount > 0);
 
   const categoryColors = {
-    'TITHE': '#6366f1', 'OFFERING': '#f59e0b', 'DONATION': '#10b981', 'MISSIONS': '#ec4899',
-    'BUILDING': '#8b5cf6', 'SPECIAL': '#14b8a6', 'OTHER': '#6b7280'
+    'TITHE': '#6366f1', 'OFFERING': '#f59e0b', 'THANKSGIVING': '#10b981', 'MISSIONS': '#ec4899',
+    'BUILDING': '#8b5cf6', 'SPECIAL': '#14b8a6', 'DEVELOPMENT': '#f97316', 'PROJECTS': '#06b6d4', 'OTHER': '#6b7280'
   };
 
   // Monthly trends data
@@ -5595,13 +5600,13 @@ function GivingPage({ plan, onNavigate }) {
   const maxMonthly = Math.max(...monthlyData.map(m => m.amount), 1);
 
   // Form handlers
-  const resetDonationForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setDonationForm({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category: 'TITHE', payment_method: 'CASH', notes: '', location_id: mainCampus?.id || '' }); setEditingItem(null); };
+  const resetDonationForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setDonationForm({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category_type: 'TITHE', payment_method: 'CASH', notes: '', location_id: mainCampus?.id || '' }); setEditingItem(null); };
   const resetExpenseForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setExpenseForm({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '', location_id: mainCampus?.id || '' }); setEditingItem(null); };
 
   const openDonationModal = (donation = null) => {
     if (donation) {
       setEditingItem(donation);
-      setDonationForm({ member_id: donation.member_id || '', amount: donation.amount || '', donation_date: donation.donation_date || '', category: donation.category || 'TITHE', payment_method: donation.payment_method || 'CASH', notes: donation.notes || '', location_id: donation.location_id || '' });
+      setDonationForm({ member_id: donation.member_id || '', amount: donation.amount || '', donation_date: donation.donation_date || '', category_type: donation.category_type || 'TITHE', payment_method: donation.payment_method || 'CASH', notes: donation.notes || '', location_id: donation.location_id || '' });
     } else { resetDonationForm(); }
     setShowModal(true);
   };
@@ -5618,7 +5623,12 @@ function GivingPage({ plan, onNavigate }) {
     if (!donationForm.amount) { toast.warning(t('amountRequired')); return; }
     setSaving(true);
     try {
-      const data = { ...donationForm, amount: parseFloat(donationForm.amount) };
+      const data = {
+        ...donationForm,
+        amount: parseFloat(donationForm.amount),
+        member_id: donationForm.member_id || null,
+        location_id: donationForm.location_id || null
+      };
       if (editingItem) { await supabaseUpdate('donations', editingItem.id, data); toast.success(t('savedSuccessfully')); }
       else { await supabaseInsert('donations', data); toast.success(`💰 ${t('donationRecorded')}`); }
       setShowModal(false); resetDonationForm(); fetchData();
@@ -5630,7 +5640,11 @@ function GivingPage({ plan, onNavigate }) {
     if (!expenseForm.amount || !expenseForm.description) { toast.warning(t('amountDescRequired')); return; }
     setSaving(true);
     try {
-      const data = { ...expenseForm, amount: parseFloat(expenseForm.amount) };
+      const data = {
+        ...expenseForm,
+        amount: parseFloat(expenseForm.amount),
+        location_id: expenseForm.location_id || null
+      };
       if (editingItem) { await supabaseUpdate('expenses', editingItem.id, data); }
       else { await supabaseInsert('expenses', data); }
       setShowExpenseModal(false); resetExpenseForm(); fetchData();
@@ -5930,7 +5944,7 @@ function GivingPage({ plan, onNavigate }) {
                   </thead>
                   <tbody>
                     {categories.map((cat, i) => {
-                      const income = filteredDonations.filter(d => d.category === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                      const income = filteredDonations.filter(d => d.category_type === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                       const expense = filteredExpenses.filter(e => e.category === cat).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
                       const net = income - expense;
                       if (income === 0 && expense === 0) return null;
@@ -5974,7 +5988,7 @@ function GivingPage({ plan, onNavigate }) {
         <FormInput label="Donor" type="select" value={donationForm.member_id} onChange={(e) => setDonationForm({ ...donationForm, member_id: e.target.value })} options={[{ value: '', label: 'Anonymous' }, ...members.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))]} />
         <FormInput label="Amount (XAF) *" type="number" value={donationForm.amount} onChange={(e) => setDonationForm({ ...donationForm, amount: e.target.value })} required placeholder="50000" />
         <FormInput label="Date" type="date" value={donationForm.donation_date} onChange={(e) => setDonationForm({ ...donationForm, donation_date: e.target.value })} />
-        <FormInput label="Category" type="select" value={donationForm.category} onChange={(e) => setDonationForm({ ...donationForm, category: e.target.value })} options={categories.map(c => ({ value: c, label: c }))} />
+        <FormInput label="Category" type="select" value={donationForm.category_type} onChange={(e) => setDonationForm({ ...donationForm, category_type: e.target.value })} options={categories.map(c => ({ value: c, label: c }))} />
         <FormInput label="Payment Method" type="select" value={donationForm.payment_method} onChange={(e) => setDonationForm({ ...donationForm, payment_method: e.target.value })} options={paymentMethods.map(m => ({ value: m, label: m.replace('_', ' ') }))} />
         <FormInput label="📍 Location" type="select" value={donationForm.location_id} onChange={(e) => setDonationForm({ ...donationForm, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
         <FormInput label="Notes" type="textarea" value={donationForm.notes} onChange={(e) => setDonationForm({ ...donationForm, notes: e.target.value })} />
@@ -6029,7 +6043,7 @@ function SalvationsPage() {
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: mainCampus?.id || '' }); setEditingRecord(null); };
   const openModal = (record = null) => { if (record) { setEditingRecord(record); setForm({ full_name: record.full_name || '', phone: record.phone || '', email: record.email || '', gender: record.gender || '', age_group: record.age_group || '', salvation_date: record.salvation_date || '', followup_status: record.followup_status || 'PENDING', followup_notes: record.followup_notes || '', location_id: record.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.full_name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, form); } else { await supabaseInsert('salvations', form); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { toast.error(error.message); } setSaving(false); };
+  const handleSave = async () => { if (!form.full_name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { const cleanedForm = { ...form, location_id: form.location_id || null }; if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, cleanedForm); } else { await supabaseInsert('salvations', cleanedForm); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { toast.error(error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('salvations', deleteConfirm.id); setDeleteConfirm(null); fetchSalvations(); };
 
   const filteredSalvations = salvations.filter(function(s) { var loc = filterLocation === 'all' || s.location_id === filterLocation; var search = !searchTerm || (s.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (s.phone || '').includes(searchTerm) || (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()); return loc && search; });
@@ -6112,7 +6126,7 @@ function GroupsPage() {
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: mainCampus?.id || '' }); setEditingGroup(null); };
   const openModal = (group = null) => { if (group) { setEditingGroup(group); setForm({ name: group.name || '', description: group.description || '', group_type: group.group_type || 'CELL', meeting_day: group.meeting_day || 'WEDNESDAY', meeting_time: group.meeting_time || '18:00', is_active: group.is_active ?? true, location_id: group.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, form); } else { await supabaseInsert('groups', form); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { toast.error(error.message); } setSaving(false); };
+  const handleSave = async () => { if (!form.name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { const cleanedForm = { ...form, location_id: form.location_id || null }; if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, cleanedForm); } else { await supabaseInsert('groups', cleanedForm); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { toast.error(error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('groups', deleteConfirm.id); setDeleteConfirm(null); fetchGroups(); };
 
   const filteredGroups = groups.filter(g => filterLocation === 'all' || g.location_id === filterLocation);
@@ -6261,10 +6275,11 @@ function VolunteersPage() {
     }
     setSaving(true);
     try {
+      const cleanedForm = { ...form, member_id: form.member_id || null, location_id: form.location_id || null };
       if (editingVolunteer) {
-        await supabaseUpdate('volunteers', editingVolunteer.id, form);
+        await supabaseUpdate('volunteers', editingVolunteer.id, cleanedForm);
       } else {
-        await supabaseInsert('volunteers', form);
+        await supabaseInsert('volunteers', cleanedForm);
       }
       setShowModal(false);
       resetForm();
