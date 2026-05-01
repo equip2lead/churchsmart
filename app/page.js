@@ -293,6 +293,7 @@ const translations = {
 
     // CSV Import
     importCSV: 'Import CSV',
+    importCsvUpgradeRequired: 'Importing CSV requires the Starter plan or higher.',
     downloadTemplate: 'Download CSV Template',
     dragDropCSV: 'Drag & drop a CSV file here',
     orClickBrowse: 'or click to browse',
@@ -706,6 +707,7 @@ const translations = {
 
     // CSV Import
     importCSV: 'Importer CSV',
+    importCsvUpgradeRequired: "L'importation CSV nécessite le plan Starter ou supérieur.",
     downloadTemplate: 'Télécharger le Modèle CSV',
     dragDropCSV: 'Glissez-déposez un fichier CSV ici',
     orClickBrowse: 'ou cliquez pour parcourir',
@@ -1960,28 +1962,38 @@ function PublicJoinPage({ churchId }) {
     setSubmitting(true);
     setError('');
     try {
-      await supabaseInsert('members', {
-        church_id: churchId,
-        first_name: form.first_name.trim(),
-        last_name: form.last_name.trim(),
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        whatsapp: form.whatsapp.trim() || null,
-        date_of_birth: form.date_of_birth || null,
-        gender: form.gender,
-        address: form.address.trim() || null,
-        city: form.city.trim() || null,
-        emergency_contact: form.emergency_contact.trim() || null,
-        emergency_phone: form.emergency_phone.trim() || null,
-        photo_url: form.photo_url || null,
-        membership_status: 'ACTIVE',
-        location_id: selectedLocation || null,
-        membership_date: new Date().toISOString().split('T')[0],
-        notes: 'Self-registered via connect link'
+      const response = await fetch('/api/public/register-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          churchId,
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          email: form.email.trim() || null,
+          phone: form.phone.trim() || null,
+          whatsapp: form.whatsapp.trim() || null,
+          date_of_birth: form.date_of_birth || null,
+          gender: form.gender,
+          address: form.address.trim() || null,
+          city: form.city.trim() || null,
+          emergency_contact: form.emergency_contact.trim() || null,
+          emergency_phone: form.emergency_phone.trim() || null,
+          photo_url: form.photo_url || null,
+          location_id: selectedLocation || null
+        })
       });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        setError(result.error || 'Submission failed. Please check your connection and try again.');
+        setSubmitting(false);
+        return;
+      }
+
       setSubmitted(true);
     } catch (err) {
-      setError('Something went wrong. Please try again.');
+      setError('Submission failed. Please check your connection and try again.');
     }
     setSubmitting(false);
   };
@@ -4274,7 +4286,7 @@ function MembersPage({ plan, onNavigate }) {
         actions={
           <div className="cs-btn-row" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={exportMembersCSV}>📥 {t('exportCSV')}</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 {t('exportCSV')}</Button>}
-            {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportData([]); setImportResult(null); }}>📤 {t('importCSV')}</Button> : <Button variant="secondary" onClick={() => onNavigate && onNavigate('settings')} style={{ opacity: 0.6 }}>🔒 {t('importCSV')}</Button>}
+            {canAccessFeature(plan, 'data_import_export') ? <Button variant="secondary" onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportData([]); setImportResult(null); }}>📤 {t('importCSV')}</Button> : <Button variant="secondary" onClick={() => toast.info(t('importCsvUpgradeRequired'))} style={{ opacity: 0.6 }}>🔒 {t('importCSV')}</Button>}
             <Button variant="secondary" onClick={() => setShowInviteModal(true)}>🔗 Invite Link</Button>
             <Button onClick={() => openModal()}>➕ {t('addMember')}</Button>
           </div>
@@ -8303,10 +8315,11 @@ function ServicesPage() {
     if (!serviceForm.name) { toast.warning('Service name is required'); return; }
     setSaving(true);
     try {
+      const cleanedForm = { ...serviceForm, location_id: serviceForm.location_id || null, start_time: serviceForm.start_time || null, end_time: serviceForm.end_time || null };
       if (editingService) {
-        await supabaseUpdate('services', editingService.id, serviceForm);
+        await supabaseUpdate('services', editingService.id, cleanedForm);
       } else {
-        await supabaseInsert('services', serviceForm);
+        await supabaseInsert('services', cleanedForm);
       }
       setShowServiceModal(false);
       resetServiceForm();
