@@ -1329,47 +1329,6 @@ function AuthProvider({ children }) {
       });
 
       if (authError) {
-        // Fallback: try legacy password_hash login for users not yet migrated
-        const { data: legacyUsers } = await supabase
-          .from('church_users')
-          .select('*')
-          .eq('email', email.trim().toLowerCase())
-          .eq('is_active', true)
-          .limit(1);
-
-        if (legacyUsers && legacyUsers.length > 0 && legacyUsers[0].password_hash === password) {
-          // Legacy login succeeded — migrate this user to Supabase Auth
-          const dbUser = legacyUsers[0];
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: dbUser.email,
-            password: password,
-            options: { data: { church_id: dbUser.church_id, role: dbUser.role } }
-          });
-
-          if (!signUpError && signUpData?.user) {
-            // Update church_users with auth_id and clear legacy password
-            await supabase.from('church_users')
-              .update({ auth_id: signUpData.user.id, password_hash: null })
-              .eq('id', dbUser.id);
-
-            // Auto sign-in after migration
-            await supabase.auth.signInWithPassword({ email: dbUser.email, password });
-          }
-
-          // Even if migration fails, allow login with legacy session
-          const sessionUser = {
-            id: dbUser.id, email: dbUser.email, name: dbUser.full_name,
-            role: dbUser.role, church_id: dbUser.church_id,
-            phone: dbUser.phone, is_super_admin: dbUser.is_super_admin || false
-          };
-          await supabase.from('church_users').update({ last_login: new Date().toISOString() }).eq('id', dbUser.id);
-          setUser(sessionUser);
-          localStorage.setItem('churchsmart_user', JSON.stringify(sessionUser));
-          attempts.count = 0; attempts.lockedUntil = 0;
-          return { success: true };
-        }
-
-        // Both auth methods failed
         attempts.count++;
         attempts.lastAttempt = Date.now();
         if (attempts.count >= 5) { attempts.lockedUntil = Date.now() + 60000; attempts.count = 0; }
@@ -9091,7 +9050,7 @@ function SuperAdminPage() {
 
   const openEditUser = (u) => {
     setEditingUser(u.id);
-    setEditUserForm({ full_name: u.full_name || '', email: u.email || '', phone: u.phone || '', role: u.role || 'STAFF', new_password: '' });
+    setEditUserForm({ full_name: u.full_name || '', email: u.email || '', phone: u.phone || '', role: u.role || 'STAFF' });
   };
 
   const saveEditUser = async (userId) => {
@@ -9099,12 +9058,6 @@ function SuperAdminPage() {
     try {
       const updates = { full_name: editUserForm.full_name, email: editUserForm.email, phone: editUserForm.phone, role: editUserForm.role };
       await supabase.from('church_users').update(updates).eq('id', userId);
-
-      // If a new password is provided, update via Supabase Auth admin (or note for manual reset)
-      if (editUserForm.new_password) {
-        // For non-migrated users, update password_hash as fallback
-        await supabase.from('church_users').update({ password_hash: editUserForm.new_password }).eq('id', userId);
-      }
 
       setEditingUser(null);
       fetchAllData();
@@ -9120,9 +9073,10 @@ function SuperAdminPage() {
     setSaving(true);
     try {
       // Create church
+      const slug = newChurchForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       const { data: newChurch, error: churchErr } = await supabase
         .from('churches')
-        .insert({ name: newChurchForm.name, city: newChurchForm.city, denomination: newChurchForm.denomination, pastor_name: newChurchForm.pastor_name, phone: newChurchForm.phone, email: newChurchForm.email, currency: newChurchForm.currency })
+        .insert({ name: newChurchForm.name, slug, city: newChurchForm.city, denomination: newChurchForm.denomination, pastor_name: newChurchForm.pastor_name, phone: newChurchForm.phone, email: newChurchForm.email, currency: newChurchForm.currency })
         .select()
         .single();
 
@@ -9335,12 +9289,9 @@ function SuperAdminPage() {
                       <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '13px' }}>{u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}</td>
                       <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                         {editingUser === u.id ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-                            <input value={editUserForm.new_password} onChange={e => setEditUserForm({...editUserForm, new_password: e.target.value})} placeholder="New password (optional)" style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', width: '160px' }} />
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                              <button onClick={() => setEditingUser(null)} style={{ padding: '4px 10px', border: '1px solid #e5e7eb', borderRadius: '6px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
-                              <button onClick={() => saveEditUser(u.id)} disabled={saving} style={{ padding: '4px 10px', border: 'none', borderRadius: '6px', backgroundColor: '#4f46e5', color: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{saving ? '⏳' : '💾 Save'}</button>
-                            </div>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                            <button onClick={() => setEditingUser(null)} style={{ padding: '4px 10px', border: '1px solid #e5e7eb', borderRadius: '6px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
+                            <button onClick={() => saveEditUser(u.id)} disabled={saving} style={{ padding: '4px 10px', border: 'none', borderRadius: '6px', backgroundColor: '#4f46e5', color: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{saving ? '⏳' : '💾 Save'}</button>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
@@ -10099,14 +10050,11 @@ function SettingsPage() {
     if (!/[A-Z]/.test(passwordForm.new_password) || !/[0-9]/.test(passwordForm.new_password)) { toast.info('Password must include an uppercase letter and a number'); return; }
     setSaving(true);
     try {
-      // Try Supabase Auth password update first
       const { error: authError } = await supabase.auth.updateUser({ password: passwordForm.new_password });
       if (authError) {
-        // Fallback for legacy users: update password_hash
-        const userData = JSON.parse(localStorage.getItem('churchsmart_user'));
-        if (userData?.id) {
-          await supabase.from('church_users').update({ password_hash: passwordForm.new_password }).eq('id', userData.id);
-        }
+        toast.error(authError.message);
+        setSaving(false);
+        return;
       }
       setShowPasswordChange(false);
       setPasswordForm({ current: '', new_password: '', confirm: '' });
