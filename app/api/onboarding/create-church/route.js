@@ -102,6 +102,31 @@ export async function POST(request) {
       return Response.json({ error: 'Failed to link account', code: 'LINK_FAILED' }, { status: 500 });
     }
 
+    // Seed the 3 default custom roles (Admin/Staff/Volunteer) for the new church.
+    // These power the invitation flow's "Account Type → Custom Role" auto-pick.
+    // If seeding fails, the church + admin are already created and functional —
+    // log and proceed. Admin can manually create roles via Settings → User Roles.
+    try {
+      const { error: roleSeedError } = await supabase
+        .from('user_roles')
+        .insert([
+          { church_id: newChurch.id, name: 'Admin' },
+          { church_id: newChurch.id, name: 'Staff' },
+          { church_id: newChurch.id, name: 'Volunteer' }
+        ]);
+      if (roleSeedError) {
+        console.error(`${tag} default_role_seed_failed`, {
+          code: roleSeedError.code,
+          message: roleSeedError.message,
+          details: roleSeedError.details,
+          hint: roleSeedError.hint,
+          church_id: newChurch.id
+        });
+      }
+    } catch (seedErr) {
+      console.error(`${tag} default_role_seed_threw church_id=${newChurch.id}`, seedErr?.message || seedErr);
+    }
+
     console.log(`${tag} success church_id=${newChurch.id}`);
     return Response.json({ success: true, church: newChurch });
   } catch (err) {

@@ -439,6 +439,37 @@ const translations = {
     setupRequiredBody: "Once you've created your church profile, you'll be able to manage {feature} here.",
     setupRequiredCta: 'Set Up My Church',
     saveFailed: 'Failed to save — please try again.',
+
+    // Team invitations
+    inviteAccountType: 'Account Type',
+    inviteAccountTypeHelper: 'Defines what pages and features the user can access.',
+    inviteRoleStaff: 'Staff',
+    inviteRoleAdmin: 'Admin',
+    inviteRoleVolunteer: 'Volunteer',
+    inviteRoleLabel: 'Custom Role',
+    inviteRoleHelper: 'Specific permissions within the account type.',
+    inviteSendButton: 'Send Invitation',
+    inviteSending: 'Sending…',
+    inviteHelpText: 'An email will be sent to {email}. They have 7 days to accept.',
+    inviteEmailRequired: 'Email and account type are required.',
+    inviteRoleRequired: 'Please select a custom role.',
+    inviteSuccessToast: 'Invitation sent. {email} has 7 days to accept.',
+    inviteDuplicateUserToast: '{email} is already a member of {church}. They can only belong to one church at a time.',
+    inviteDuplicateInviteToast: '{email} already has a pending invitation to this church (expires {date}).',
+    inviteEmailFailedToast: 'Invitation created but email failed to send. Share this link manually: {link}',
+    inviteAuthInsufficientRoleToast: 'Only church admins can send invitations.',
+    inviteInvalidBaseRoleToast: 'Account type is invalid.',
+    inviteSessionExpiredToast: 'Your session has expired. Please sign in again.',
+    inviteGenericErrorToast: 'Failed to send invitation. Please try again.',
+    invitationRevokeConfirm: 'Revoke this invitation?',
+    invitationRevokedToast: 'Invitation revoked.',
+    inviteStatusPending: 'Pending',
+    inviteStatusActive: 'Active',
+    inviteStatusExpired: 'Expired',
+    inviteStatusPendingExpiresLabel: 'Expires {date}',
+    inviteStatusAcceptedLabel: 'Accepted {date}',
+    inviteStatusExpiredOnLabel: 'Expired on {date}',
+    inviteResendComingSoon: 'Resend coming soon',
   },
   fr: {
     // General
@@ -855,6 +886,37 @@ const translations = {
     setupRequiredBody: "Une fois votre profil d'église créé, vous pourrez gérer {feature} ici.",
     setupRequiredCta: 'Configurer Mon Église',
     saveFailed: "Échec de l'enregistrement — veuillez réessayer.",
+
+    // Team invitations
+    inviteAccountType: 'Type de compte',
+    inviteAccountTypeHelper: 'Détermine les pages et fonctionnalités accessibles à l\'utilisateur.',
+    inviteRoleStaff: 'Personnel',
+    inviteRoleAdmin: 'Administrateur',
+    inviteRoleVolunteer: 'Bénévole',
+    inviteRoleLabel: 'Rôle personnalisé',
+    inviteRoleHelper: 'Permissions spécifiques au sein du type de compte.',
+    inviteSendButton: "Envoyer l'invitation",
+    inviteSending: 'Envoi…',
+    inviteHelpText: "Un email sera envoyé à {email}. La personne a 7 jours pour accepter.",
+    inviteEmailRequired: "L'email et le type de compte sont requis.",
+    inviteRoleRequired: 'Veuillez sélectionner un rôle personnalisé.',
+    inviteSuccessToast: "Invitation envoyée. {email} a 7 jours pour accepter.",
+    inviteDuplicateUserToast: "{email} est déjà membre de {church}. Une personne ne peut appartenir qu'à une seule église à la fois.",
+    inviteDuplicateInviteToast: "{email} a déjà une invitation en attente pour cette église (expire le {date}).",
+    inviteEmailFailedToast: "Invitation créée mais l'email n'a pas pu être envoyé. Partagez ce lien manuellement : {link}",
+    inviteAuthInsufficientRoleToast: "Seuls les administrateurs d'église peuvent envoyer des invitations.",
+    inviteInvalidBaseRoleToast: 'Le type de compte est invalide.',
+    inviteSessionExpiredToast: 'Votre session a expiré. Veuillez vous reconnecter.',
+    inviteGenericErrorToast: "Échec de l'envoi de l'invitation. Veuillez réessayer.",
+    invitationRevokeConfirm: 'Révoquer cette invitation ?',
+    invitationRevokedToast: 'Invitation révoquée.',
+    inviteStatusPending: 'En attente',
+    inviteStatusActive: 'Actif',
+    inviteStatusExpired: 'Expiré',
+    inviteStatusPendingExpiresLabel: 'Expire le {date}',
+    inviteStatusAcceptedLabel: 'Accepté le {date}',
+    inviteStatusExpiredOnLabel: 'Expiré le {date}',
+    inviteResendComingSoon: 'Renvoi bientôt disponible',
   }
 };
 
@@ -9926,6 +9988,16 @@ function BillingSection({ churchId }) {
 // ==========================================
 // SETTINGS PAGE - Complete with All Features
 // ==========================================
+// Default role names seeded by the invitation-flow migration. Case-sensitive
+// match — a church that renamed any of these (e.g. 'Staff' → 'Team Member')
+// no longer fits the auto-pick path and gets the explicit Custom Role dropdown.
+const DEFAULT_ROLE_NAMES = ['Admin', 'Staff', 'Volunteer'];
+const BASE_ROLE_TO_NAME = { ADMIN: 'Admin', STAFF: 'Staff', VOLUNTEER: 'Volunteer' };
+
+// Sort priority for role-assignment list. Pending surfaces first (admin actionable),
+// then active (current team), then expired. Revoked rows are filtered out entirely.
+const ASSIGNMENT_STATUS_PRIORITY = { pending: 0, active: 1, expired: 2 };
+
 function SettingsPage() {
   const { user, logout } = useAuth();
   const toast = useToast();
@@ -9964,7 +10036,40 @@ function SettingsPage() {
   // Forms
   const [locationForm, setLocationForm] = useState({ name: '', address: '', city: '', phone: '', pastor_name: '', capacity: '', is_main_campus: false, is_active: true });
   const [roleForm, setRoleForm] = useState({ name: '', description: '', permissions: {} });
-  const [assignForm, setAssignForm] = useState({ user_email: '', user_name: '', role_id: '' });
+  const [assignForm, setAssignForm] = useState({ user_email: '', user_name: '', role_id: '', base_role: 'STAFF' });
+  // True when the church has roles whose names aren't in the default seed set.
+  // Drives whether the Assign-Role modal shows the Custom Role dropdown explicitly
+  // or auto-picks the default role matching the chosen Account Type.
+  const hasCustomRoles = roles.some(r => !DEFAULT_ROLE_NAMES.includes(r.name));
+
+  // Filter + sort role assignments for display. Revoked rows hidden (no toggle in v1).
+  // NOTE: revoking an 'active' assignment only flips status on user_role_assignments;
+  // it does NOT deactivate the user's church_users row. v1.1 should reconcile this —
+  // see the design doc.
+  const visibleAssignments = roleAssignments
+    .filter(a => a.status !== 'revoked')
+    .slice()
+    .sort((a, b) => {
+      const ap = ASSIGNMENT_STATUS_PRIORITY[a.status] ?? 99;
+      const bp = ASSIGNMENT_STATUS_PRIORITY[b.status] ?? 99;
+      if (ap !== bp) return ap - bp;
+      const dateField = a.status === 'pending' ? 'invitation_sent_at'
+                      : a.status === 'active' ? 'accepted_at'
+                      : 'invitation_expires_at';
+      return new Date(b[dateField] || 0) - new Date(a[dateField] || 0);
+    });
+
+  // Locale-aware short date for badge labels (e.g. "May 9" / "9 mai").
+  const formatBadgeDate = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    try {
+      return new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric' }).format(d);
+    } catch {
+      return d.toLocaleDateString();
+    }
+  };
   const [templateForm, setTemplateForm] = useState({ name: '', category: 'BIRTHDAY', body: '' });
 
   // Activity Log Filters
@@ -10127,22 +10232,147 @@ function SettingsPage() {
   };
 
   // ============ ROLE ASSIGNMENT HANDLERS ============
+  // Pick the default role.id whose name matches the given base_role
+  // (e.g. base 'STAFF' → role named 'Staff'). Falls back to first role if the
+  // default name doesn't exist (church renamed it). Returns '' if zero roles.
+  const pickDefaultRoleId = (baseRole) => {
+    const targetName = BASE_ROLE_TO_NAME[baseRole];
+    const match = roles.find(r => r.name === targetName);
+    return match?.id || roles[0]?.id || '';
+  };
+
+  const openAssignRoleModal = () => {
+    const defaultBase = 'STAFF';
+    setAssignForm({
+      user_email: '',
+      user_name: '',
+      base_role: defaultBase,
+      role_id: pickDefaultRoleId(defaultBase)
+    });
+    setShowAssignRoleModal(true);
+  };
+
+  const onBaseRoleChange = (newBase) => {
+    // When Account Type changes, re-derive role_id so the matching default is
+    // pre-selected. User can still override via the Custom Role dropdown after.
+    setAssignForm(prev => ({
+      ...prev,
+      base_role: newBase,
+      role_id: pickDefaultRoleId(newBase)
+    }));
+  };
+
   const handleAssignRole = async () => {
-    if (!assignForm.user_email || !assignForm.role_id) { toast.warning('Email and role are required'); return; }
+    if (!assignForm.user_email || !assignForm.base_role) {
+      toast.warning(t('inviteEmailRequired'));
+      return;
+    }
+    if (hasCustomRoles && !assignForm.role_id) {
+      toast.warning(t('inviteRoleRequired'));
+      return;
+    }
+    // In the auto-pick path, role_id was set when the modal opened; if it's still
+    // empty (zero roles in church — shouldn't happen post-migration), bail.
+    const finalRoleId = assignForm.role_id || pickDefaultRoleId(assignForm.base_role);
+    if (!finalRoleId) {
+      toast.error(t('inviteGenericErrorToast'));
+      return;
+    }
+
     setSaving(true);
     try {
-      await supabaseInsert('user_role_assignments', { ...assignForm, assigned_by: user?.email });
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        toast.error(t('inviteSessionExpiredToast'));
+        setSaving(false);
+        return;
+      }
+
+      const response = await fetch('/api/team/send-invitation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          churchId: CHURCH_ID,
+          email: assignForm.user_email.trim().toLowerCase(),
+          full_name: assignForm.user_name?.trim() || null,
+          role_id: finalRoleId,
+          base_role: assignForm.base_role
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.success) {
+        const code = data?.code;
+        const emailLabel = assignForm.user_email;
+        if (code === 'DUPLICATE_USER') {
+          toast.error(
+            t('inviteDuplicateUserToast')
+              .replace('{email}', emailLabel)
+              .replace('{church}', data.existing_church || 'another church')
+          );
+        } else if (code === 'DUPLICATE_INVITE') {
+          const expires = data.expires_at ? new Date(data.expires_at).toLocaleDateString() : '';
+          toast.error(
+            t('inviteDuplicateInviteToast')
+              .replace('{email}', emailLabel)
+              .replace('{date}', expires)
+          );
+        } else if (code === 'AUTH_INSUFFICIENT_ROLE') {
+          toast.error(t('inviteAuthInsufficientRoleToast'));
+        } else if (code === 'INVALID_BASE_ROLE' || code === 'INVALID_ROLE') {
+          toast.error(t('inviteInvalidBaseRoleToast'));
+        } else if (code === 'NO_AUTH' || code === 'INVALID_AUTH') {
+          toast.error(t('inviteSessionExpiredToast'));
+        } else {
+          toast.error(data.error || t('inviteGenericErrorToast'));
+        }
+        setSaving(false);
+        return;
+      }
+
+      // Success path. Email may have failed to send even though the invitation row
+      // was created; surface the link in that case so the admin can share manually.
+      if (data.warning === 'EMAIL_FAILED') {
+        toast.warning(
+          t('inviteEmailFailedToast').replace('{link}', data.invite_link || '')
+        );
+      } else {
+        toast.success(
+          t('inviteSuccessToast').replace('{email}', assignForm.user_email)
+        );
+      }
+
       setShowAssignRoleModal(false);
-      setAssignForm({ user_email: '', user_name: '', role_id: '' });
+      setAssignForm({ user_email: '', user_name: '', role_id: '', base_role: 'STAFF' });
       fetchData();
-    } catch (error) { toast.error(error.message); }
+    } catch (error) {
+      console.error('[handleAssignRole] error:', error);
+      toast.error(t('inviteGenericErrorToast'));
+    }
     setSaving(false);
   };
 
   const handleRemoveAssignment = async (id) => {
-    if (!confirm('Remove this role assignment?')) return;
-    await supabaseDelete('user_role_assignments', id);
-    fetchData();
+    if (!confirm(t('invitationRevokeConfirm'))) return;
+    try {
+      // Soft-revoke instead of hard-delete: preserves audit trail (assigned_by,
+      // invitation_sent_at, accepted_at) and ensures the token can no longer be
+      // used to accept (cleared in same UPDATE).
+      await supabaseUpdate('user_role_assignments', id, {
+        status: 'revoked',
+        invitation_token: null
+      });
+      toast.success(t('invitationRevokedToast'));
+      fetchData();
+    } catch (error) {
+      console.error('[handleRemoveAssignment] error:', error);
+      toast.error(t('saveFailed'));
+    }
   };
 
   // ============ AUTOMATION HANDLERS ============
@@ -10699,7 +10929,7 @@ function SettingsPage() {
                     <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>🎫 Role Assignments</h3>
                     <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Assign roles to users</p>
                   </div>
-                  <Button onClick={() => setShowAssignRoleModal(true)}>➕ Assign Role</Button>
+                  <Button onClick={openAssignRoleModal}>➕ Invite User</Button>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ backgroundColor: '#f9fafb' }}>
@@ -10710,24 +10940,62 @@ function SettingsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {roleAssignments.map((assignment, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '36px', height: '36px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600' }}>{assignment.user_name?.[0] || assignment.user_email?.[0]?.toUpperCase()}</div>
-                            <div>
-                              <p style={{ margin: 0, fontWeight: '500' }}>{assignment.user_name || 'Unknown'}</p>
-                              <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{assignment.user_email}</p>
+                    {visibleAssignments.map((assignment, i) => {
+                      const status = assignment.status || 'active';
+                      const dateIso = status === 'pending' ? assignment.invitation_expires_at
+                                    : status === 'active' ? assignment.accepted_at
+                                    : assignment.invitation_expires_at;
+                      const dateText = formatBadgeDate(dateIso);
+                      let badgeBg, badgeColor, badgeLabel, dateLabel;
+                      if (status === 'pending') {
+                        badgeBg = '#fef3c7'; badgeColor = '#92400e';
+                        badgeLabel = `⏳ ${t('inviteStatusPending')}`;
+                        dateLabel = dateText ? t('inviteStatusPendingExpiresLabel').replace('{date}', dateText) : '';
+                      } else if (status === 'active') {
+                        badgeBg = '#dcfce7'; badgeColor = '#166534';
+                        badgeLabel = `✅ ${t('inviteStatusActive')}`;
+                        dateLabel = dateText ? t('inviteStatusAcceptedLabel').replace('{date}', dateText) : '';
+                      } else { // expired (or unknown)
+                        badgeBg = '#f3f4f6'; badgeColor = '#6b7280';
+                        badgeLabel = `⌛ ${t('inviteStatusExpired')}`;
+                        dateLabel = dateText ? t('inviteStatusExpiredOnLabel').replace('{date}', dateText) : '';
+                      }
+                      return (
+                        <tr key={assignment.id || i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ width: '36px', height: '36px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600' }}>{assignment.user_name?.[0] || assignment.user_email?.[0]?.toUpperCase()}</div>
+                              <div>
+                                <p style={{ margin: 0, fontWeight: '500' }}>{assignment.user_name || 'Unknown'}</p>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{assignment.user_email}</p>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px 16px' }}><span style={{ padding: '4px 12px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{getRoleName(assignment.role_id)}</span></td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                          <button onClick={() => handleRemoveAssignment(assignment.id)} style={{ padding: '4px 10px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
-                        </td>
-                      </tr>
-                    ))}
-                    {roleAssignments.length === 0 && <tr><td colSpan="3" style={{ padding: '32px', textAlign: 'center', color: '#6b7280' }}>No role assignments yet</td></tr>}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ padding: '4px 12px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{getRoleName(assignment.role_id)}</span>
+                              <span style={{ padding: '4px 10px', backgroundColor: badgeBg, color: badgeColor, borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{badgeLabel}</span>
+                            </div>
+                            {dateLabel && <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#6b7280' }}>{dateLabel}</p>}
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                              {status === 'expired' && (
+                                <button
+                                  type="button"
+                                  disabled
+                                  title={t('inviteResendComingSoon')}
+                                  aria-label={t('inviteResendComingSoon')}
+                                  style={{ padding: '4px 10px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'not-allowed', color: '#9ca3af', fontSize: '12px' }}
+                                >🔄</button>
+                              )}
+                              <button onClick={() => handleRemoveAssignment(assignment.id)} style={{ padding: '4px 10px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {visibleAssignments.length === 0 && <tr><td colSpan="3" style={{ padding: '32px', textAlign: 'center', color: '#6b7280' }}>No role assignments yet</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -11058,14 +11326,42 @@ function SettingsPage() {
         </div>
       </Modal>
 
-      {/* Assign Role Modal */}
-      <Modal isOpen={showAssignRoleModal} onClose={() => setShowAssignRoleModal(false)} title="🎫 Assign Role">
+      {/* Send Invitation Modal */}
+      <Modal isOpen={showAssignRoleModal} onClose={() => setShowAssignRoleModal(false)} title="🎫 Send Invitation">
         <FormInput label="User Name" value={assignForm.user_name} onChange={(e) => setAssignForm({ ...assignForm, user_name: e.target.value })} placeholder="John Doe" />
         <FormInput label="User Email *" type="email" value={assignForm.user_email} onChange={(e) => setAssignForm({ ...assignForm, user_email: e.target.value })} required placeholder="john@example.com" />
-        <FormInput label="Role *" type="select" value={assignForm.role_id} onChange={(e) => setAssignForm({ ...assignForm, role_id: e.target.value })} options={roles.map(r => ({ value: r.id, label: r.name }))} />
+        <FormInput
+          label={`${t('inviteAccountType')} *`}
+          type="select"
+          value={assignForm.base_role}
+          onChange={(e) => onBaseRoleChange(e.target.value)}
+          options={[
+            { value: 'STAFF', label: t('inviteRoleStaff') },
+            { value: 'ADMIN', label: t('inviteRoleAdmin') },
+            { value: 'VOLUNTEER', label: t('inviteRoleVolunteer') }
+          ]}
+        />
+        <p style={{ margin: '-8px 0 16px 0', fontSize: '12px', color: '#9ca3af' }}>{t('inviteAccountTypeHelper')}</p>
+        {hasCustomRoles && (
+          <>
+            <FormInput
+              label={`${t('inviteRoleLabel')} *`}
+              type="select"
+              value={assignForm.role_id}
+              onChange={(e) => setAssignForm({ ...assignForm, role_id: e.target.value })}
+              options={roles.map(r => ({ value: r.id, label: r.name }))}
+            />
+            <p style={{ margin: '-8px 0 16px 0', fontSize: '12px', color: '#9ca3af' }}>{t('inviteRoleHelper')}</p>
+          </>
+        )}
+        <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#4338ca', backgroundColor: '#eef2ff', padding: '10px 12px', borderRadius: '8px', lineHeight: '1.5' }}>
+          💌 {t('inviteHelpText').replace('{email}', assignForm.user_email || '…')}
+        </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => setShowAssignRoleModal(false)}>Cancel</Button>
-          <Button onClick={handleAssignRole} disabled={saving}>{saving ? '⏳' : '🎫 Assign'}</Button>
+          <Button onClick={handleAssignRole} disabled={saving}>
+            {saving ? `⏳ ${t('inviteSending')}` : `📤 ${t('inviteSendButton')}`}
+          </Button>
         </div>
       </Modal>
 
