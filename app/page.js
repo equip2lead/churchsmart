@@ -4194,7 +4194,7 @@ function MembersPage({ plan, onNavigate }) {
     }
     setSaving(true);
     try {
-      const data = { ...form, location_id: form.location_id || null };
+      const data = { ...form, location_id: form.location_id || null, date_of_birth: form.date_of_birth || null, membership_date: form.membership_date || null, baptism_date: form.baptism_date || null };
       if (editingMember) {
         await supabaseUpdate('members', editingMember.id, data);
         toast.success(t('savedSuccessfully'));
@@ -4777,7 +4777,7 @@ function VisitorsPage() {
     }
     setSaving(true);
     try {
-      const cleanedForm = { ...form, location_id: form.location_id || null };
+      const cleanedForm = { ...form, location_id: form.location_id || null, visit_date: form.visit_date || null };
       if (editingVisitor) {
         await supabaseUpdate('visitors', editingVisitor.id, cleanedForm);
       } else {
@@ -5122,6 +5122,7 @@ function AttendancePage() {
         ...form,
         service_id: form.service_id || null,
         location_id: form.location_id || null,
+        service_date: form.service_date || null,
         men_count: parseInt(form.men_count) || 0,
         women_count: parseInt(form.women_count) || 0,
         children_count: parseInt(form.children_count) || 0,
@@ -5627,7 +5628,8 @@ function GivingPage({ plan, onNavigate }) {
         ...donationForm,
         amount: parseFloat(donationForm.amount),
         member_id: donationForm.member_id || null,
-        location_id: donationForm.location_id || null
+        location_id: donationForm.location_id || null,
+        donation_date: donationForm.donation_date || null
       };
       if (editingItem) { await supabaseUpdate('donations', editingItem.id, data); toast.success(t('savedSuccessfully')); }
       else { await supabaseInsert('donations', data); toast.success(`💰 ${t('donationRecorded')}`); }
@@ -5643,7 +5645,8 @@ function GivingPage({ plan, onNavigate }) {
       const data = {
         ...expenseForm,
         amount: parseFloat(expenseForm.amount),
-        location_id: expenseForm.location_id || null
+        location_id: expenseForm.location_id || null,
+        expense_date: expenseForm.expense_date || null
       };
       if (editingItem) { await supabaseUpdate('expenses', editingItem.id, data); }
       else { await supabaseInsert('expenses', data); }
@@ -6043,7 +6046,7 @@ function SalvationsPage() {
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: mainCampus?.id || '' }); setEditingRecord(null); };
   const openModal = (record = null) => { if (record) { setEditingRecord(record); setForm({ full_name: record.full_name || '', phone: record.phone || '', email: record.email || '', gender: record.gender || '', age_group: record.age_group || '', salvation_date: record.salvation_date || '', followup_status: record.followup_status || 'PENDING', followup_notes: record.followup_notes || '', location_id: record.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.full_name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { const cleanedForm = { ...form, location_id: form.location_id || null }; if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, cleanedForm); } else { await supabaseInsert('salvations', cleanedForm); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { toast.error(error.message); } setSaving(false); };
+  const handleSave = async () => { if (!form.full_name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { const cleanedForm = { ...form, location_id: form.location_id || null, salvation_date: form.salvation_date || null }; if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, cleanedForm); } else { await supabaseInsert('salvations', cleanedForm); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { toast.error(error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('salvations', deleteConfirm.id); setDeleteConfirm(null); fetchSalvations(); };
 
   const filteredSalvations = salvations.filter(function(s) { var loc = filterLocation === 'all' || s.location_id === filterLocation; var search = !searchTerm || (s.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (s.phone || '').includes(searchTerm) || (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()); return loc && search; });
@@ -6126,7 +6129,7 @@ function GroupsPage() {
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: mainCampus?.id || '' }); setEditingGroup(null); };
   const openModal = (group = null) => { if (group) { setEditingGroup(group); setForm({ name: group.name || '', description: group.description || '', group_type: group.group_type || 'CELL', meeting_day: group.meeting_day || 'WEDNESDAY', meeting_time: group.meeting_time || '18:00', is_active: group.is_active ?? true, location_id: group.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { const cleanedForm = { ...form, location_id: form.location_id || null }; if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, cleanedForm); } else { await supabaseInsert('groups', cleanedForm); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { toast.error(error.message); } setSaving(false); };
+  const handleSave = async () => { if (!form.name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { const cleanedForm = { ...form, location_id: form.location_id || null, meeting_time: form.meeting_time || null }; if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, cleanedForm); } else { await supabaseInsert('groups', cleanedForm); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { toast.error(error.message); } setSaving(false); };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('groups', deleteConfirm.id); setDeleteConfirm(null); fetchGroups(); };
 
   const filteredGroups = groups.filter(g => filterLocation === 'all' || g.location_id === filterLocation);
@@ -6275,7 +6278,7 @@ function VolunteersPage() {
     }
     setSaving(true);
     try {
-      const cleanedForm = { ...form, member_id: form.member_id || null, location_id: form.location_id || null };
+      const cleanedForm = { ...form, member_id: form.member_id || null, location_id: form.location_id || null, start_date: form.start_date || null };
       if (editingVolunteer) {
         await supabaseUpdate('volunteers', editingVolunteer.id, cleanedForm);
       } else {
