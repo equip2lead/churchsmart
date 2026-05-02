@@ -1031,7 +1031,12 @@ async function supabaseInsert(table, data) {
   const insertData = sanitized.church_id ? sanitized : { ...sanitized, church_id: churchId };
 
   const { data: result, error } = await supabase.from(table).insert(insertData).select();
-  if (error) throw new Error(`Insert failed: ${error.message}`);
+  if (error) throw new Error(
+    `Insert failed: ${error.message}` +
+    (error.code ? ` [${error.code}]` : '') +
+    (error.details ? ` | details: ${error.details}` : '') +
+    (error.hint ? ` | hint: ${error.hint}` : '')
+  );
   return result;
 }
 
@@ -1041,7 +1046,12 @@ async function supabaseUpdate(table, id, data) {
   const sanitized = sanitizeObject(data);
 
   const { data: result, error } = await supabase.from(table).update(sanitized).eq('id', id).select();
-  if (error) throw new Error(`Update failed: ${error.message}`);
+  if (error) throw new Error(
+    `Update failed: ${error.message}` +
+    (error.code ? ` [${error.code}]` : '') +
+    (error.details ? ` | details: ${error.details}` : '') +
+    (error.hint ? ` | hint: ${error.hint}` : '')
+  );
   return result;
 }
 

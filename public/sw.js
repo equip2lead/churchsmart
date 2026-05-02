@@ -1,4 +1,4 @@
-const CACHE_NAME = 'churchsmart-v2';
+const CACHE_NAME = 'churchsmart-v3';
 const APP_SHELL = [
   '/',
   '/favicon.ico',
