@@ -438,6 +438,7 @@ const translations = {
     setupRequiredTitle: 'Set up your church first',
     setupRequiredBody: "Once you've created your church profile, you'll be able to manage {feature} here.",
     setupRequiredCta: 'Set Up My Church',
+    saveFailed: 'Failed to save — please try again.',
   },
   fr: {
     // General
@@ -853,6 +854,7 @@ const translations = {
     setupRequiredTitle: "Configurez d'abord votre église",
     setupRequiredBody: "Une fois votre profil d'église créé, vous pourrez gérer {feature} ici.",
     setupRequiredCta: 'Configurer Mon Église',
+    saveFailed: "Échec de l'enregistrement — veuillez réessayer.",
   }
 };
 
@@ -4114,8 +4116,8 @@ function MembersPage({ plan, onNavigate }) {
 
   useEffect(() => { fetchData(); }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [membersData, locationsData] = await Promise.all([
         supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc' }),
@@ -4126,7 +4128,7 @@ function MembersPage({ plan, onNavigate }) {
     } catch (error) {
       console.error('Members fetch error:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -4192,23 +4194,41 @@ function MembersPage({ plan, onNavigate }) {
       );
       if (possibleDupe && !confirm(`⚠️ Possible duplicate: ${possibleDupe.first_name} ${possibleDupe.last_name} (${possibleDupe.phone || possibleDupe.email || 'no contact'}). Add anyway?`)) return;
     }
-    setSaving(true);
-    try {
-      const data = { ...form, location_id: form.location_id || null, date_of_birth: form.date_of_birth || null, membership_date: form.membership_date || null, baptism_date: form.baptism_date || null };
-      if (editingMember) {
-        await supabaseUpdate('members', editingMember.id, data);
-        toast.success(t('savedSuccessfully'));
-      } else {
-        await supabaseInsert('members', data);
-        toast.success(`🎉 ${t('memberAdded')}`);
-      }
-      setShowModal(false);
-      resetForm();
-      fetchData();
-    } catch (error) {
-      toast.error(error.message);
+
+    const isInsert = !editingMember;
+    const formSnapshot = form;
+    const editingSnapshot = editingMember;
+    const listSnapshot = members;
+    const data = { ...form, location_id: form.location_id || null, date_of_birth: form.date_of_birth || null, membership_date: form.membership_date || null, baptism_date: form.baptism_date || null };
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    if (isInsert) {
+      setMembers([{ id: tempId, ...data }, ...members]);
+    } else {
+      setMembers(members.map(m => m.id === editingMember.id ? { ...m, ...data } : m));
     }
-    setSaving(false);
+    setShowModal(false);
+    resetForm();
+    toast.success(isInsert ? `🎉 ${t('memberAdded')}` : t('savedSuccessfully'));
+
+    try {
+      if (isInsert) {
+        const result = await supabaseInsert('members', data);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        if (realRow?.id) {
+          setMembers(prev => prev.map(m => m.id === tempId ? realRow : m));
+        }
+      } else {
+        await supabaseUpdate('members', editingMember.id, data);
+      }
+      fetchData(true).catch(err => console.error('Refetch failed', err));
+    } catch (error) {
+      setMembers(listSnapshot);
+      setForm(formSnapshot);
+      if (editingSnapshot) setEditingMember(editingSnapshot);
+      setShowModal(true);
+      toast.error(t('saveFailed'));
+    }
   };
 
   const handleDelete = async () => {
@@ -4699,8 +4719,8 @@ function VisitorsPage() {
 
   useEffect(() => { fetchVisitors(); }, []);
 
-  const fetchVisitors = async () => {
-    setLoading(true);
+  const fetchVisitors = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [data, locationsData] = await Promise.all([
         supabaseQuery('visitors', {
@@ -4714,7 +4734,7 @@ function VisitorsPage() {
     } catch (error) {
       console.error('Visitors fetch error:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -4775,21 +4795,41 @@ function VisitorsPage() {
       );
       if (possibleDupe && !confirm(`⚠️ Possible duplicate visitor: ${possibleDupe.full_name} (${possibleDupe.phone || 'no phone'}). Add anyway?`)) return;
     }
-    setSaving(true);
-    try {
-      const cleanedForm = { ...form, location_id: form.location_id || null, visit_date: form.visit_date || null };
-      if (editingVisitor) {
-        await supabaseUpdate('visitors', editingVisitor.id, cleanedForm);
-      } else {
-        await supabaseInsert('visitors', cleanedForm);
-      }
-      setShowModal(false);
-      resetForm();
-      fetchVisitors();
-    } catch (error) {
-      toast.info('Error saving visitor: ' + error.message);
+
+    const isInsert = !editingVisitor;
+    const formSnapshot = form;
+    const editingSnapshot = editingVisitor;
+    const listSnapshot = visitors;
+    const cleanedForm = { ...form, location_id: form.location_id || null, visit_date: form.visit_date || null };
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    if (isInsert) {
+      setVisitors([{ id: tempId, ...cleanedForm }, ...visitors]);
+    } else {
+      setVisitors(visitors.map(v => v.id === editingVisitor.id ? { ...v, ...cleanedForm } : v));
     }
-    setSaving(false);
+    setShowModal(false);
+    resetForm();
+    toast.success(t('savedSuccessfully'));
+
+    try {
+      if (isInsert) {
+        const result = await supabaseInsert('visitors', cleanedForm);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        if (realRow?.id) {
+          setVisitors(prev => prev.map(v => v.id === tempId ? realRow : v));
+        }
+      } else {
+        await supabaseUpdate('visitors', editingVisitor.id, cleanedForm);
+      }
+      fetchVisitors(true).catch(err => console.error('Refetch failed', err));
+    } catch (error) {
+      setVisitors(listSnapshot);
+      setForm(formSnapshot);
+      if (editingSnapshot) setEditingVisitor(editingSnapshot);
+      setShowModal(true);
+      toast.error(t('saveFailed'));
+    }
   };
 
   const handleConvertToMember = async (visitor) => {
@@ -5011,8 +5051,8 @@ function AttendancePage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [attendanceData, servicesData, locationsData] = await Promise.all([
         supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'service_date.desc' }),
@@ -5025,7 +5065,7 @@ function AttendancePage() {
     } catch (error) {
       console.error('Attendance fetch error:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -5116,33 +5156,51 @@ function AttendancePage() {
 
   const handleSave = async () => {
     if (!form.service_date) { toast.warning(t('serviceDateRequired')); return; }
-    setSaving(true);
-    try {
-      const data = {
-        ...form,
-        service_id: form.service_id || null,
-        location_id: form.location_id || null,
-        service_date: form.service_date || null,
-        men_count: parseInt(form.men_count) || 0,
-        women_count: parseInt(form.women_count) || 0,
-        children_count: parseInt(form.children_count) || 0,
-        first_timers_count: parseInt(form.first_timers_count) || 0,
-        total_offering: parseFloat(form.total_offering) || 0
-      };
-      if (editingRecord) {
-        await supabaseUpdate('attendance_records', editingRecord.id, data);
-        toast.success(t('savedSuccessfully'));
-      } else {
-        await supabaseInsert('attendance_records', data);
-        toast.success(`✅ ${t('attendanceRecorded')}`);
-      }
-      setShowModal(false);
-      resetForm();
-      fetchData();
-    } catch (error) {
-      toast.info(t('errorSaving') + ': ' + error.message);
+
+    const isInsert = !editingRecord;
+    const formSnapshot = form;
+    const editingSnapshot = editingRecord;
+    const listSnapshot = attendance;
+    const data = {
+      ...form,
+      service_id: form.service_id || null,
+      location_id: form.location_id || null,
+      service_date: form.service_date || null,
+      men_count: parseInt(form.men_count) || 0,
+      women_count: parseInt(form.women_count) || 0,
+      children_count: parseInt(form.children_count) || 0,
+      first_timers_count: parseInt(form.first_timers_count) || 0,
+      total_offering: parseFloat(form.total_offering) || 0
+    };
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    if (isInsert) {
+      setAttendance([{ id: tempId, ...data }, ...attendance]);
+    } else {
+      setAttendance(attendance.map(r => r.id === editingRecord.id ? { ...r, ...data } : r));
     }
-    setSaving(false);
+    setShowModal(false);
+    resetForm();
+    toast.success(isInsert ? `✅ ${t('attendanceRecorded')}` : t('savedSuccessfully'));
+
+    try {
+      if (isInsert) {
+        const result = await supabaseInsert('attendance_records', data);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        if (realRow?.id) {
+          setAttendance(prev => prev.map(r => r.id === tempId ? realRow : r));
+        }
+      } else {
+        await supabaseUpdate('attendance_records', editingRecord.id, data);
+      }
+      fetchData(true).catch(err => console.error('Refetch failed', err));
+    } catch (error) {
+      setAttendance(listSnapshot);
+      setForm(formSnapshot);
+      if (editingSnapshot) setEditingRecord(editingSnapshot);
+      setShowModal(true);
+      toast.error(t('saveFailed'));
+    }
   };
 
   const handleDelete = async () => {
@@ -5537,8 +5595,8 @@ function GivingPage({ plan, onNavigate }) {
 
   useEffect(() => { fetchData(); }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [donationsData, expensesData, membersData, locData] = await Promise.all([
         supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'donation_date.desc' }),
@@ -5553,7 +5611,7 @@ function GivingPage({ plan, onNavigate }) {
     } catch (error) {
       console.error('Giving fetch error:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -5622,37 +5680,91 @@ function GivingPage({ plan, onNavigate }) {
 
   const handleSaveDonation = async () => {
     if (!donationForm.amount) { toast.warning(t('amountRequired')); return; }
-    setSaving(true);
+
+    const isInsert = !editingItem;
+    const formSnapshot = donationForm;
+    const editingSnapshot = editingItem;
+    const listSnapshot = donations;
+    const data = {
+      ...donationForm,
+      amount: parseFloat(donationForm.amount),
+      member_id: donationForm.member_id || null,
+      location_id: donationForm.location_id || null,
+      donation_date: donationForm.donation_date || null
+    };
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    if (isInsert) {
+      setDonations([{ id: tempId, ...data }, ...donations]);
+    } else {
+      setDonations(donations.map(d => d.id === editingItem.id ? { ...d, ...data } : d));
+    }
+    setShowModal(false);
+    resetDonationForm();
+    toast.success(isInsert ? `💰 ${t('donationRecorded')}` : t('savedSuccessfully'));
+
     try {
-      const data = {
-        ...donationForm,
-        amount: parseFloat(donationForm.amount),
-        member_id: donationForm.member_id || null,
-        location_id: donationForm.location_id || null,
-        donation_date: donationForm.donation_date || null
-      };
-      if (editingItem) { await supabaseUpdate('donations', editingItem.id, data); toast.success(t('savedSuccessfully')); }
-      else { await supabaseInsert('donations', data); toast.success(`💰 ${t('donationRecorded')}`); }
-      setShowModal(false); resetDonationForm(); fetchData();
-    } catch (error) { toast.error(error.message); }
-    setSaving(false);
+      if (isInsert) {
+        const result = await supabaseInsert('donations', data);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        if (realRow?.id) {
+          setDonations(prev => prev.map(d => d.id === tempId ? realRow : d));
+        }
+      } else {
+        await supabaseUpdate('donations', editingItem.id, data);
+      }
+      fetchData(true).catch(err => console.error('Refetch failed', err));
+    } catch (error) {
+      setDonations(listSnapshot);
+      setDonationForm(formSnapshot);
+      if (editingSnapshot) setEditingItem(editingSnapshot);
+      setShowModal(true);
+      toast.error(t('saveFailed'));
+    }
   };
 
   const handleSaveExpense = async () => {
     if (!expenseForm.amount || !expenseForm.description) { toast.warning(t('amountDescRequired')); return; }
-    setSaving(true);
+
+    const isInsert = !editingItem;
+    const formSnapshot = expenseForm;
+    const editingSnapshot = editingItem;
+    const listSnapshot = expenses;
+    const data = {
+      ...expenseForm,
+      amount: parseFloat(expenseForm.amount),
+      location_id: expenseForm.location_id || null,
+      expense_date: expenseForm.expense_date || null
+    };
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    if (isInsert) {
+      setExpenses([{ id: tempId, ...data }, ...expenses]);
+    } else {
+      setExpenses(expenses.map(e => e.id === editingItem.id ? { ...e, ...data } : e));
+    }
+    setShowExpenseModal(false);
+    resetExpenseForm();
+    toast.success(t('savedSuccessfully'));
+
     try {
-      const data = {
-        ...expenseForm,
-        amount: parseFloat(expenseForm.amount),
-        location_id: expenseForm.location_id || null,
-        expense_date: expenseForm.expense_date || null
-      };
-      if (editingItem) { await supabaseUpdate('expenses', editingItem.id, data); }
-      else { await supabaseInsert('expenses', data); }
-      setShowExpenseModal(false); resetExpenseForm(); fetchData();
-    } catch (error) { toast.error(error.message); }
-    setSaving(false);
+      if (isInsert) {
+        const result = await supabaseInsert('expenses', data);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        if (realRow?.id) {
+          setExpenses(prev => prev.map(e => e.id === tempId ? realRow : e));
+        }
+      } else {
+        await supabaseUpdate('expenses', editingItem.id, data);
+      }
+      fetchData(true).catch(err => console.error('Refetch failed', err));
+    } catch (error) {
+      setExpenses(listSnapshot);
+      setExpenseForm(formSnapshot);
+      if (editingSnapshot) setEditingItem(editingSnapshot);
+      setShowExpenseModal(true);
+      toast.error(t('saveFailed'));
+    }
   };
 
   const handleDelete = async () => {
@@ -6042,11 +6154,45 @@ function SalvationsPage() {
   const [form, setForm] = useState({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: '' });
 
   useEffect(() => { fetchSalvations(); }, []);
-  const fetchSalvations = async () => { setLoading(true); try { const [data, locData] = await Promise.all([supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc' }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setSalvations(data || []); setLocations(locData || []); } catch (error) { console.error('Salvations fetch error:', error); } finally { setLoading(false); } };
+  const fetchSalvations = async (silent = false) => { if (!silent) setLoading(true); try { const [data, locData] = await Promise.all([supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc' }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setSalvations(data || []); setLocations(locData || []); } catch (error) { console.error('Salvations fetch error:', error); } finally { if (!silent) setLoading(false); } };
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ full_name: '', phone: '', email: '', gender: '', age_group: '', salvation_date: new Date().toISOString().split('T')[0], followup_status: 'PENDING', followup_notes: '', location_id: mainCampus?.id || '' }); setEditingRecord(null); };
   const openModal = (record = null) => { if (record) { setEditingRecord(record); setForm({ full_name: record.full_name || '', phone: record.phone || '', email: record.email || '', gender: record.gender || '', age_group: record.age_group || '', salvation_date: record.salvation_date || '', followup_status: record.followup_status || 'PENDING', followup_notes: record.followup_notes || '', location_id: record.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.full_name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { const cleanedForm = { ...form, location_id: form.location_id || null, salvation_date: form.salvation_date || null }; if (editingRecord) { await supabaseUpdate('salvations', editingRecord.id, cleanedForm); } else { await supabaseInsert('salvations', cleanedForm); } setShowModal(false); resetForm(); fetchSalvations(); } catch (error) { toast.error(error.message); } setSaving(false); };
+  const handleSave = async () => {
+    if (!form.full_name) { toast.warning(t('nameRequired')); return; }
+    const isInsert = !editingRecord;
+    const formSnapshot = form;
+    const editingSnapshot = editingRecord;
+    const listSnapshot = salvations;
+    const cleanedForm = { ...form, location_id: form.location_id || null, salvation_date: form.salvation_date || null };
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (isInsert) {
+      setSalvations([{ id: tempId, ...cleanedForm }, ...salvations]);
+    } else {
+      setSalvations(salvations.map(s => s.id === editingRecord.id ? { ...s, ...cleanedForm } : s));
+    }
+    setShowModal(false);
+    resetForm();
+    toast.success(t('savedSuccessfully'));
+    try {
+      if (isInsert) {
+        const result = await supabaseInsert('salvations', cleanedForm);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        if (realRow?.id) {
+          setSalvations(prev => prev.map(s => s.id === tempId ? realRow : s));
+        }
+      } else {
+        await supabaseUpdate('salvations', editingRecord.id, cleanedForm);
+      }
+      fetchSalvations(true).catch(err => console.error('Refetch failed', err));
+    } catch (error) {
+      setSalvations(listSnapshot);
+      setForm(formSnapshot);
+      if (editingSnapshot) setEditingRecord(editingSnapshot);
+      setShowModal(true);
+      toast.error(t('saveFailed'));
+    }
+  };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('salvations', deleteConfirm.id); setDeleteConfirm(null); fetchSalvations(); };
 
   const filteredSalvations = salvations.filter(function(s) { var loc = filterLocation === 'all' || s.location_id === filterLocation; var search = !searchTerm || (s.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (s.phone || '').includes(searchTerm) || (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()); return loc && search; });
@@ -6125,11 +6271,45 @@ function GroupsPage() {
   const [form, setForm] = useState({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: '' });
 
   useEffect(() => { fetchGroups(); }, []);
-  const fetchGroups = async () => { setLoading(true); try { const [data, locData] = await Promise.all([supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setGroups(data || []); setLocations(locData || []); } catch (error) { console.error('Groups fetch error:', error); } finally { setLoading(false); } };
+  const fetchGroups = async (silent = false) => { if (!silent) setLoading(true); try { const [data, locData] = await Promise.all([supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }), supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })]); setGroups(data || []); setLocations(locData || []); } catch (error) { console.error('Groups fetch error:', error); } finally { if (!silent) setLoading(false); } };
   const getLocationName = (locationId) => { const loc = locations.find(l => l.id === locationId); return loc ? loc.name : '—'; };
   const resetForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setForm({ name: '', description: '', group_type: 'CELL', meeting_day: 'WEDNESDAY', meeting_time: '18:00', is_active: true, location_id: mainCampus?.id || '' }); setEditingGroup(null); };
   const openModal = (group = null) => { if (group) { setEditingGroup(group); setForm({ name: group.name || '', description: group.description || '', group_type: group.group_type || 'CELL', meeting_day: group.meeting_day || 'WEDNESDAY', meeting_time: group.meeting_time || '18:00', is_active: group.is_active ?? true, location_id: group.location_id || '' }); } else { resetForm(); } setShowModal(true); };
-  const handleSave = async () => { if (!form.name) { toast.warning(t('nameRequired')); return; } setSaving(true); try { const cleanedForm = { ...form, location_id: form.location_id || null, meeting_time: form.meeting_time || null }; if (editingGroup) { await supabaseUpdate('groups', editingGroup.id, cleanedForm); } else { await supabaseInsert('groups', cleanedForm); } setShowModal(false); resetForm(); fetchGroups(); } catch (error) { toast.error(error.message); } setSaving(false); };
+  const handleSave = async () => {
+    if (!form.name) { toast.warning(t('nameRequired')); return; }
+    const isInsert = !editingGroup;
+    const formSnapshot = form;
+    const editingSnapshot = editingGroup;
+    const listSnapshot = groups;
+    const cleanedForm = { ...form, location_id: form.location_id || null, meeting_time: form.meeting_time || null };
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (isInsert) {
+      setGroups([{ id: tempId, ...cleanedForm }, ...groups]);
+    } else {
+      setGroups(groups.map(g => g.id === editingGroup.id ? { ...g, ...cleanedForm } : g));
+    }
+    setShowModal(false);
+    resetForm();
+    toast.success(t('savedSuccessfully'));
+    try {
+      if (isInsert) {
+        const result = await supabaseInsert('groups', cleanedForm);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        if (realRow?.id) {
+          setGroups(prev => prev.map(g => g.id === tempId ? realRow : g));
+        }
+      } else {
+        await supabaseUpdate('groups', editingGroup.id, cleanedForm);
+      }
+      fetchGroups(true).catch(err => console.error('Refetch failed', err));
+    } catch (error) {
+      setGroups(listSnapshot);
+      setForm(formSnapshot);
+      if (editingSnapshot) setEditingGroup(editingSnapshot);
+      setShowModal(true);
+      toast.error(t('saveFailed'));
+    }
+  };
   const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('groups', deleteConfirm.id); setDeleteConfirm(null); fetchGroups(); };
 
   const filteredGroups = groups.filter(g => filterLocation === 'all' || g.location_id === filterLocation);
@@ -6214,8 +6394,8 @@ function VolunteersPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [volunteersData, membersData, locData] = await Promise.all([
         supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
@@ -6228,7 +6408,7 @@ function VolunteersPage() {
     } catch (error) {
       console.error('Volunteers fetch error:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -6276,21 +6456,41 @@ function VolunteersPage() {
       toast.warning('Name and ministry are required');
       return;
     }
-    setSaving(true);
-    try {
-      const cleanedForm = { ...form, member_id: form.member_id || null, location_id: form.location_id || null, start_date: form.start_date || null };
-      if (editingVolunteer) {
-        await supabaseUpdate('volunteers', editingVolunteer.id, cleanedForm);
-      } else {
-        await supabaseInsert('volunteers', cleanedForm);
-      }
-      setShowModal(false);
-      resetForm();
-      fetchData();
-    } catch (error) {
-      toast.error(error.message);
+
+    const isInsert = !editingVolunteer;
+    const formSnapshot = form;
+    const editingSnapshot = editingVolunteer;
+    const listSnapshot = volunteers;
+    const cleanedForm = { ...form, member_id: form.member_id || null, location_id: form.location_id || null, start_date: form.start_date || null };
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    if (isInsert) {
+      setVolunteers([{ id: tempId, ...cleanedForm }, ...volunteers]);
+    } else {
+      setVolunteers(volunteers.map(v => v.id === editingVolunteer.id ? { ...v, ...cleanedForm } : v));
     }
-    setSaving(false);
+    setShowModal(false);
+    resetForm();
+    toast.success(t('savedSuccessfully'));
+
+    try {
+      if (isInsert) {
+        const result = await supabaseInsert('volunteers', cleanedForm);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        if (realRow?.id) {
+          setVolunteers(prev => prev.map(v => v.id === tempId ? realRow : v));
+        }
+      } else {
+        await supabaseUpdate('volunteers', editingVolunteer.id, cleanedForm);
+      }
+      fetchData(true).catch(err => console.error('Refetch failed', err));
+    } catch (error) {
+      setVolunteers(listSnapshot);
+      setForm(formSnapshot);
+      if (editingSnapshot) setEditingVolunteer(editingSnapshot);
+      setShowModal(true);
+      toast.error(t('saveFailed'));
+    }
   };
 
   const handleDelete = async () => {
