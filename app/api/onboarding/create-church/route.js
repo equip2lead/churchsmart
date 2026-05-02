@@ -33,7 +33,11 @@ export async function POST(request) {
     console.log(`${tag} auth_id=${authUser.id} ts=${new Date().toISOString()}`);
 
     const body = await request.json().catch(() => ({}));
-    const { name, city, denomination, address, senior_pastor, currency, church_phone, church_email } = body;
+    const { name, city, denomination, address, senior_pastor, currency, church_phone, church_email, default_language } = body;
+    // Validate against the language_pref enum. Default to ENGLISH on null /
+    // missing / garbage — explicitly NOT FRENCH, so we don't reproduce the
+    // pre-fix silent-bias in the opposite direction.
+    const safeDefaultLanguage = default_language === 'FRENCH' ? 'FRENCH' : 'ENGLISH';
 
     if (!name || !name.trim()) {
       return Response.json({ error: 'Church name is required', code: 'MISSING_NAME' }, { status: 400 });
@@ -74,7 +78,8 @@ export async function POST(request) {
         phone: church_phone || null,
         email: church_email || null,
         currency: currency || 'XAF',
-        trial_end: trialEnd.toISOString()
+        trial_end: trialEnd.toISOString(),
+        default_language: safeDefaultLanguage
       })
       .select()
       .single();

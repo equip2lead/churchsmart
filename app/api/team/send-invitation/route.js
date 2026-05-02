@@ -209,7 +209,9 @@ export async function POST(request) {
       .maybeSingle();
 
     const churchName = church?.name || 'your church';
-    const lang = church?.default_language === 'fr' ? 'fr' : 'en';
+    // Normalize DB enum ('FRENCH' / 'ENGLISH') to 2-letter code once. Default
+    // to 'en' for null/unrecognized values so callers always get a usable lang.
+    const lang = church?.default_language === 'FRENCH' ? 'fr' : 'en';
     const inviteLink = `${APP_URL}/accept-invite?token=${inviteToken}`;
 
     console.log(`${tag} sending_email invitation_id=${inserted.id} church_id=${churchId} lang=${lang}`);

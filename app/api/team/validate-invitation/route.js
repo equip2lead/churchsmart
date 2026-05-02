@@ -71,7 +71,9 @@ export async function GET(request) {
     return Response.json({
       valid: true,
       church_name: church?.name || '',
-      church_default_language: church?.default_language || 'en',
+      // Normalize DB enum ('FRENCH' / 'ENGLISH') to 2-letter code at the API
+      // boundary so all clients can compare against 'en' / 'fr' uniformly.
+      church_default_language: church?.default_language === 'FRENCH' ? 'fr' : 'en',
       email: assignment.user_email,
       user_name: assignment.user_name,
       base_role: assignment.pending_base_role,

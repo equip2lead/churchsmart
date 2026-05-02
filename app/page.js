@@ -2350,7 +2350,11 @@ function GoogleChurchSetup({ user, onClose }) {
           senior_pastor: form.church_pastor || null,
           currency: form.church_currency || 'XAF',
           church_phone: form.church_phone || null,
-          church_email: form.church_email || null
+          church_email: form.church_email || null,
+          // Pastor's UI-language toggle is the most authentic signal of
+          // their language preference; persist it so future emails
+          // (invitations, notifications) are sent in the right language.
+          default_language: lang === 'fr' ? 'FRENCH' : 'ENGLISH'
         }),
         signal
       }));
