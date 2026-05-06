@@ -367,6 +367,7 @@ const translations = {
 
     // Toast messages
     csvExportedSuccess: 'CSV exported!',
+    noRecordsToExport: 'No data to export.',
     nameRequired: 'Name required',
     amountRequired: 'Amount is required',
     firstLastRequired: 'First name and last name are required',
@@ -814,6 +815,7 @@ const translations = {
 
     // Toast messages
     csvExportedSuccess: 'CSV exporté!',
+    noRecordsToExport: 'Aucune donnée à exporter.',
     nameRequired: 'Nom requis',
     amountRequired: 'Le montant est requis',
     firstLastRequired: 'Le prénom et le nom sont requis',
@@ -1873,26 +1875,38 @@ function MemberProfile({ member, onClose, churchId }) {
 // ==========================================
 // CSV EXPORT UTILITY
 // ==========================================
+// Returns true on successful download, false on empty data or unexpected error.
+// Callers gate their success toast on the return so users only see "Exported!"
+// when a file actually landed in Downloads.
 function exportToCSV(data, columns, filename) {
-  if (!data || data.length === 0) { console.warn('exportToCSV: No data to export'); return; }
-  const BOM = '\uFEFF';
-  const header = columns.map(c => `"${c.label}"`).join(',');
-  const rows = data.map(row => columns.map(c => {
-    let val = c.accessor ? c.accessor(row) : (row[c.key] ?? '');
-    val = String(val).replace(/"/g, '""');
-    return `"${val}"`;
-  }).join(','));
-  const csv = BOM + [header, ...rows].join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  if (!data || data.length === 0) {
+    console.warn('exportToCSV: No data to export');
+    return false;
+  }
+  try {
+    const BOM = '\uFEFF';
+    const header = columns.map(c => `"${c.label}"`).join(',');
+    const rows = data.map(row => columns.map(c => {
+      let val = c.accessor ? c.accessor(row) : (row[c.key] ?? '');
+      val = String(val).replace(/"/g, '""');
+      return `"${val}"`;
+    }).join(','));
+    const csv = BOM + [header, ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return true;
+  } catch (err) {
+    console.error('exportToCSV failed:', err);
+    return false;
+  }
 }
 
 // ==========================================
@@ -4184,7 +4198,7 @@ function MembersPage({ plan, onNavigate }) {
       const matchesSearch = !searchTerm || (m.first_name + ' ' + m.last_name).toLowerCase().includes(searchTerm.toLowerCase()) || (m.phone || '').includes(searchTerm) || (m.email || '').toLowerCase().includes(searchTerm.toLowerCase());
       return matchesLocation && matchesStatus && matchesSearch;
     });
-    exportToCSV(data, [
+    const ok = exportToCSV(data, [
       { label: 'First Name', key: 'first_name' },
       { label: 'Last Name', key: 'last_name' },
       { label: 'Phone', key: 'phone' },
@@ -4196,7 +4210,7 @@ function MembersPage({ plan, onNavigate }) {
       { label: 'Address', key: 'address' },
       { label: 'City', key: 'city' },
     ], 'members');
-    toast.success(t('csvExportedSuccess'));
+    if (ok) toast.success(t('csvExportedSuccess')); else toast.warning(t('noRecordsToExport'));
   };
 
   const openModal = (member = null) => {
@@ -4944,7 +4958,7 @@ function VisitorsPage() {
         title={`🚶 ${t('visitors')}`}
         subtitle={`${visitors.length} ${t('total')}`}
         actions={<div style={{ display: 'flex', gap: '10px' }}><Button variant="secondary" onClick={() => {
-          exportToCSV(filteredVisitors, [
+          const ok = exportToCSV(filteredVisitors, [
             { label: 'First Name', key: 'first_name' },
             { label: 'Last Name', key: 'last_name' },
             { label: 'Phone', key: 'phone' },
@@ -4952,7 +4966,8 @@ function VisitorsPage() {
             { label: 'Visit Date', key: 'visit_date' },
             { label: 'How Heard', key: 'how_heard_about_us' },
             { label: 'Follow-up', key: 'follow_up_status' },
-          ], 'visitors'); toast.success(t('csvExportedSuccess'));
+          ], 'visitors');
+          if (ok) toast.success(t('csvExportedSuccess')); else toast.warning(t('noRecordsToExport'));
         }}>📥 {t('exportCSV')}</Button><Button onClick={() => openModal()}>➕ {t('addVisitor')}</Button></div>}
       />
 
@@ -5290,8 +5305,8 @@ function AttendancePage() {
               📋 Details
             </button>
             <Button variant="secondary" onClick={() => {
-              const filtered = (records || []).filter(r => filterLocation === 'all' || r.location_id === filterLocation);
-              exportToCSV(filtered, [
+              const filtered = (attendance || []).filter(r => filterLocation === 'all' || r.location_id === filterLocation);
+              const ok = exportToCSV(filtered, [
                 { label: 'Date', key: 'service_date' },
                 { label: 'Service', key: 'service_name' },
                 { label: 'Men', key: 'men_count' },
@@ -5299,7 +5314,8 @@ function AttendancePage() {
                 { label: 'Children', key: 'children_count' },
                 { label: 'First Timers', key: 'first_timers_count' },
                 { label: 'Total', accessor: r => (r.men_count||0) + (r.women_count||0) + (r.children_count||0) },
-              ], 'attendance'); toast.success(t('csvExportedSuccess'));
+              ], 'attendance');
+              if (ok) toast.success(t('csvExportedSuccess')); else toast.warning(t('noRecordsToExport'));
             }}>📥 {t('exportCSV')}</Button>
             <Button onClick={() => openModal()}>➕ {t('recordAttendance')}</Button>
           </div>
@@ -5883,10 +5899,10 @@ function GivingPage({ plan, onNavigate }) {
                 { label: 'Amount', key: 'amount' },
                 { label: 'Category', key: 'category' },
               ];
-              exportToCSV(data, cols, activeTab === 'income' ? 'donations' : 'expenses');
-              toast.success(t('csvExportedSuccess'));
+              const ok = exportToCSV(data, cols, activeTab === 'income' ? 'donations' : 'expenses');
+              if (ok) toast.success(t('csvExportedSuccess')); else toast.warning(t('noRecordsToExport'));
             }}>📥 {t('exportCSV')}</Button>
-            {activeTab === 'income' && <Button variant="secondary" onClick={() => { const bd={}; (donations||[]).forEach(d => { const n=d.donor_name||'Anonymous'; if(!bd[n])bd[n]=[]; bd[n].push(d); }); const rows=Object.entries(bd).map(([n,ds])=>({donor:n,total:ds.reduce((s,d)=>s+(parseFloat(d.amount)||0),0),count:ds.length,first:ds[ds.length-1]?.donation_date||'',last:ds[0]?.donation_date||''})); exportToCSV(rows,[{label:'Donor',key:'donor'},{label:'Total',key:'total'},{label:'Count',key:'count'},{label:'First',key:'first'},{label:'Last',key:'last'}],'giving-statements'); toast.success(t('givingStatement')+' exported!'); }}>📊 {t('givingStatement')}</Button>}
+            {activeTab === 'income' && <Button variant="secondary" onClick={() => { const bd={}; (donations||[]).forEach(d => { const n=d.donor_name||'Anonymous'; if(!bd[n])bd[n]=[]; bd[n].push(d); }); const rows=Object.entries(bd).map(([n,ds])=>({donor:n,total:ds.reduce((s,d)=>s+(parseFloat(d.amount)||0),0),count:ds.length,first:ds[ds.length-1]?.donation_date||'',last:ds[0]?.donation_date||''})); const ok = exportToCSV(rows,[{label:'Donor',key:'donor'},{label:'Total',key:'total'},{label:'Count',key:'count'},{label:'First',key:'first'},{label:'Last',key:'last'}],'giving-statements'); if (ok) toast.success(t('givingStatement')+' exported!'); else toast.warning(t('noRecordsToExport')); }}>📊 {t('givingStatement')}</Button>}
             {activeTab === 'income' && <Button onClick={() => openDonationModal()}>➕ Add Donation</Button>}
             {activeTab === 'expenses' && <Button onClick={() => openExpenseModal()}>➕ Add Expense</Button>}
           </div>
