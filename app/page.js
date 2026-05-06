@@ -5308,7 +5308,8 @@ function AttendancePage() {
               const filtered = (attendance || []).filter(r => filterLocation === 'all' || r.location_id === filterLocation);
               const ok = exportToCSV(filtered, [
                 { label: 'Date', key: 'service_date' },
-                { label: 'Service', key: 'service_name' },
+                { label: 'Service', accessor: r => getServiceName(r.service_id) },
+                { label: 'Location', accessor: r => getLocationName(r.location_id) },
                 { label: 'Men', key: 'men_count' },
                 { label: 'Women', key: 'women_count' },
                 { label: 'Children', key: 'children_count' },
