@@ -369,6 +369,27 @@ const translations = {
     // Toast messages
     csvExportedSuccess: 'CSV exported!',
     noRecordsToExport: 'No data to export.',
+    visitorTownCity: 'Town/City',
+    visitorQuartier: 'Neighborhood',
+    visitorBestTimeCall: 'Best time to call',
+    visitorBestTimeVisit: 'Best time to visit',
+    visitorAttendanceStatus: 'Attendance status',
+    visitorLookingFor: 'What are you looking for?',
+    visitorSpiritualDecisions: 'Spiritual decisions today',
+    visitorFaithDecision: 'I put my faith in Jesus Christ for the first time today',
+    visitorWantsBaptism: 'I want to be baptized',
+    visitorWantsNextStep: 'I want to attend the next Next Step class',
+    timeMorning: 'Morning',
+    timeAfternoon: 'Afternoon',
+    timeEvening: 'Evening',
+    timeWeekendsOnly: 'Weekends only',
+    attendance1stTime: '1st time',
+    attendanceReturning: 'Returning visitor',
+    attendanceRegular: 'Regular attendee',
+    lookingForChurch: 'A church/community',
+    lookingForJustVisiting: 'Just visiting',
+    phoneRequired: 'Phone number is required',
+    attendanceStatusRequired: 'Please select attendance status',
     nameRequired: 'Name required',
     amountRequired: 'Amount is required',
     firstLastRequired: 'First name and last name are required',
@@ -818,6 +839,27 @@ const translations = {
     // Toast messages
     csvExportedSuccess: 'CSV exporté!',
     noRecordsToExport: 'Aucune donnée à exporter.',
+    visitorTownCity: 'Ville',
+    visitorQuartier: 'Quartier',
+    visitorBestTimeCall: 'Meilleur moment pour appeler',
+    visitorBestTimeVisit: 'Meilleur moment pour visiter',
+    visitorAttendanceStatus: 'Statut de fréquentation',
+    visitorLookingFor: 'Que cherchez-vous?',
+    visitorSpiritualDecisions: 'Décisions spirituelles aujourd\'hui',
+    visitorFaithDecision: 'Je mets ma foi en Jésus-Christ pour la première fois aujourd\'hui',
+    visitorWantsBaptism: 'Je veux être baptisé(e)',
+    visitorWantsNextStep: 'Je veux participer à la prochaine classe Next Step',
+    timeMorning: 'Matin',
+    timeAfternoon: 'Après-midi',
+    timeEvening: 'Soir',
+    timeWeekendsOnly: 'Weekends seulement',
+    attendance1stTime: 'Première fois',
+    attendanceReturning: 'Visiteur de retour',
+    attendanceRegular: 'Participant régulier',
+    lookingForChurch: 'Une église/communauté',
+    lookingForJustVisiting: 'Juste de passage',
+    phoneRequired: 'Le numéro de téléphone est requis',
+    attendanceStatusRequired: 'Veuillez sélectionner le statut de fréquentation',
     nameRequired: 'Nom requis',
     amountRequired: 'Le montant est requis',
     firstLastRequired: 'Le prénom et le nom sont requis',
@@ -1898,7 +1940,7 @@ function MemberProfile({ member, onClose, churchId }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px', backgroundColor: '#f9fafb', borderRadius: '12px', padding: '20px' }}>
         <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('address')}</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.address || '—'}{member.city ? `, ${member.city}` : ''}</p></div>
         <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('membershipDate')}</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.membership_date || '—'}</p></div>
-        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Emergency</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.emergency_contact || '—'}</p></div>
+        <div><span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Emergency</span><p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '500' }}>{member.emergency_contact_name || '—'}</p></div>
       </div>
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -4861,6 +4903,11 @@ function VisitorsPage() {
     const mainCampus = locations.find(l => l.is_main_campus);
     setForm({
       full_name: '', email: '', phone: '', whatsapp: '',
+      gender: '',
+      town_city: '', quartier: '',
+      best_time_to_call: '', best_time_to_visit: '',
+      attendance_status: '', looking_for: '',
+      faith_decision: false, wants_baptism: false, wants_next_step: false,
       visit_date: new Date().toISOString().split('T')[0],
       is_first_time: true, how_heard_about_us: '', prayer_request: '',
       followup_status: 'NOT_STARTED', language_preference: 'FRENCH',
@@ -4877,6 +4924,16 @@ function VisitorsPage() {
         email: visitor.email || '',
         phone: visitor.phone || '',
         whatsapp: visitor.whatsapp || '',
+        gender: visitor.gender || '',
+        town_city: visitor.town_city || '',
+        quartier: visitor.quartier || '',
+        best_time_to_call: visitor.best_time_to_call || '',
+        best_time_to_visit: visitor.best_time_to_visit || '',
+        attendance_status: visitor.attendance_status || '',
+        looking_for: visitor.looking_for || '',
+        faith_decision: !!visitor.faith_decision,
+        wants_baptism: !!visitor.wants_baptism,
+        wants_next_step: !!visitor.wants_next_step,
         visit_date: visitor.visit_date || '',
         is_first_time: visitor.is_first_time ?? true,
         how_heard_about_us: visitor.how_heard_about_us || '',
@@ -4897,8 +4954,18 @@ function VisitorsPage() {
   };
 
   const handleSave = async () => {
-    if (!form.full_name || !form.phone) {
-      toast.warning(t('namePhoneRequired'));
+    // Required-field gating MUST run before the optimistic UI swap below so
+    // that a blocked save does not flash a temp row into the list.
+    if (!form.full_name) {
+      toast.warning(t('nameRequired'));
+      return;
+    }
+    if (!form.phone) {
+      toast.warning(t('phoneRequired'));
+      return;
+    }
+    if (!form.attendance_status) {
+      toast.warning(t('attendanceStatusRequired'));
       return;
     }
     // Duplicate detection
@@ -4914,7 +4981,16 @@ function VisitorsPage() {
     const formSnapshot = form;
     const editingSnapshot = editingVisitor;
     const listSnapshot = visitors;
-    const cleanedForm = { ...form, location_id: form.location_id || null, visit_date: form.visit_date || null };
+    // gender is a Postgres enum (gender_type) — empty string is rejected by
+    // the enum cast. Normalize '' to null per the Round 4 fix pattern (d5a6559).
+    // The other varchar columns (town_city, quartier, best_time_*, looking_for)
+    // accept empty strings and are left untouched.
+    const cleanedForm = {
+      ...form,
+      gender: form.gender || null,
+      location_id: form.location_id || null,
+      visit_date: form.visit_date || null
+    };
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     if (isInsert) {
@@ -5036,10 +5112,33 @@ function VisitorsPage() {
     v.phone?.includes(search);
   });
 
+  // Pre-built status colour map and label resolver — pulled out of the column
+  // render closures so we don't rebuild on every row paint.
+  const ATTENDANCE_STATUS_COLORS = {
+    '1ST_TIME': { bg: '#fef3c7', fg: '#92400e' },
+    'RETURNING': { bg: '#dbeafe', fg: '#1e40af' },
+    'REGULAR': { bg: '#dcfce7', fg: '#166534' }
+  };
+  const attendanceStatusLabel = (s) => {
+    if (s === '1ST_TIME') return t('attendance1stTime');
+    if (s === 'RETURNING') return t('attendanceReturning');
+    if (s === 'REGULAR') return t('attendanceRegular');
+    return s || '';
+  };
+
   const columns = [
     { header: t('name'), key: 'full_name', render: (row) => <span style={{ fontWeight: '500' }}>{row.full_name}</span> },
     { header: t('visitDate'), key: 'visit_date', render: (row) => new Date(row.visit_date).toLocaleDateString() },
     { header: t('phone'), key: 'phone', render: (row) => <span style={{ color: '#6b7280' }}>{row.phone}</span> },
+    { header: t('visitorAttendanceStatus'), key: 'attendance_status', render: (row) => {
+        if (!row.attendance_status) return <span style={{ color: '#9ca3af' }}>—</span>;
+        const c = ATTENDANCE_STATUS_COLORS[row.attendance_status] || { bg: '#f3f4f6', fg: '#374151' };
+        return <span style={{ padding: '2px 10px', backgroundColor: c.bg, color: c.fg, borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{attendanceStatusLabel(row.attendance_status)}</span>;
+      } },
+    { header: `${t('visitorTownCity')} / ${t('visitorQuartier')}`, key: 'town_quartier', render: (row) => {
+        const parts = [row.town_city, row.quartier].filter(Boolean);
+        return parts.length === 0 ? <span style={{ color: '#9ca3af' }}>—</span> : <span style={{ color: '#6b7280', fontSize: '13px' }}>{parts.join(' · ')}</span>;
+      } },
     { header: '📍 Location', key: 'location', render: (row) => <span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '6px', fontSize: '12px' }}>{getLocationName(row.location_id)}</span> },
     { header: t('howHeard'), key: 'how_heard', render: (row) => <span style={{ color: '#6b7280' }}>{row.how_heard_about_us || '—'}</span> },
     { header: t('status'), key: 'status', render: (row) => <StatusBadge status={row.followup_status} /> },
@@ -5054,13 +5153,23 @@ function VisitorsPage() {
         subtitle={`${visitors.length} ${t('total')}`}
         actions={<div style={{ display: 'flex', gap: '10px' }}><Button variant="secondary" onClick={() => {
           const ok = exportToCSV(filteredVisitors, [
-            { label: 'First Name', key: 'first_name' },
-            { label: 'Last Name', key: 'last_name' },
+            { label: 'Full Name', key: 'full_name' },
             { label: 'Phone', key: 'phone' },
+            { label: 'WhatsApp', key: 'whatsapp' },
             { label: 'Email', key: 'email' },
             { label: 'Visit Date', key: 'visit_date' },
             { label: 'How Heard', key: 'how_heard_about_us' },
-            { label: 'Follow-up', key: 'follow_up_status' },
+            { label: 'Follow-up', key: 'followup_status' },
+            { label: 'Town/City', key: 'town_city' },
+            { label: 'Quartier', key: 'quartier' },
+            { label: 'Gender', key: 'gender' },
+            { label: 'Best Time to Call', key: 'best_time_to_call' },
+            { label: 'Best Time to Visit', key: 'best_time_to_visit' },
+            { label: 'Attendance Status', key: 'attendance_status' },
+            { label: 'Looking For', key: 'looking_for' },
+            { label: 'Faith Decision', accessor: r => r.faith_decision ? 'Yes' : 'No' },
+            { label: 'Wants Baptism', accessor: r => r.wants_baptism ? 'Yes' : 'No' },
+            { label: 'Wants Next Step', accessor: r => r.wants_next_step ? 'Yes' : 'No' },
           ], 'visitors');
           if (ok) toast.success(t('csvExportedSuccess')); else toast.warning(t('noRecordsToExport'));
         }}>📥 {t('exportCSV')}</Button><Button onClick={() => openModal()}>➕ {t('addVisitor')}</Button></div>}
@@ -5127,25 +5236,76 @@ function VisitorsPage() {
 
       {/* Add/Edit Modal */}
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingVisitor ? `✏️ ${t('editVisitor')}` : `➕ ${t('addVisitor')}`}>
-        <FormInput label={t('name')} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
+        {/* REQUIRED — full name, phone, attendance status. Validation in handleSave gates save before optimistic UI. */}
+        <FormInput label={`${t('name')} *`} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={t('phone')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required placeholder="+237 6XX XXX XXX" />
+          <FormInput label={`${t('phone')} *`} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required placeholder="+237 6XX XXX XXX" />
           <FormInput label="WhatsApp" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="+237 6XX XXX XXX" />
         </div>
-        <FormInput label={t('email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <FormInput label={t('visitDate')} type="date" value={form.visit_date} onChange={(e) => setForm({ ...form, visit_date: e.target.value })} />
-          <FormInput label="📍 Location" type="select" value={form.location_id} onChange={(e) => setForm({ ...form, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
+        <FormInput label={`${t('visitorAttendanceStatus')} *`} type="select" value={form.attendance_status} onChange={(e) => setForm({ ...form, attendance_status: e.target.value })} required
+          options={[{ value: '', label: '— Select —' }, { value: '1ST_TIME', label: t('attendance1stTime') }, { value: 'RETURNING', label: t('attendanceReturning') }, { value: 'REGULAR', label: t('attendanceRegular') }]} />
+
+        {/* CONTACT — optional */}
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+          <FormInput label={t('email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <FormInput label={t('visitorTownCity')} value={form.town_city} onChange={(e) => setForm({ ...form, town_city: e.target.value })} placeholder="Yaoundé" />
+            <FormInput label={t('visitorQuartier')} value={form.quartier} onChange={(e) => setForm({ ...form, quartier: e.target.value })} placeholder="Bastos" />
+          </div>
+          <FormInput label={t('gender')} type="select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}
+            options={[{ value: '', label: '— Select —' }, { value: 'MALE', label: t('male') }, { value: 'FEMALE', label: t('female') }]} />
         </div>
-        <FormInput label={t('howHeard')} type="select" value={form.how_heard_about_us} onChange={(e) => setForm({ ...form, how_heard_about_us: e.target.value })} 
-            options={[{ value: 'Friend/Family', label: 'Friend/Family' }, { value: 'Social Media', label: 'Social Media' }, { value: 'Walk-in', label: 'Walk-in' }, { value: 'Flyer/Poster', label: 'Flyer/Poster' }, { value: 'Online Search', label: 'Online Search' }, { value: 'Event', label: 'Event' }]} />
-        <FormInput label={t('followUpStatus')} type="select" value={form.followup_status} onChange={(e) => setForm({ ...form, followup_status: e.target.value })}
-          options={[{ value: 'NOT_STARTED', label: t('notStarted') }, { value: 'IN_PROGRESS', label: t('inProgress') }, { value: 'COMPLETED', label: t('completed') }, { value: 'BECAME_MEMBER', label: t('becameMember') }]} />
-        <FormInput label="Prayer Request" type="textarea" value={form.prayer_request} onChange={(e) => setForm({ ...form, prayer_request: e.target.value })} />
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <input type="checkbox" checked={form.is_first_time} onChange={(e) => setForm({ ...form, is_first_time: e.target.checked })} />
-          <span style={{ fontSize: '14px' }}>{t('firstTime')}</span>
-        </label>
+
+        {/* BEST TIME — optional, both dropdowns share the same 4 enum values */}
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <FormInput label={t('visitorBestTimeCall')} type="select" value={form.best_time_to_call} onChange={(e) => setForm({ ...form, best_time_to_call: e.target.value })}
+              options={[{ value: '', label: '— Select —' }, { value: 'MORNING', label: t('timeMorning') }, { value: 'AFTERNOON', label: t('timeAfternoon') }, { value: 'EVENING', label: t('timeEvening') }, { value: 'WEEKENDS_ONLY', label: t('timeWeekendsOnly') }]} />
+            <FormInput label={t('visitorBestTimeVisit')} type="select" value={form.best_time_to_visit} onChange={(e) => setForm({ ...form, best_time_to_visit: e.target.value })}
+              options={[{ value: '', label: '— Select —' }, { value: 'MORNING', label: t('timeMorning') }, { value: 'AFTERNOON', label: t('timeAfternoon') }, { value: 'EVENING', label: t('timeEvening') }, { value: 'WEEKENDS_ONLY', label: t('timeWeekendsOnly') }]} />
+          </div>
+        </div>
+
+        {/* VISIT INFO — optional */}
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <FormInput label={t('visitDate')} type="date" value={form.visit_date} onChange={(e) => setForm({ ...form, visit_date: e.target.value })} />
+            <FormInput label="📍 Location" type="select" value={form.location_id} onChange={(e) => setForm({ ...form, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
+          </div>
+          <FormInput label={t('visitorLookingFor')} type="select" value={form.looking_for} onChange={(e) => setForm({ ...form, looking_for: e.target.value })}
+            options={[{ value: '', label: '— Select —' }, { value: 'CHURCH_COMMUNITY', label: t('lookingForChurch') }, { value: 'JUST_VISITING', label: t('lookingForJustVisiting') }]} />
+        </div>
+
+        {/* SPIRITUAL DECISIONS — three independent booleans, in edit mode the existing checked state is restored from openModal */}
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+          <p style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#374151' }}>{t('visitorSpiritualDecisions')}</p>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '12px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!form.faith_decision} onChange={(e) => setForm({ ...form, faith_decision: e.target.checked })} style={{ marginTop: '4px' }} />
+            <span style={{ fontSize: '14px' }}>{t('visitorFaithDecision')}</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '12px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!form.wants_baptism} onChange={(e) => setForm({ ...form, wants_baptism: e.target.checked })} style={{ marginTop: '4px' }} />
+            <span style={{ fontSize: '14px' }}>{t('visitorWantsBaptism')}</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '12px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!form.wants_next_step} onChange={(e) => setForm({ ...form, wants_next_step: e.target.checked })} style={{ marginTop: '4px' }} />
+            <span style={{ fontSize: '14px' }}>{t('visitorWantsNextStep')}</span>
+          </label>
+        </div>
+
+        {/* NOTES — how-heard, follow-up status, prayer request, first-time toggle */}
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+          <FormInput label={t('howHeard')} type="select" value={form.how_heard_about_us} onChange={(e) => setForm({ ...form, how_heard_about_us: e.target.value })}
+            options={[{ value: '', label: '—' }, { value: 'Friend/Family', label: 'Friend/Family' }, { value: 'Social Media', label: 'Social Media' }, { value: 'Walk-in', label: 'Walk-in' }, { value: 'Flyer/Poster', label: 'Flyer/Poster' }, { value: 'Online Search', label: 'Online Search' }, { value: 'Event', label: 'Event' }]} />
+          <FormInput label={t('followUpStatus')} type="select" value={form.followup_status} onChange={(e) => setForm({ ...form, followup_status: e.target.value })}
+            options={[{ value: 'NOT_STARTED', label: t('notStarted') }, { value: 'IN_PROGRESS', label: t('inProgress') }, { value: 'COMPLETED', label: t('completed') }, { value: 'BECAME_MEMBER', label: t('becameMember') }]} />
+          <FormInput label="Prayer Request" type="textarea" value={form.prayer_request} onChange={(e) => setForm({ ...form, prayer_request: e.target.value })} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={form.is_first_time} onChange={(e) => setForm({ ...form, is_first_time: e.target.checked })} />
+            <span style={{ fontSize: '14px' }}>{t('firstTime')}</span>
+          </label>
+        </div>
+
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>{t('cancel')}</Button>
           <Button onClick={handleSave} disabled={saving}>{saving ? '⏳...' : `💾 ${t('save')}`}</Button>
