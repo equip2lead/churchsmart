@@ -1131,6 +1131,46 @@ async function supabaseDelete(table, id) {
 }
 
 // ==========================================
+// ACTIVITY LOGGING
+// ==========================================
+// Fire-and-forget audit helper. Writes to activity_logs using the caller's
+// church_id and user info pulled from localStorage — same convention as
+// supabaseInsert above, no auth network round-trip at log time. The internal
+// try/catch guarantees this never throws and never surfaces an error to the
+// user, so audit logging cannot block or fail the primary save action.
+//
+// RLS on activity_logs requires INSERT.church_id to match the caller's church
+// (or super_admin). The helper sets church_id explicitly because RLS rejection
+// is silent at the Postgres-error layer — a missing church_id would drop the
+// row with no exception thrown.
+async function logActivity({ action, entity_type, entity_id, entity_name, details }) {
+  try {
+    const savedUser = typeof localStorage !== 'undefined' ? localStorage.getItem('churchsmart_user') : null;
+    const u = savedUser ? JSON.parse(savedUser) : null;
+    const church_id = u?.church_id;
+    if (!church_id) {
+      console.warn('logActivity: no church_id in scope — skipping', { action });
+      return;
+    }
+    const { error } = await supabase.from('activity_logs').insert({
+      church_id,
+      user_email: u?.email || null,
+      user_name: u?.name || null,
+      action,
+      entity_type,
+      entity_id: entity_id || null,
+      entity_name: entity_name || null,
+      details: details || null
+    });
+    if (error) {
+      console.error('logActivity insert failed:', error.message, error.details || '');
+    }
+  } catch (err) {
+    console.error('logActivity threw:', err?.message || err);
+  }
+}
+
+// ==========================================
 // SMS/WHATSAPP HELPER
 // ==========================================
 async function sendMessage(to, message, type = 'sms') {
@@ -4269,8 +4309,22 @@ function MembersPage({ plan, onNavigate }) {
         if (realRow?.id) {
           setMembers(prev => prev.map(m => m.id === tempId ? realRow : m));
         }
+        logActivity({
+          action: 'member_created',
+          entity_type: 'member',
+          entity_id: realRow?.id || null,
+          entity_name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || null,
+          details: null
+        });
       } else {
         await supabaseUpdate('members', editingMember.id, data);
+        logActivity({
+          action: 'member_updated',
+          entity_type: 'member',
+          entity_id: editingMember.id,
+          entity_name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || null,
+          details: null
+        });
       }
       fetchData(true).catch(err => console.error('Refetch failed', err));
     } catch (error) {
@@ -4284,7 +4338,16 @@ function MembersPage({ plan, onNavigate }) {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    await supabaseDelete('members', deleteConfirm.id);
+    const deletedId = deleteConfirm.id;
+    const deletedName = `${deleteConfirm.first_name || ''} ${deleteConfirm.last_name || ''}`.trim() || null;
+    await supabaseDelete('members', deletedId);
+    logActivity({
+      action: 'member_deleted',
+      entity_type: 'member',
+      entity_id: deletedId,
+      entity_name: deletedName,
+      details: null
+    });
     setDeleteConfirm(null);
     fetchData();
   };
@@ -5781,8 +5844,22 @@ function GivingPage({ plan, onNavigate }) {
         if (realRow?.id) {
           setDonations(prev => prev.map(d => d.id === tempId ? realRow : d));
         }
+        logActivity({
+          action: 'donation_created',
+          entity_type: 'donation',
+          entity_id: realRow?.id || null,
+          entity_name: donorName,
+          details: { amount: data.amount, category: data.category_type }
+        });
       } else {
         await supabaseUpdate('donations', editingItem.id, data);
+        logActivity({
+          action: 'donation_updated',
+          entity_type: 'donation',
+          entity_id: editingItem.id,
+          entity_name: donorName,
+          details: { amount: data.amount, category: data.category_type }
+        });
       }
       fetchData(true).catch(err => console.error('Refetch failed', err));
     } catch (error) {
@@ -5840,7 +5917,18 @@ function GivingPage({ plan, onNavigate }) {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    await supabaseDelete(deleteConfirm.table, deleteConfirm.id);
+    const target = deleteConfirm;
+    await supabaseDelete(target.table, target.id);
+    // Phase 1 wires donation_deleted only; expense_deleted is deferred to Phase 2.
+    if (target.table === 'donations') {
+      logActivity({
+        action: 'donation_deleted',
+        entity_type: 'donation',
+        entity_id: target.id,
+        entity_name: target.donor_name || null,
+        details: { amount: target.amount, category: target.category_type }
+      });
+    }
     setDeleteConfirm(null); fetchData();
   };
 
