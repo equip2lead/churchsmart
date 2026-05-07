@@ -4933,8 +4933,22 @@ function VisitorsPage() {
         if (realRow?.id) {
           setVisitors(prev => prev.map(v => v.id === tempId ? realRow : v));
         }
+        logActivity({
+          action: 'visitor_created',
+          entity_type: 'visitor',
+          entity_id: realRow?.id || null,
+          entity_name: cleanedForm.full_name || null,
+          details: null
+        });
       } else {
         await supabaseUpdate('visitors', editingVisitor.id, cleanedForm);
+        logActivity({
+          action: 'visitor_updated',
+          entity_type: 'visitor',
+          entity_id: editingVisitor.id,
+          entity_name: cleanedForm.full_name || null,
+          details: null
+        });
       }
       fetchVisitors(true).catch(err => console.error('Refetch failed', err));
     } catch (error) {
@@ -4967,6 +4981,13 @@ function VisitorsPage() {
       }).select().single();
       if (newMember) {
         await supabase.from('visitors').update({ converted_to_member_id: newMember.id }).eq('id', visitor.id);
+        logActivity({
+          action: 'visitor_converted_to_member',
+          entity_type: 'member',
+          entity_id: newMember.id,
+          entity_name: `${newMember.first_name || ''} ${newMember.last_name || ''}`.trim() || null,
+          details: { from_visitor_id: visitor.id }
+        });
         toast.success(`${visitor.full_name} converted to member`);
         fetchVisitors();
       }
@@ -4976,7 +4997,16 @@ function VisitorsPage() {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    await supabaseDelete('visitors', deleteConfirm.id);
+    const deletedId = deleteConfirm.id;
+    const deletedName = deleteConfirm.full_name || null;
+    await supabaseDelete('visitors', deletedId);
+    logActivity({
+      action: 'visitor_deleted',
+      entity_type: 'visitor',
+      entity_id: deletedId,
+      entity_name: deletedName,
+      details: null
+    });
     setDeleteConfirm(null);
     fetchVisitors();
   };
@@ -5305,8 +5335,22 @@ function AttendancePage() {
         if (realRow?.id) {
           setAttendance(prev => prev.map(r => r.id === tempId ? realRow : r));
         }
+        logActivity({
+          action: 'attendance_created',
+          entity_type: 'attendance',
+          entity_id: realRow?.id || null,
+          entity_name: `${getServiceName(data.service_id)} • ${data.service_date || ''}`.trim() || null,
+          details: { men: data.men_count, women: data.women_count, children: data.children_count, first_timers: data.first_timers_count }
+        });
       } else {
         await supabaseUpdate('attendance_records', editingRecord.id, data);
+        logActivity({
+          action: 'attendance_updated',
+          entity_type: 'attendance',
+          entity_id: editingRecord.id,
+          entity_name: `${getServiceName(data.service_id)} • ${data.service_date || ''}`.trim() || null,
+          details: { men: data.men_count, women: data.women_count, children: data.children_count, first_timers: data.first_timers_count }
+        });
       }
       fetchData(true).catch(err => console.error('Refetch failed', err));
     } catch (error) {
@@ -5320,7 +5364,16 @@ function AttendancePage() {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    await supabaseDelete('attendance_records', deleteConfirm.id);
+    const target = deleteConfirm;
+    const entityName = `${getServiceName(target.service_id)} • ${target.service_date || ''}`.trim() || null;
+    await supabaseDelete('attendance_records', target.id);
+    logActivity({
+      action: 'attendance_deleted',
+      entity_type: 'attendance',
+      entity_id: target.id,
+      entity_name: entityName,
+      details: { men: target.men_count, women: target.women_count, children: target.children_count, first_timers: target.first_timers_count }
+    });
     setDeleteConfirm(null);
     fetchData();
   };
@@ -5895,6 +5948,7 @@ function GivingPage({ plan, onNavigate }) {
     resetExpenseForm();
     toast.success(t('savedSuccessfully'));
 
+    const expenseEntityName = ((data.description || '').slice(0, 80) || data.vendor_name || 'Expense');
     try {
       if (isInsert) {
         const result = await supabaseInsert('expenses', data);
@@ -5902,8 +5956,22 @@ function GivingPage({ plan, onNavigate }) {
         if (realRow?.id) {
           setExpenses(prev => prev.map(e => e.id === tempId ? realRow : e));
         }
+        logActivity({
+          action: 'expense_created',
+          entity_type: 'expense',
+          entity_id: realRow?.id || null,
+          entity_name: expenseEntityName,
+          details: { amount: data.amount, category: data.category }
+        });
       } else {
         await supabaseUpdate('expenses', editingItem.id, data);
+        logActivity({
+          action: 'expense_updated',
+          entity_type: 'expense',
+          entity_id: editingItem.id,
+          entity_name: expenseEntityName,
+          details: { amount: data.amount, category: data.category }
+        });
       }
       fetchData(true).catch(err => console.error('Refetch failed', err));
     } catch (error) {
@@ -5919,7 +5987,6 @@ function GivingPage({ plan, onNavigate }) {
     if (!deleteConfirm) return;
     const target = deleteConfirm;
     await supabaseDelete(target.table, target.id);
-    // Phase 1 wires donation_deleted only; expense_deleted is deferred to Phase 2.
     if (target.table === 'donations') {
       logActivity({
         action: 'donation_deleted',
@@ -5927,6 +5994,14 @@ function GivingPage({ plan, onNavigate }) {
         entity_id: target.id,
         entity_name: target.donor_name || null,
         details: { amount: target.amount, category: target.category_type }
+      });
+    } else if (target.table === 'expenses') {
+      logActivity({
+        action: 'expense_deleted',
+        entity_type: 'expense',
+        entity_id: target.id,
+        entity_name: ((target.description || '').slice(0, 80) || target.vendor_name || 'Expense'),
+        details: { amount: target.amount, category: target.category }
       });
     }
     setDeleteConfirm(null); fetchData();
@@ -6346,8 +6421,22 @@ function SalvationsPage() {
         if (realRow?.id) {
           setSalvations(prev => prev.map(s => s.id === tempId ? realRow : s));
         }
+        logActivity({
+          action: 'salvation_created',
+          entity_type: 'salvation',
+          entity_id: realRow?.id || null,
+          entity_name: cleanedForm.full_name || null,
+          details: null
+        });
       } else {
         await supabaseUpdate('salvations', editingRecord.id, cleanedForm);
+        logActivity({
+          action: 'salvation_updated',
+          entity_type: 'salvation',
+          entity_id: editingRecord.id,
+          entity_name: cleanedForm.full_name || null,
+          details: null
+        });
       }
       fetchSalvations(true).catch(err => console.error('Refetch failed', err));
     } catch (error) {
@@ -6358,7 +6447,20 @@ function SalvationsPage() {
       toast.error(t('saveFailed'));
     }
   };
-  const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('salvations', deleteConfirm.id); setDeleteConfirm(null); fetchSalvations(); };
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    const target = deleteConfirm;
+    await supabaseDelete('salvations', target.id);
+    logActivity({
+      action: 'salvation_deleted',
+      entity_type: 'salvation',
+      entity_id: target.id,
+      entity_name: target.full_name || null,
+      details: null
+    });
+    setDeleteConfirm(null);
+    fetchSalvations();
+  };
 
   const filteredSalvations = salvations.filter(function(s) { var loc = filterLocation === 'all' || s.location_id === filterLocation; var search = !searchTerm || (s.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (s.phone || '').includes(searchTerm) || (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()); return loc && search; });
 
@@ -6463,8 +6565,22 @@ function GroupsPage() {
         if (realRow?.id) {
           setGroups(prev => prev.map(g => g.id === tempId ? realRow : g));
         }
+        logActivity({
+          action: 'group_created',
+          entity_type: 'group',
+          entity_id: realRow?.id || null,
+          entity_name: cleanedForm.name || null,
+          details: null
+        });
       } else {
         await supabaseUpdate('groups', editingGroup.id, cleanedForm);
+        logActivity({
+          action: 'group_updated',
+          entity_type: 'group',
+          entity_id: editingGroup.id,
+          entity_name: cleanedForm.name || null,
+          details: null
+        });
       }
       fetchGroups(true).catch(err => console.error('Refetch failed', err));
     } catch (error) {
@@ -6475,7 +6591,20 @@ function GroupsPage() {
       toast.error(t('saveFailed'));
     }
   };
-  const handleDelete = async () => { if (!deleteConfirm) return; await supabaseDelete('groups', deleteConfirm.id); setDeleteConfirm(null); fetchGroups(); };
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    const target = deleteConfirm;
+    await supabaseDelete('groups', target.id);
+    logActivity({
+      action: 'group_deleted',
+      entity_type: 'group',
+      entity_id: target.id,
+      entity_name: target.name || null,
+      details: null
+    });
+    setDeleteConfirm(null);
+    fetchGroups();
+  };
 
   const filteredGroups = groups.filter(g => filterLocation === 'all' || g.location_id === filterLocation);
 
@@ -6645,8 +6774,22 @@ function VolunteersPage() {
         if (realRow?.id) {
           setVolunteers(prev => prev.map(v => v.id === tempId ? realRow : v));
         }
+        logActivity({
+          action: 'volunteer_created',
+          entity_type: 'volunteer',
+          entity_id: realRow?.id || null,
+          entity_name: cleanedForm.full_name || null,
+          details: { ministry: cleanedForm.ministry || null }
+        });
       } else {
         await supabaseUpdate('volunteers', editingVolunteer.id, cleanedForm);
+        logActivity({
+          action: 'volunteer_updated',
+          entity_type: 'volunteer',
+          entity_id: editingVolunteer.id,
+          entity_name: cleanedForm.full_name || null,
+          details: { ministry: cleanedForm.ministry || null }
+        });
       }
       fetchData(true).catch(err => console.error('Refetch failed', err));
     } catch (error) {
@@ -6660,7 +6803,15 @@ function VolunteersPage() {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    await supabaseDelete('volunteers', deleteConfirm.id);
+    const target = deleteConfirm;
+    await supabaseDelete('volunteers', target.id);
+    logActivity({
+      action: 'volunteer_deleted',
+      entity_type: 'volunteer',
+      entity_id: target.id,
+      entity_name: target.full_name || null,
+      details: { ministry: target.ministry || null }
+    });
     setDeleteConfirm(null);
     fetchData();
   };
@@ -8314,9 +8465,24 @@ function CalendarPage() {
       const cleanedForm = { ...eventForm, location_id: eventForm.location_id || null, start_time: eventForm.start_time || null, end_time: eventForm.end_time || null };
       if (editingEvent) {
         await supabaseUpdate('events', editingEvent.id, cleanedForm);
+        logActivity({
+          action: 'event_updated',
+          entity_type: 'event',
+          entity_id: editingEvent.id,
+          entity_name: cleanedForm.title || null,
+          details: null
+        });
         toast.success(t('savedSuccessfully'));
       } else {
-        await supabaseInsert('events', cleanedForm);
+        const result = await supabaseInsert('events', cleanedForm);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        logActivity({
+          action: 'event_created',
+          entity_type: 'event',
+          entity_id: realRow?.id || null,
+          entity_name: cleanedForm.title || null,
+          details: null
+        });
         toast.success(t('savedSuccessfully'));
       }
       setShowEventModal(false);
@@ -8327,7 +8493,15 @@ function CalendarPage() {
 
   const handleDeleteEvent = async (eventId) => {
     try {
+      const target = (events || []).find(e => e.id === eventId);
       await supabaseDelete('events', eventId);
+      logActivity({
+        action: 'event_deleted',
+        entity_type: 'event',
+        entity_id: eventId,
+        entity_name: target?.title || null,
+        details: null
+      });
       toast.success(t('deletedSuccessfully'));
       setSelectedDay(selectedDay); // refresh
       fetchCalendarData();
@@ -8701,8 +8875,23 @@ function ServicesPage() {
       const cleanedForm = { ...serviceForm, location_id: serviceForm.location_id || null, start_time: serviceForm.start_time || null, end_time: serviceForm.end_time || null };
       if (editingService) {
         await supabaseUpdate('services', editingService.id, cleanedForm);
+        logActivity({
+          action: 'service_updated',
+          entity_type: 'service',
+          entity_id: editingService.id,
+          entity_name: cleanedForm.name || null,
+          details: null
+        });
       } else {
-        await supabaseInsert('services', cleanedForm);
+        const result = await supabaseInsert('services', cleanedForm);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        logActivity({
+          action: 'service_created',
+          entity_type: 'service',
+          entity_id: realRow?.id || null,
+          entity_name: cleanedForm.name || null,
+          details: null
+        });
       }
       setShowServiceModal(false);
       resetServiceForm();
@@ -8718,8 +8907,23 @@ function ServicesPage() {
       const cleanedForm = { ...eventForm, location_id: eventForm.location_id || null, start_time: eventForm.start_time || null, end_time: eventForm.end_time || null };
       if (editingEvent) {
         await supabaseUpdate('events', editingEvent.id, cleanedForm);
+        logActivity({
+          action: 'event_updated',
+          entity_type: 'event',
+          entity_id: editingEvent.id,
+          entity_name: cleanedForm.title || null,
+          details: null
+        });
       } else {
-        await supabaseInsert('events', cleanedForm);
+        const result = await supabaseInsert('events', cleanedForm);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        logActivity({
+          action: 'event_created',
+          entity_type: 'event',
+          entity_id: realRow?.id || null,
+          entity_name: cleanedForm.title || null,
+          details: null
+        });
       }
       setShowEventModal(false);
       resetEventForm();
@@ -8732,10 +8936,25 @@ function ServicesPage() {
   const handleDelete = async () => {
     if (!deleteConfirm) return;
     try {
-      if (deleteConfirm.type === 'service') {
-        await supabaseDelete('services', deleteConfirm.id);
+      const target = deleteConfirm;
+      if (target.type === 'service') {
+        await supabaseDelete('services', target.id);
+        logActivity({
+          action: 'service_deleted',
+          entity_type: 'service',
+          entity_id: target.id,
+          entity_name: target.name || null,
+          details: null
+        });
       } else {
-        await supabaseDelete('events', deleteConfirm.id);
+        await supabaseDelete('events', target.id);
+        logActivity({
+          action: 'event_deleted',
+          entity_type: 'event',
+          entity_id: target.id,
+          entity_name: target.title || null,
+          details: null
+        });
       }
       setDeleteConfirm(null);
       fetchData();
@@ -10254,6 +10473,13 @@ function SettingsPage() {
     setSaving(true);
     try {
       await supabaseUpdate('churches', CHURCH_ID, churchForm);
+      logActivity({
+        action: 'church_profile_updated',
+        entity_type: 'church',
+        entity_id: CHURCH_ID,
+        entity_name: churchForm.name || null,
+        details: null
+      });
       setEditingChurch(false);
       fetchData();
     } catch (error) { toast.error(error.message); }
@@ -10329,13 +10555,28 @@ function SettingsPage() {
           await supabaseUpdate('church_locations', loc.id, { is_main_campus: false });
         }
       }
-      if (editingLocation) { 
-        await supabaseUpdate('church_locations', editingLocation.id, data); 
-      } else { 
-        await supabaseInsert('church_locations', data); 
+      if (editingLocation) {
+        await supabaseUpdate('church_locations', editingLocation.id, data);
+        logActivity({
+          action: 'location_updated',
+          entity_type: 'location',
+          entity_id: editingLocation.id,
+          entity_name: data.name || null,
+          details: null
+        });
+      } else {
+        const result = await supabaseInsert('church_locations', data);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        logActivity({
+          action: 'location_created',
+          entity_type: 'location',
+          entity_id: realRow?.id || null,
+          entity_name: data.name || null,
+          details: null
+        });
       }
-      setShowLocationModal(false); 
-      resetLocationForm(); 
+      setShowLocationModal(false);
+      resetLocationForm();
       fetchData();
     } catch (error) { 
       toast.error(error.message); 
@@ -10358,8 +10599,26 @@ function SettingsPage() {
     if (!roleForm.name) { toast.warning('Role name is required'); return; }
     setSaving(true);
     try {
-      if (editingRole) { await supabaseUpdate('user_roles', editingRole.id, roleForm); }
-      else { await supabaseInsert('user_roles', { ...roleForm, is_system_role: false }); }
+      if (editingRole) {
+        await supabaseUpdate('user_roles', editingRole.id, roleForm);
+        logActivity({
+          action: 'custom_role_updated',
+          entity_type: 'custom_role',
+          entity_id: editingRole.id,
+          entity_name: roleForm.name || null,
+          details: null
+        });
+      } else {
+        const result = await supabaseInsert('user_roles', { ...roleForm, is_system_role: false });
+        const realRow = Array.isArray(result) ? result[0] : result;
+        logActivity({
+          action: 'custom_role_created',
+          entity_type: 'custom_role',
+          entity_id: realRow?.id || null,
+          entity_name: roleForm.name || null,
+          details: null
+        });
+      }
       setShowRoleModal(false); resetRoleForm(); fetchData();
     } catch (error) { toast.error(error.message); }
     setSaving(false);
@@ -10481,6 +10740,14 @@ function SettingsPage() {
         );
       }
 
+      logActivity({
+        action: 'role_invitation_sent',
+        entity_type: 'role_assignment',
+        entity_id: data.invitation_id || null,
+        entity_name: assignForm.user_email || null,
+        details: { base_role: assignForm.base_role, role_id: finalRoleId }
+      });
+
       setShowAssignRoleModal(false);
       setAssignForm({ user_email: '', user_name: '', role_id: '', base_role: 'STAFF' });
       fetchData();
@@ -10494,12 +10761,22 @@ function SettingsPage() {
   const handleRemoveAssignment = async (id) => {
     if (!confirm(t('invitationRevokeConfirm'))) return;
     try {
+      // Capture revoked user's email + role BEFORE the update so the audit log
+      // can record what was actually revoked, not the post-update state.
+      const a = roleAssignments.find(x => x.id === id);
       // Soft-revoke instead of hard-delete: preserves audit trail (assigned_by,
       // invitation_sent_at, accepted_at) and ensures the token can no longer be
       // used to accept (cleared in same UPDATE).
       await supabaseUpdate('user_role_assignments', id, {
         status: 'revoked',
         invitation_token: null
+      });
+      logActivity({
+        action: 'role_invitation_revoked',
+        entity_type: 'role_assignment',
+        entity_id: id,
+        entity_name: a?.user_email || null,
+        details: a?.role_id ? { role_id: a.role_id } : null
       });
       toast.success(t('invitationRevokedToast'));
       fetchData();
@@ -10514,6 +10791,13 @@ function SettingsPage() {
     const setting = automationSettings.find(a => a.automation_type === automationType);
     if (setting) {
       await supabaseUpdate('automation_settings', setting.id, { is_enabled: enabled });
+      logActivity({
+        action: 'automation_toggled',
+        entity_type: 'automation',
+        entity_id: setting.id,
+        entity_name: automationType || null,
+        details: { enabled }
+      });
       fetchData();
     }
   };
@@ -10533,8 +10817,26 @@ function SettingsPage() {
     if (!templateForm.name || !templateForm.body) { toast.warning('Name and message body are required'); return; }
     setSaving(true);
     try {
-      if (editingTemplate) { await supabaseUpdate('message_templates', editingTemplate.id, templateForm); }
-      else { await supabaseInsert('message_templates', templateForm); }
+      if (editingTemplate) {
+        await supabaseUpdate('message_templates', editingTemplate.id, templateForm);
+        logActivity({
+          action: 'template_updated',
+          entity_type: 'template',
+          entity_id: editingTemplate.id,
+          entity_name: templateForm.name || null,
+          details: null
+        });
+      } else {
+        const result = await supabaseInsert('message_templates', templateForm);
+        const realRow = Array.isArray(result) ? result[0] : result;
+        logActivity({
+          action: 'template_created',
+          entity_type: 'template',
+          entity_id: realRow?.id || null,
+          entity_name: templateForm.name || null,
+          details: null
+        });
+      }
       setShowTemplateModal(false); resetTemplateForm(); fetchData();
     } catch (error) { toast.error(error.message); }
     setSaving(false);
@@ -10544,10 +10846,21 @@ function SettingsPage() {
   const handleDelete = async () => {
     if (!deleteConfirm) return;
     try {
-      if (deleteConfirm.table === 'church_locations') {
-        if (deleteConfirm.is_main_campus) { toast.error('Cannot delete main campus'); setDeleteConfirm(null); return; }
+      const target = deleteConfirm;
+      if (target.table === 'church_locations') {
+        if (target.is_main_campus) { toast.error('Cannot delete main campus'); setDeleteConfirm(null); return; }
       }
-      await supabaseDelete(deleteConfirm.table, deleteConfirm.id);
+      await supabaseDelete(target.table, target.id);
+      // Per-table audit log. Delete handler is shared across multiple settings
+      // tables, so we branch on `table` to emit the right action code and pull
+      // the right friendly name from the captured row.
+      if (target.table === 'church_locations') {
+        logActivity({ action: 'location_deleted', entity_type: 'location', entity_id: target.id, entity_name: target.name || null, details: null });
+      } else if (target.table === 'user_roles') {
+        logActivity({ action: 'custom_role_deleted', entity_type: 'custom_role', entity_id: target.id, entity_name: target.name || null, details: null });
+      } else if (target.table === 'message_templates') {
+        logActivity({ action: 'template_deleted', entity_type: 'template', entity_id: target.id, entity_name: target.name || null, details: null });
+      }
       setDeleteConfirm(null); fetchData();
     } catch (error) { toast.error(error.message); }
   };

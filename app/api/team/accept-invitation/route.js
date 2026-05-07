@@ -163,6 +163,27 @@ export async function POST(request) {
       console.error(`${tag} finalize_failed invitation_id=${claimed.id}`, finalizeError.message);
     }
 
+    // Audit log — fire-and-forget. Logged from the server (not the client)
+    // because the accept flow finishes here before any client React tree
+    // mounts. Wrapped in try/catch so a logging failure never breaks the
+    // accept response. Service-role client bypasses RLS, but we still set
+    // church_id explicitly to match the activity_logs RLS contract used by
+    // the client logActivity helper.
+    try {
+      await supabase.from('activity_logs').insert({
+        church_id: claimed.church_id,
+        user_email: claimed.user_email,
+        user_name: cleanedFullName,
+        action: 'role_invitation_accepted',
+        entity_type: 'role_assignment',
+        entity_id: claimed.id,
+        entity_name: claimed.user_email,
+        details: { base_role: claimed.pending_base_role, role_id: claimed.role_id }
+      });
+    } catch (logErr) {
+      console.error(`${tag} activity_log_failed invitation_id=${claimed.id}`, logErr?.message || logErr);
+    }
+
     const { data: church } = await supabase
       .from('churches')
       .select('name')
