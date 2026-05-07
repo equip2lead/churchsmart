@@ -135,6 +135,7 @@ const translations = {
     mobileMoney: 'Mobile Money',
     bankTransfer: 'Bank Transfer',
     anonymous: 'Anonymous',
+    generalDonor: 'General (basket)',
     
     // Salvations
     recordSalvation: 'Record Salvation',
@@ -583,6 +584,7 @@ const translations = {
     mobileMoney: 'Mobile Money',
     bankTransfer: 'Virement Bancaire',
     anonymous: 'Anonyme',
+    generalDonor: 'Collecte générale',
     
     // Salvations
     recordSalvation: 'Enregistrer Salut',
@@ -5717,7 +5719,10 @@ function GivingPage({ plan, onNavigate }) {
   const openDonationModal = (donation = null) => {
     if (donation) {
       setEditingItem(donation);
-      setDonationForm({ member_id: donation.member_id || '', amount: donation.amount || '', donation_date: donation.donation_date || '', category_type: donation.category_type || 'TITHE', payment_method: donation.payment_method || 'CASH', notes: donation.notes || '', location_id: donation.location_id || '' });
+      // member_id holds the dropdown selection: a member uuid, '' for Anonymous,
+      // or the '__general__' sentinel for collective basket giving.
+      const donorSelection = donation.member_id || (donation.donor_name === 'General' ? '__general__' : '');
+      setDonationForm({ member_id: donorSelection, amount: donation.amount || '', donation_date: donation.donation_date || '', category_type: donation.category_type || 'TITHE', payment_method: donation.payment_method || 'CASH', notes: donation.notes || '', location_id: donation.location_id || '' });
     } else { resetDonationForm(); }
     setShowModal(true);
   };
@@ -5737,10 +5742,24 @@ function GivingPage({ plan, onNavigate }) {
     const formSnapshot = donationForm;
     const editingSnapshot = editingItem;
     const listSnapshot = donations;
+    // donationForm.member_id is the dropdown holding state — '__general__' is a
+    // UI sentinel and must not be written to the uuid column. Derive the real
+    // member_id and a denormalized donor_name based on the selection.
+    const selection = donationForm.member_id;
+    let derivedMemberId = null;
+    let donorName = 'Anonymous';
+    if (selection === '__general__') {
+      donorName = 'General';
+    } else if (selection) {
+      derivedMemberId = selection;
+      const m = members.find(x => x.id === selection);
+      if (m) donorName = `${m.first_name} ${m.last_name}`;
+    }
     const data = {
       ...donationForm,
       amount: parseFloat(donationForm.amount),
-      member_id: donationForm.member_id || null,
+      member_id: derivedMemberId,
+      donor_name: donorName,
       location_id: donationForm.location_id || null,
       donation_date: donationForm.donation_date || null
     };
@@ -5825,9 +5844,15 @@ function GivingPage({ plan, onNavigate }) {
     setDeleteConfirm(null); fetchData();
   };
 
-  const getMemberName = (memberId) => {
-    const member = members.find(m => m.id === memberId);
-    return member ? `${member.first_name} ${member.last_name}` : 'Anonymous';
+  // Accepts a donation row (not a memberId) so it can prefer the denormalized
+  // donor_name written at save time, falling back to a member lookup for old
+  // rows that pre-date donor_name being persisted.
+  const getMemberName = (donation) => {
+    if (donation?.member_id) {
+      const member = members.find(m => m.id === donation.member_id);
+      if (member) return `${member.first_name} ${member.last_name}`;
+    }
+    return donation?.donor_name || 'Anonymous';
   };
 
   // Dynamic currency from church settings
@@ -6009,7 +6034,7 @@ function GivingPage({ plan, onNavigate }) {
                       {filteredDonations.slice(0, 10).map((donation, i) => (
                         <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px' }}>{donation.donation_date}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '500' }}>{getMemberName(donation.member_id)}</td>
+                          <td style={{ padding: '12px 16px', fontWeight: '500' }}>{getMemberName(donation)}</td>
                           <td style={{ padding: '12px 16px' }}>
                             <span style={{ padding: '4px 10px', backgroundColor: `${categoryColors[donation.category]}20`, color: categoryColors[donation.category], borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{donation.category}</span>
                           </td>
@@ -6152,7 +6177,7 @@ function GivingPage({ plan, onNavigate }) {
 
       {/* Donation Modal */}
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetDonationForm(); }} title={editingItem ? '✏️ Edit Donation' : '➕ Add Donation'}>
-        <FormInput label="Donor" type="select" value={donationForm.member_id} onChange={(e) => setDonationForm({ ...donationForm, member_id: e.target.value })} options={[{ value: '', label: 'Anonymous' }, ...members.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))]} />
+        <FormInput label="Donor" type="select" value={donationForm.member_id} onChange={(e) => setDonationForm({ ...donationForm, member_id: e.target.value })} options={[{ value: '', label: 'Anonymous' }, { value: '__general__', label: t('generalDonor') }, ...members.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))]} />
         <FormInput label="Amount (XAF) *" type="number" value={donationForm.amount} onChange={(e) => setDonationForm({ ...donationForm, amount: e.target.value })} required placeholder="50000" />
         <FormInput label="Date" type="date" value={donationForm.donation_date} onChange={(e) => setDonationForm({ ...donationForm, donation_date: e.target.value })} />
         <FormInput label="Category" type="select" value={donationForm.category_type} onChange={(e) => setDonationForm({ ...donationForm, category_type: e.target.value })} options={categories.map(c => ({ value: c, label: c }))} />
