@@ -390,6 +390,12 @@ const translations = {
     lookingForJustVisiting: 'Just visiting',
     phoneRequired: 'Phone number is required',
     attendanceStatusRequired: 'Please select attendance status',
+    convertedFromVisitorOn: 'Converted from visitor on {date}',
+    editVisitorInfo: 'Edit visitor info',
+    undoConversion: 'Undo conversion',
+    undoConversionConfirm: 'Are you sure? This will delete the member record and restore the visitor entry. Donations attributed to this member must be reassigned or deleted first.',
+    undoBlockedDonations: 'Cannot undo: this member has {count} donation record(s). Reassign or delete those first.',
+    unconvertedSuccess: 'Conversion undone. Visitor restored.',
     nameRequired: 'Name required',
     amountRequired: 'Amount is required',
     firstLastRequired: 'First name and last name are required',
@@ -860,6 +866,12 @@ const translations = {
     lookingForJustVisiting: 'Juste de passage',
     phoneRequired: 'Le numéro de téléphone est requis',
     attendanceStatusRequired: 'Veuillez sélectionner le statut de fréquentation',
+    convertedFromVisitorOn: 'Converti depuis visiteur le {date}',
+    editVisitorInfo: 'Modifier les infos visiteur',
+    undoConversion: 'Annuler la conversion',
+    undoConversionConfirm: 'Êtes-vous sûr? Ceci supprimera l\'enregistrement du membre et restaurera le visiteur. Les dons attribués à ce membre doivent être réassignés ou supprimés d\'abord.',
+    undoBlockedDonations: 'Impossible d\'annuler: ce membre a {count} don(s). Réassignez ou supprimez-les d\'abord.',
+    unconvertedSuccess: 'Conversion annulée. Visiteur restauré.',
     nameRequired: 'Nom requis',
     amountRequired: 'Le montant est requis',
     firstLastRequired: 'Le prénom et le nom sont requis',
@@ -1910,12 +1922,81 @@ function ToastProvider({ children }) {
 // ==========================================
 // MEMBER PROFILE VIEW
 // ==========================================
-function MemberProfile({ member, onClose, churchId }) {
+function MemberProfile({ member, onClose, churchId, onNavigate, onAfterUndo }) {
   const { t } = useLanguage();
   const toast = useToast();
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sourceVisitor, setSourceVisitor] = useState(null);
+  const [undoing, setUndoing] = useState(false);
   useEffect(() => { (async () => { setLoading(true); try { const d = await supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }, { column: 'member_id', operator: 'eq', value: member.id }], order: 'donation_date.desc', limit: 20 }); setDonations(d || []); } catch (error) { console.error('MemberProfile donations fetch error:', error); } finally { setLoading(false); } })(); }, [member.id]);
+  // Detect whether this member came from a visitor conversion. Used to render
+  // the "Converted from visitor" banner and enable the undo flow.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('visitors')
+          .select('id, converted_at, full_name')
+          .eq('converted_to_member_id', member.id)
+          .maybeSingle();
+        setSourceVisitor(data || null);
+      } catch (error) {
+        console.error('MemberProfile source-visitor fetch error:', error);
+      }
+    })();
+  }, [member.id]);
+  const handleUndoConversion = async () => {
+    if (!sourceVisitor) return;
+    if (!confirm(t('undoConversionConfirm'))) return;
+    setUndoing(true);
+    try {
+      // Strict safety gate — any donation attributed to this member blocks the
+      // undo. Counts via HEAD-only request, no row data shipped.
+      const { count, error: countError } = await supabase
+        .from('donations')
+        .select('*', { count: 'exact', head: true })
+        .eq('member_id', member.id);
+      if (countError) {
+        console.error('Undo donation-count check failed:', countError.message);
+        toast.error(t('saveFailed'));
+        setUndoing(false);
+        return;
+      }
+      if ((count || 0) > 0) {
+        toast.warning(t('undoBlockedDonations').replace('{count}', String(count)));
+        setUndoing(false);
+        return;
+      }
+      // Capture the member's display name BEFORE the delete for the audit log.
+      const capturedName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || null;
+      // Restore the visitor row first: clear conversion fields and re-activate
+      // follow-up. Doing this before the member delete means a mid-flow failure
+      // leaves "visitor exists, member also exists" (recoverable) rather than
+      // an orphaned visitor pointing at a deleted member.
+      await supabase.from('visitors').update({
+        converted_to_member_id: null,
+        converted_at: null,
+        followup_status: 'IN_PROGRESS'
+      }).eq('id', sourceVisitor.id);
+      await supabase.from('members').delete().eq('id', member.id);
+      logActivity({
+        action: 'member_unconverted',
+        entity_type: 'member',
+        entity_id: member.id,
+        entity_name: capturedName,
+        details: { reverted_member_id: member.id, visitor_id: sourceVisitor.id }
+      });
+      toast.success(t('unconvertedSuccess'));
+      if (onAfterUndo) onAfterUndo();
+      else onClose();
+    } catch (err) {
+      console.error('Undo conversion failed:', err);
+      toast.error(t('saveFailed'));
+    } finally {
+      setUndoing(false);
+    }
+  };
   const totalGiving = donations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
   const initials = `${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}`;
   const genStatement = () => { if (!donations.length) { toast.warning(t('noRecords')); return; } exportToCSV(donations, [{ label: 'Date', key: 'donation_date' },{ label: 'Amount', key: 'amount' },{ label: 'Category', key: 'category' },{ label: 'Method', key: 'payment_method' }], `giving-${member.first_name}-${member.last_name}`); toast.success(t('givingStatement') + ' exported!'); };
@@ -1933,6 +2014,21 @@ function MemberProfile({ member, onClose, churchId }) {
           </div>
         </div>
       </div>
+      {sourceVisitor && (
+        <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p style={{ margin: 0, fontSize: '14px', color: '#166534', fontWeight: '500' }}>
+            ✓ {t('convertedFromVisitorOn').replace('{date}', sourceVisitor.converted_at ? new Date(sourceVisitor.converted_at).toLocaleDateString() : '—')}
+          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={() => { if (onNavigate) { onClose(); onNavigate('visitors'); } }} style={{ padding: '6px 14px', border: '1px solid #6366f1', borderRadius: '8px', backgroundColor: 'white', color: '#4f46e5', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+              ✏️ {t('editVisitorInfo')}
+            </button>
+            <button onClick={handleUndoConversion} disabled={undoing} style={{ padding: '6px 14px', border: '1px solid #dc2626', borderRadius: '8px', backgroundColor: 'white', color: '#dc2626', fontSize: '13px', fontWeight: '500', cursor: undoing ? 'not-allowed' : 'pointer', opacity: undoing ? 0.6 : 1 }}>
+              ↩️ {t('undoConversion')}
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>
         <div style={{ backgroundColor: '#f0fdf4', borderRadius: '12px', padding: '16px', textAlign: 'center' }}><p style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#166534' }}>{donations.length}</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Donations</p></div>
         <div style={{ backgroundColor: '#eef2ff', borderRadius: '12px', padding: '16px', textAlign: 'center' }}><p style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#4338ca' }}>{totalGiving.toLocaleString()}</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{t('totalGiving')}</p></div>
@@ -4613,7 +4709,7 @@ function MembersPage({ plan, onNavigate }) {
 
       {/* Member Profile Modal */}
       <Modal isOpen={!!viewingMember} onClose={() => setViewingMember(null)} title={'👤 '+t('memberProfile')} width="700px">
-        {viewingMember && <MemberProfile member={viewingMember} onClose={() => setViewingMember(null)} churchId={CHURCH_ID} />}
+        {viewingMember && <MemberProfile member={viewingMember} onClose={() => setViewingMember(null)} churchId={CHURCH_ID} onNavigate={onNavigate} onAfterUndo={() => { setViewingMember(null); fetchData(); }} />}
       </Modal>
 
       {/* Invite Link Modal */}
@@ -5049,14 +5145,25 @@ function VisitorsPage() {
         last_name: lastName,
         email: visitor.email || null,
         phone: visitor.phone || null,
-        city: visitor.city || null,
+        whatsapp: visitor.whatsapp || null,
+        gender: visitor.gender || null,
+        // visitor.town_city is the canonical column on visitors. The old line
+        // `visitor.city || null` here was a silent no-op — `visitor.city` never
+        // existed on the visitors table; the field has been propagating null
+        // since before the Commit 2 schema redesign.
+        city: visitor.town_city || null,
+        quartier: visitor.quartier || null,
+        language_preference: visitor.language_preference || null,
         location_id: visitor.location_id || null,
         membership_status: 'ACTIVE',
         membership_date: new Date().toISOString().split('T')[0],
         notes: 'Converted from visitor'
       }).select().single();
       if (newMember) {
-        await supabase.from('visitors').update({ converted_to_member_id: newMember.id }).eq('id', visitor.id);
+        await supabase.from('visitors').update({
+          converted_to_member_id: newMember.id,
+          converted_at: new Date().toISOString()
+        }).eq('id', visitor.id);
         logActivity({
           action: 'visitor_converted_to_member',
           entity_type: 'member',
