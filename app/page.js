@@ -3315,15 +3315,19 @@ function Dashboard() {
 
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} style={{ width: sidebarOpen ? '260px' : '80px', backgroundColor: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', flexShrink: 0 }}>
-        {/* Logo */}
-        <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Church identity header — vertical stack: logo on top, name below.
+            When the church has uploaded a logo, theirs shows. Otherwise the
+            ChurchSmart wordmark fills the slot as a placeholder until they
+            upload. maxHeight on the container caps the visual footprint so
+            portrait-style uploads can't blow up the sidebar. */}
+        <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', maxHeight: '180px' }}>
           {churchLogo ? (
-            <img src={churchLogo} alt={churchName || 'Church'} style={{ height: '40px', width: 'auto', maxWidth: sidebarOpen ? '180px' : '40px', objectFit: 'contain' }} />
+            <img src={churchLogo} alt={churchName || 'Church'} style={{ height: sidebarOpen ? '80px' : '40px', maxWidth: sidebarOpen ? '180px' : '40px', width: 'auto', objectFit: 'contain' }} />
           ) : (
-            <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '40px', width: 'auto' }} />
+            <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: sidebarOpen ? '60px' : '40px', width: 'auto' }} />
           )}
-          {sidebarOpen && churchLogo && churchName && (
-            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{churchName}</span>
+          {sidebarOpen && churchName && (
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', textAlign: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{churchName}</span>
           )}
         </div>
 
@@ -3344,6 +3348,15 @@ function Dashboard() {
             🚪 {sidebarOpen && t('signOut')}
           </button>
         </div>
+
+        {/* "Powered by ChurchSmart" — only when sidebar is expanded; in collapsed
+            mode the 80px-wide column is too tight for the footer text. The SaaS
+            brand still appears prominently in the header h1 fallback case. */}
+        {sidebarOpen && (
+          <div style={{ padding: '10px 16px', borderTop: '1px solid #f3f4f6', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af', opacity: 0.7 }}>Powered by <span style={{ fontWeight: '600' }}>ChurchSmart</span></p>
+          </div>
+        )}
       </aside>
 
       {/* Main Content */}
@@ -3355,7 +3368,7 @@ function Dashboard() {
               ☰
             </button>
             <div className="header-title">
-            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827' }}>ChurchSmart</h1>
+            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827' }}>{churchName || 'ChurchSmart'}</h1>
             <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{user?.name || ''}</p>
             </div>
           </div>
