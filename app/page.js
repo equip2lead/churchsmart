@@ -1929,6 +1929,7 @@ function MemberProfile({ member, onClose, churchId, onNavigate, onAfterUndo }) {
   const [loading, setLoading] = useState(true);
   const [sourceVisitor, setSourceVisitor] = useState(null);
   const [undoing, setUndoing] = useState(false);
+  const [showUndoConfirm, setShowUndoConfirm] = useState(false);
   useEffect(() => { (async () => { setLoading(true); try { const d = await supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }, { column: 'member_id', operator: 'eq', value: member.id }], order: 'donation_date.desc', limit: 20 }); setDonations(d || []); } catch (error) { console.error('MemberProfile donations fetch error:', error); } finally { setLoading(false); } })(); }, [member.id]);
   // Detect whether this member came from a visitor conversion. Used to render
   // the "Converted from visitor" banner and enable the undo flow.
@@ -1946,9 +1947,12 @@ function MemberProfile({ member, onClose, churchId, onNavigate, onAfterUndo }) {
       }
     })();
   }, [member.id]);
-  const handleUndoConversion = async () => {
+  // Performs the undo. Triggered by the ConfirmDialog's confirm button — the
+  // dialog itself handles the safety prompt so we can't be silenced by browser
+  // dialog suppression (the window.confirm version was per-tab-killed once any
+  // prior confirm in the session had been dismissed with "block more dialogs").
+  const performUndoConversion = async () => {
     if (!sourceVisitor) return;
-    if (!confirm(t('undoConversionConfirm'))) return;
     setUndoing(true);
     try {
       // Strict safety gate — any donation attributed to this member blocks the
@@ -2023,7 +2027,7 @@ function MemberProfile({ member, onClose, churchId, onNavigate, onAfterUndo }) {
             <button onClick={() => { if (onNavigate) { onClose(); onNavigate('visitors'); } }} style={{ padding: '6px 14px', border: '1px solid #6366f1', borderRadius: '8px', backgroundColor: 'white', color: '#4f46e5', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
               ✏️ {t('editVisitorInfo')}
             </button>
-            <button onClick={handleUndoConversion} disabled={undoing} style={{ padding: '6px 14px', border: '1px solid #dc2626', borderRadius: '8px', backgroundColor: 'white', color: '#dc2626', fontSize: '13px', fontWeight: '500', cursor: undoing ? 'not-allowed' : 'pointer', opacity: undoing ? 0.6 : 1 }}>
+            <button onClick={() => setShowUndoConfirm(true)} disabled={undoing} style={{ padding: '6px 14px', border: '1px solid #dc2626', borderRadius: '8px', backgroundColor: 'white', color: '#dc2626', fontSize: '13px', fontWeight: '500', cursor: undoing ? 'not-allowed' : 'pointer', opacity: undoing ? 0.6 : 1 }}>
               ↩️ {t('undoConversion')}
             </button>
           </div>
@@ -2048,6 +2052,13 @@ function MemberProfile({ member, onClose, churchId, onNavigate, onAfterUndo }) {
         )}
       </div>
       {member.notes && <div style={{ backgroundColor: '#fffbeb', borderRadius: '12px', padding: '16px', border: '1px solid #fde68a' }}><h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>📝 Notes</h4><p style={{ margin: 0, fontSize: '14px', color: '#78716c', lineHeight: '1.6' }}>{member.notes}</p></div>}
+      <ConfirmDialog
+        isOpen={showUndoConfirm}
+        onClose={() => setShowUndoConfirm(false)}
+        onConfirm={() => { setShowUndoConfirm(false); performUndoConversion(); }}
+        title={`↩️ ${t('undoConversion')}`}
+        message={t('undoConversionConfirm')}
+      />
     </div>
   );
 }
