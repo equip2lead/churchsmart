@@ -3326,9 +3326,6 @@ function Dashboard() {
           ) : (
             <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: sidebarOpen ? '60px' : '40px', width: 'auto' }} />
           )}
-          {sidebarOpen && churchName && (
-            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', textAlign: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{churchName}</span>
-          )}
         </div>
 
         {/* Menu Items */}
