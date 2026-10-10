@@ -575,6 +575,60 @@ const translations = {
     whatsappSentSummary: 'WhatsApp: {sent} sent, {failed} failed.',
     newToWhatsapp: 'New to WhatsApp? Download our setup guide',
     setupGuide: 'Setup Guide',
+    // ── In-app WhatsApp setup guide ──
+    // Step bodies are arrays: t() returns the value as-is, so the walkthrough
+    // renders them as bullet lists without needing a separate key per line.
+    whatsapp_setup_guide: 'WhatsApp Setup Guide',
+    download_guide: 'Download as PDF',
+    step_1_title: 'Create your Wamatas account',
+    step_1_desc: [
+      'Go to wamatas.com and click Pricing.',
+      'Choose Monthly or Annual, then pick your plan \u2014 Entrepreneur $20/mo, Corporate $60/mo, or Agency $90/mo.',
+      "Sign up and pay. You'll land on the Wamatas Dashboard."
+    ],
+    step_2_title: 'Open the WhatsApp section',
+    step_2_desc: [
+      'In the left menu under FEATURES, click Whatsapp.',
+      'The WhatsApp report page shows messages this month and total sent.'
+    ],
+    step_3_title: "Link the church's WhatsApp number",
+    step_3_desc: [
+      'Click the green + Add account button.',
+      'A QR code appears. On the church phone, open WhatsApp \u2192 Settings \u2192 Linked Devices \u2192 Link a Device, then scan the code.',
+      'Keep that phone switched on and connected to the Internet \u2014 every message goes through it.'
+    ],
+    step_4_title: 'Copy the Access Token and Instance ID',
+    step_4_desc: [
+      'In the WhatsApp menu, scroll down to API ("API WhatsApp REST") and open it.',
+      'Copy the Access Token \u2014 a short code, e.g. 67f7xxxxxxxx.',
+      'Copy the Instance ID \u2014 e.g. 609ACF283XXXX.',
+      'Keep both safe, like a password.'
+    ],
+    step_5_title: 'Paste them in ChurchSmart',
+    step_5_desc: [
+      'Log in to churchsmartnow.com as a church admin.',
+      'Go to Settings \u2192 WhatsApp and set Provider to Wamatas.',
+      'Paste the Access Token and Instance ID, then click Save credentials.'
+    ],
+    step_6_title: 'Send a test message',
+    step_6_desc: [
+      'Under "Send test message", enter your own number in international format (+237XXXXXXXXX).',
+      'Click Send test message and check your phone.',
+      'As soon as it arrives, WhatsApp is activated automatically. Done!'
+    ],
+    troubleshooting_title: 'Troubleshooting',
+    troubleshooting_rows: [
+      { code: 'invalid_token', fix: 'The Access Token is wrong. Re-copy it from Wamatas \u2192 WhatsApp \u2192 API.' },
+      { code: 'instance_not_found', fix: 'The Instance ID is wrong, or it belongs to another number. Re-copy it from the API page.' },
+      { code: 'Test says "sent" but nothing arrives', fix: 'The church phone is off or offline. Check WhatsApp \u2192 Linked Devices; if Wamatas is not listed, redo Step 3.' },
+      { code: 'Number refused', fix: 'Use the full international format with country code, no spaces and no leading 0 (e.g. +2376XXXXXXXX).' },
+      { code: 'Sends stopped mid-month', fix: 'Check the monthly counter on the Wamatas WhatsApp report page and confirm your subscription is still active.' }
+    ],
+    need_help_title: 'Need help?',
+    need_help_rows: [
+      { topic: 'Wamatas account, payment or QR code', where: 'Wamatas support \u2014 the chat button on wamatas.com' },
+      { topic: 'ChurchSmart settings or the test message', where: 'ChurchSmart support from the app, or support@churchsmartnow.com' }
+    ],
   },
   fr: {
     // General
@@ -1111,6 +1165,58 @@ const translations = {
     whatsappSentSummary: 'WhatsApp : {sent} envoyés, {failed} échoués.',
     newToWhatsapp: 'Nouveau sur WhatsApp ? Téléchargez notre guide de configuration',
     setupGuide: 'Guide de configuration',
+    // ── Guide de configuration WhatsApp dans l'app ──
+    whatsapp_setup_guide: 'Guide de configuration WhatsApp',
+    download_guide: 'T\u00e9l\u00e9charger en PDF',
+    step_1_title: 'Cr\u00e9ez votre compte Wamatas',
+    step_1_desc: [
+      'Rendez-vous sur wamatas.com et cliquez sur Pricing.',
+      'Choisissez Mensuel ou Annuel, puis votre offre \u2014 Entrepreneur 20 $/mois, Corporate 60 $/mois ou Agency 90 $/mois.',
+      'Inscrivez-vous et payez. Vous arrivez sur le tableau de bord Wamatas.'
+    ],
+    step_2_title: 'Ouvrez la section WhatsApp',
+    step_2_desc: [
+      'Dans le menu de gauche, sous FEATURES, cliquez sur Whatsapp.',
+      'La page de rapport WhatsApp affiche les messages du mois et le total envoy\u00e9.'
+    ],
+    step_3_title: "Connectez le num\u00e9ro WhatsApp de l'\u00e9glise",
+    step_3_desc: [
+      'Cliquez sur le bouton vert + Add account.',
+      "Un QR code appara\u00eet. Sur le t\u00e9l\u00e9phone de l'\u00e9glise, ouvrez WhatsApp \u2192 Param\u00e8tres \u2192 Appareils connect\u00e9s \u2192 Connecter un appareil, puis scannez le code.",
+      'Laissez ce t\u00e9l\u00e9phone allum\u00e9 et connect\u00e9 \u00e0 Internet \u2014 tous les messages passent par lui.'
+    ],
+    step_4_title: "Copiez le jeton d'acc\u00e8s et l'ID d'instance",
+    step_4_desc: [
+      "Dans le menu WhatsApp, descendez jusqu'\u00e0 API (\u00ab API WhatsApp REST \u00bb) et ouvrez-la.",
+      "Copiez le jeton d'acc\u00e8s (Access Token) \u2014 un code court, ex. 67f7xxxxxxxx.",
+      "Copiez l'ID d'instance (Instance ID) \u2014 ex. 609ACF283XXXX.",
+      'Conservez-les en s\u00e9curit\u00e9, comme un mot de passe.'
+    ],
+    step_5_title: 'Collez-les dans ChurchSmart',
+    step_5_desc: [
+      "Connectez-vous \u00e0 churchsmartnow.com en tant qu'administrateur de l'\u00e9glise.",
+      'Allez dans Param\u00e8tres \u2192 WhatsApp et choisissez Wamatas comme fournisseur.',
+      "Collez le jeton d'acc\u00e8s et l'ID d'instance, puis cliquez sur Enregistrer les identifiants."
+    ],
+    step_6_title: 'Envoyez un message test',
+    step_6_desc: [
+      "Dans \u00ab Envoyer un message test \u00bb, saisissez votre propre num\u00e9ro au format international (+237XXXXXXXXX).",
+      'Cliquez sur Envoyer un message test et v\u00e9rifiez votre t\u00e9l\u00e9phone.',
+      "D\u00e8s r\u00e9ception, WhatsApp est activ\u00e9 automatiquement. Termin\u00e9 !"
+    ],
+    troubleshooting_title: 'D\u00e9pannage',
+    troubleshooting_rows: [
+      { code: 'invalid_token', fix: "Le jeton d'acc\u00e8s est incorrect. Recopiez-le depuis Wamatas \u2192 WhatsApp \u2192 API." },
+      { code: 'instance_not_found', fix: "L'ID d'instance est incorrect ou appartient \u00e0 un autre num\u00e9ro. Recopiez-le depuis la page API." },
+      { code: 'Le test indique \u00ab envoy\u00e9 \u00bb mais rien n\u2019arrive', fix: "Le t\u00e9l\u00e9phone de l'\u00e9glise est \u00e9teint ou hors ligne. V\u00e9rifiez WhatsApp \u2192 Appareils connect\u00e9s ; si Wamatas n'y figure pas, refaites l'\u00e9tape 3." },
+      { code: 'Num\u00e9ro refus\u00e9', fix: 'Utilisez le format international complet avec indicatif, sans espaces ni 0 initial (ex. +2376XXXXXXXX).' },
+      { code: 'Les envois se sont arr\u00eat\u00e9s en cours de mois', fix: 'V\u00e9rifiez le compteur mensuel sur la page de rapport WhatsApp de Wamatas et confirmez que votre abonnement est actif.' }
+    ],
+    need_help_title: "Besoin d'aide ?",
+    need_help_rows: [
+      { topic: 'Compte Wamatas, paiement ou QR code', where: 'Support Wamatas \u2014 le bouton de chat sur wamatas.com' },
+      { topic: 'Param\u00e8tres ChurchSmart ou message test', where: "Support ChurchSmart depuis l'app, ou support@churchsmartnow.com" }
+    ],
   }
 };
 
@@ -11315,6 +11421,10 @@ function SettingsPage({ plan, onNavigate }) {
   // platform-account model) yet hold no Wamatas credentials. Such a row cannot
   // send, so it must not be reported as active.
   const whatsappConnected = !!whatsappConfig?.is_active && hasSavedCredentials;
+  // 'config' = the credentials form, 'guide' = the in-app walkthrough.
+  const [whatsappSubTab, setWhatsappSubTab] = useState('config');
+  // Accordion: one step expanded at a time, starting at step 1. null = all closed.
+  const [openGuideStep, setOpenGuideStep] = useState(1);
 
   // Forms
   const [locationForm, setLocationForm] = useState({ name: '', address: '', city: '', phone: '', pastor_name: '', capacity: '', is_main_campus: false, is_active: true });
@@ -12307,6 +12417,33 @@ function SettingsPage({ plan, onNavigate }) {
                 <span style={{ textDecoration: 'underline' }}>{t('newToWhatsapp')}</span>
               </a>
 
+
+              {/* Sub-tabs: credentials form vs. walkthrough. cs-tab-row gives
+                  horizontal scrolling on narrow screens. */}
+              <div className="cs-tab-row" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[
+                  { id: 'config', label: `\u2699\ufe0f ${t('whatsappSettings')}` },
+                  { id: 'guide', label: `\U0001f4d8 ${t('setupGuide')}` }
+                ].map(st => (
+                  <button
+                    key={st.id}
+                    onClick={() => setWhatsappSubTab(st.id)}
+                    style={{
+                      padding: '10px 20px',
+                      border: whatsappSubTab === st.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                      borderRadius: '10px',
+                      backgroundColor: whatsappSubTab === st.id ? '#eef2ff' : 'white',
+                      color: whatsappSubTab === st.id ? '#6366f1' : '#6b7280',
+                      fontWeight: whatsappSubTab === st.id ? '600' : '400',
+                      cursor: 'pointer', fontSize: '14px'
+                    }}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+
+              {whatsappSubTab === 'config' && (<>
               {/* Plan gate: WhatsApp unlocks on Growth and above. */}
               {!whatsappAvailable && (
                 <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '16px', padding: '24px' }}>
@@ -12436,6 +12573,103 @@ function SettingsPage({ plan, onNavigate }) {
                       </span>
                     </p>
                   )}
+                </div>
+              )}
+              </>)}
+
+              {/* ══════════ IN-APP SETUP GUIDE ══════════ */}
+              {whatsappSubTab === 'guide' && (
+                <div style={{ display: 'grid', gap: '16px' }}>
+
+                  <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                      <div>
+                        <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>\U0001f4d8 {t('whatsapp_setup_guide')}</h3>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{t('connectWhatsApp')}</p>
+                      </div>
+                      <a
+                        href={WHATSAPP_SETUP_GUIDE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px', border: '1px solid #c7d2fe', backgroundColor: '#eef2ff', color: '#4338ca', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}
+                      >
+                        \U0001f4c4 {t('download_guide')}
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Steps as an accordion so the whole guide is not dumped at once. */}
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    {[1, 2, 3, 4, 5, 6].map(n => {
+                      const open = openGuideStep === n;
+                      const lines = t(`step_${n}_desc`);
+                      return (
+                        <div key={n} style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', border: open ? '1px solid #c7d2fe' : '1px solid transparent' }}>
+                          <button
+                            onClick={() => setOpenGuideStep(open ? null : n)}
+                            aria-expanded={open}
+                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px', border: 'none', background: open ? '#f5f3ff' : 'white', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            {/* Numbered brand badge */}
+                            <span style={{ flexShrink: 0, width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700', backgroundColor: open ? '#6366f1' : '#eef2ff', color: open ? 'white' : '#6366f1' }}>
+                              {n}
+                            </span>
+                            <span style={{ flex: 1, fontSize: '15px', fontWeight: '600', color: '#111827' }}>{t(`step_${n}_title`)}</span>
+                            <span style={{ flexShrink: 0, fontSize: '12px', color: '#9ca3af' }}>{open ? '\u25b2' : '\u25bc'}</span>
+                          </button>
+                          {open && (
+                            <div style={{ padding: '4px 20px 20px 66px' }}>
+                              <ul style={{ margin: 0, paddingLeft: '18px', display: 'grid', gap: '8px' }}>
+                                {/* t() returns the key itself when a value is
+                                    missing, so guard before mapping. */}
+                                {(Array.isArray(lines) ? lines : [String(lines)]).map((line, i) => (
+                                  <li key={i} style={{ fontSize: '14px', lineHeight: '1.6', color: '#374151' }}>{line}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Troubleshooting */}
+                  <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                    <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                      <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>\U0001f6e0\ufe0f {t('troubleshooting_title')}</h3>
+                    </div>
+                    <div className="cs-table-wrap">
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead style={{ backgroundColor: '#f9fafb' }}>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Problem</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Fix</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(Array.isArray(t('troubleshooting_rows')) ? t('troubleshooting_rows') : []).map((row, i) => (
+                            <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                              <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: '#991b1b', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{row.code}</td>
+                              <td style={{ padding: '12px 16px', fontSize: '14px', lineHeight: '1.6', color: '#374151' }}>{row.fix}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Need help */}
+                  <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>\U0001f4a1 {t('need_help_title')}</h3>
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      {(Array.isArray(t('need_help_rows')) ? t('need_help_rows') : []).map((row, i) => (
+                        <div key={i} style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#374151' }}>{row.topic}</p>
+                          <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{row.where}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
