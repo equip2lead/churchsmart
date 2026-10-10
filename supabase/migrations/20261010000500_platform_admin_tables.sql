@@ -39,6 +39,9 @@ create table if not exists admin_audit_log (
 create index if not exists admin_audit_log_created_idx on admin_audit_log (created_at desc);
 create index if not exists admin_audit_log_email_idx on admin_audit_log (admin_email, created_at desc);
 
+-- SUPERSEDED: the owner list in this function was corrected by
+-- 20261010000700_fix_platform_admin_emails.sql. The address below is the
+-- original (wrong) one and is kept only as a record of what was applied.
 -- SECURITY DEFINER so the sub_admins lookup is not itself subject to RLS,
 -- which would recurse when sub_admins' own policy calls this function.
 -- search_path is pinned so a caller cannot redirect it. Mirrors

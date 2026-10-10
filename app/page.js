@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessFeature, canAccess, getPlanLimits, getEmailLimit, getRequiredPlan, getPlanOrder, comparePlans, PLAN_PRICING, STRIPE_PRICE_IDS, isPlaceholderPriceId } from '../lib/featureGating';
-import { SUPER_ADMIN_EMAILS, ADMIN_ROLES, roleLabel, pawapayBaseUrl } from '../lib/superAdmin';
+import { SUPER_ADMIN_EMAILS, ADMIN_ROLES, roleLabel, pawapayBaseUrl, isHardcodedSuperAdmin } from '../lib/superAdmin';
 import { listCountries, detectOperator, findOperator, localAmount, toMsisdn } from '../lib/pawapay';
 import UpgradePrompt from '../components/UpgradePrompt';
 import Papa from 'papaparse';
@@ -3897,7 +3897,10 @@ function Dashboard() {
     // Sits under Settings and is admin-only: the log can expose who was
     // messaged, and whatsapp_send_log's RLS only grants admins SELECT anyway.
     ...((user?.role === 'ADMIN' || user?.is_super_admin) ? [{ id: 'whatsappLog', label: t('whatsappLog'), icon: '💬', page: 'settings' }] : []),
-    ...(user?.is_super_admin ? [{ id: 'superadmin', label: '🛡️ Super Admin', icon: '🛡️', page: null }] : []),
+    // Shown for the church_users flag OR a hardcoded platform owner: an owner
+    // whose church_users row has is_super_admin = false would otherwise be
+    // granted access by the API but have no way to reach the panel.
+    ...((user?.is_super_admin || isHardcodedSuperAdmin(user?.email)) ? [{ id: 'superadmin', label: '🛡️ Super Admin', icon: '🛡️', page: null }] : []),
   ];
   const menuItems = allMenuItems
     .filter(item => hasAccess(item.page))
