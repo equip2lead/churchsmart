@@ -21,6 +21,9 @@ const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL || '';
 // platform's WhatsApp credentials and must stay server-side.
 const WHATSAPP_MAX_CHARS = 4096;
 
+// Served statically from public/docs, so it is reachable without a session.
+const WHATSAPP_SETUP_GUIDE_URL = '/docs/ChurchSmart-WhatsApp-Setup-Guide.pdf';
+
 // Renders a saved access token as bullets plus its last 4 characters. Takes the
 // tail only — the full token is never selected into the client, so there is
 // nothing here to leak.
@@ -570,6 +573,8 @@ const translations = {
     testSentSuccess: 'Test sent! Message ID:',
     credentialsSaved: 'Credentials saved!',
     whatsappSentSummary: 'WhatsApp: {sent} sent, {failed} failed.',
+    newToWhatsapp: 'New to WhatsApp? Download our setup guide',
+    setupGuide: 'Setup Guide',
   },
   fr: {
     // General
@@ -1104,6 +1109,8 @@ const translations = {
     testSentSuccess: 'Test envoyé ! ID du message :',
     credentialsSaved: 'Identifiants enregistrés !',
     whatsappSentSummary: 'WhatsApp : {sent} envoyés, {failed} échoués.',
+    newToWhatsapp: 'Nouveau sur WhatsApp ? Téléchargez notre guide de configuration',
+    setupGuide: 'Guide de configuration',
   }
 };
 
@@ -11180,7 +11187,15 @@ function WhatsAppLogPage({ onNavigate }) {
             <div style={{ padding: '64px 24px', textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: '12px' }}>\U0001f4ac</div>
               <p style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>{t('nothingSentYet')}</p>
-              <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{t('messagesAppearHere')}</p>
+              <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280' }}>{t('messagesAppearHere')}</p>
+              <a
+                href={WHATSAPP_SETUP_GUIDE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600', color: '#6366f1', textDecoration: 'underline' }}
+              >
+                📄 {t('setupGuide')}
+              </a>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -12279,6 +12294,18 @@ function SettingsPage({ plan, onNavigate }) {
           {/* ============ WHATSAPP (WAMATAS) ============ */}
           {activeSection === 'whatsapp' && isChurchAdmin && (
             <div style={{ display: 'grid', gap: '24px' }}>
+
+              {/* Setup guide. A static PDF, so it opens in a new tab rather
+                  than routing through the app. */}
+              <a
+                href={WHATSAPP_SETUP_GUIDE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 18px', borderRadius: '12px', backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca', fontSize: '14px', fontWeight: '500', textDecoration: 'none' }}
+              >
+                <span style={{ fontSize: '18px' }}>📄</span>
+                <span style={{ textDecoration: 'underline' }}>{t('newToWhatsapp')}</span>
+              </a>
 
               {/* Plan gate: WhatsApp unlocks on Growth and above. */}
               {!whatsappAvailable && (
