@@ -134,6 +134,20 @@ const translations = {
     cash: 'Cash',
     mobileMoney: 'Mobile Money',
     bankTransfer: 'Bank Transfer',
+    check: 'Check',
+    vendor: 'Vendor',
+    paidTo: 'Paid To',
+    receiptNumber: 'Receipt Number',
+    approvedBy: 'Approved By',
+    expenseCategories: 'Expense Categories',
+    manageCategories: 'Manage Categories',
+    addCategory: 'Add Category',
+    categoryName: 'Category Name',
+    categoryRequired: 'Please choose a category',
+    categoryExists: 'This category already exists',
+    categoryCreated: 'Category created successfully',
+    categoryDeactivated: 'Category has expenses, so it was deactivated instead of deleted',
+    categoryDeleteHint: 'Deleting a category that already has expenses deactivates it instead, so past expenses keep their label.',
     anonymous: 'Anonymous',
     generalDonor: 'General (basket)',
     
@@ -610,6 +624,20 @@ const translations = {
     cash: 'Espèces',
     mobileMoney: 'Mobile Money',
     bankTransfer: 'Virement Bancaire',
+    check: 'Chèque',
+    vendor: 'Fournisseur',
+    paidTo: 'Payé à',
+    receiptNumber: 'Numéro de Reçu',
+    approvedBy: 'Approuvé par',
+    expenseCategories: 'Catégories de Dépenses',
+    manageCategories: 'Gérer les Catégories',
+    addCategory: 'Ajouter une Catégorie',
+    categoryName: 'Nom de la Catégorie',
+    categoryRequired: 'Veuillez choisir une catégorie',
+    categoryExists: 'Cette catégorie existe déjà',
+    categoryCreated: 'Catégorie créée avec succès',
+    categoryDeactivated: 'Cette catégorie a des dépenses, elle a donc été désactivée au lieu d\'être supprimée',
+    categoryDeleteHint: 'Supprimer une catégorie qui a déjà des dépenses la désactive à la place, afin que les dépenses passées conservent leur libellé.',
     anonymous: 'Anonyme',
     generalDonor: 'Collecte générale',
     
@@ -1019,7 +1047,8 @@ const ALLOWED_TABLES = [
   'attendance_records', 'donations', 'expenses', 'salvations', 'services',
   'events', 'groups', 'volunteers', 'activity_logs', 'message_logs',
   'message_templates', 'automation_settings', 'user_roles', 'user_role_assignments',
-  'super_admin_log', 'subscriptions', 'payment_history', 'message_credits'
+  'super_admin_log', 'subscriptions', 'payment_history', 'message_credits',
+  'expense_categories'
 ];
 
 function sanitizeInput(val) {
@@ -6045,27 +6074,42 @@ function GivingPage({ plan, onNavigate }) {
   const [filterLocation, setFilterLocation] = useState('all');
 
   const [donationForm, setDonationForm] = useState({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category_type: 'TITHE', payment_method: 'CASH', notes: '', location_id: '' });
-  const [expenseForm, setExpenseForm] = useState({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '', location_id: '' });
+  const [expenseForm, setExpenseForm] = useState({ category: '', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', receipt_number: '', approved_by: '', notes: '', location_id: '' });
+
+  // Church-defined expense categories, replacing the old hardcoded list. Only
+  // active rows are loaded: a deactivated category disappears from the picker
+  // but stays readable on the expenses that already reference it, because
+  // expenses.category stores the category NAME (NOT NULL varchar, no FK).
+  const [expenseCategoryRows, setExpenseCategoryRows] = useState([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+  const [savingCategory, setSavingCategory] = useState(false);
 
   const categories = ['TITHE', 'OFFERING', 'THANKSGIVING', 'MISSIONS', 'BUILDING', 'SPECIAL', 'DEVELOPMENT', 'PROJECTS', 'OTHER'];
-  const expenseCategories = ['GENERAL', 'BUILDING', 'UTILITIES', 'SALARIES', 'MISSIONS', 'SUPPLIES', 'TRANSPORT', 'EVENTS', 'OTHER'];
   const paymentMethods = ['CASH', 'MOBILE_MONEY', 'BANK_TRANSFER', 'CHECK', 'OTHER'];
+  const paymentMethodLabelKeys = { CASH: 'cash', MOBILE_MONEY: 'mobileMoney', BANK_TRANSFER: 'bankTransfer', CHECK: 'check' };
+
+  // expense_categories writes are admin-only at the RLS layer, so the inline
+  // create is only offered to users who could actually complete it.
+  const canManageCategories = user?.role === 'ADMIN' || !!user?.is_super_admin;
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [donationsData, expensesData, membersData, locData] = await Promise.all([
+      const [donationsData, expensesData, membersData, locData, expCatData] = await Promise.all([
         supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'donation_date.desc' }),
         supabaseQuery('expenses', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'expense_date.desc' }),
         supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('expense_categories', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }, { column: 'is_active', operator: 'eq', value: true }], order: 'name.asc' })
       ]);
       setDonations(donationsData || []);
       setExpenses(expensesData || []);
       setMembers(membersData || []);
       setLocations(locData || []);
+      setExpenseCategoryRows(expCatData || []);
     } catch (error) {
       console.error('Giving fetch error:', error);
     } finally {
@@ -6078,6 +6122,32 @@ function GivingPage({ plan, onNavigate }) {
   // Filtered data
   const filteredDonations = filterLocation === 'all' ? donations : donations.filter(d => d.location_id === filterLocation);
   const filteredExpenses = filterLocation === 'all' ? expenses : expenses.filter(e => e.location_id === filterLocation);
+
+  // Categories sorted alphabetically for the picker. localeCompare so accented
+  // names order correctly for French-language churches.
+  const sortedExpenseCategories = expenseCategoryRows
+    .slice()
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  // Expenses recorded before custom categories existed carry legacy uppercase
+  // codes ('UTILITIES', 'SUPPLIES', ...) that match no category row. Keep the
+  // row's own value as an extra option while editing, otherwise opening and
+  // saving such an expense would silently relabel it.
+  const expenseCategoryOptions = sortedExpenseCategories.map(c => ({ value: c.name, label: c.name }));
+  if (expenseForm.category && !expenseCategoryOptions.some(o => o.value === expenseForm.category)) {
+    expenseCategoryOptions.push({ value: expenseForm.category, label: `${expenseForm.category} (legacy)` });
+  }
+  const selectedExpenseCategory = sortedExpenseCategories.find(c => c.name === expenseForm.category);
+
+  // The report pairs income and expenses under one label, but the two are now
+  // separate vocabularies: donation categories stay hardcoded while expense
+  // categories are church-defined. Iterate the union, or church spending would
+  // never appear in the breakdown even though it lands in the TOTAL row.
+  // Legacy expense values are picked up from the rows themselves.
+  const breakdownCategories = [];
+  categories.forEach(c => { if (!breakdownCategories.includes(c)) breakdownCategories.push(c); });
+  sortedExpenseCategories.forEach(c => { if (c.name && !breakdownCategories.includes(c.name)) breakdownCategories.push(c.name); });
+  filteredExpenses.forEach(e => { if (e.category && !breakdownCategories.includes(e.category)) breakdownCategories.push(e.category); });
 
   // Calculations
   const totalIncome = filteredDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
@@ -6118,7 +6188,7 @@ function GivingPage({ plan, onNavigate }) {
 
   // Form handlers
   const resetDonationForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setDonationForm({ member_id: '', amount: '', donation_date: new Date().toISOString().split('T')[0], category_type: 'TITHE', payment_method: 'CASH', notes: '', location_id: mainCampus?.id || '' }); setEditingItem(null); };
-  const resetExpenseForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setExpenseForm({ category: 'GENERAL', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', notes: '', location_id: mainCampus?.id || '' }); setEditingItem(null); };
+  const resetExpenseForm = () => { const mainCampus = locations.find(l => l.is_main_campus); setExpenseForm({ category: '', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'CASH', vendor_name: '', receipt_number: '', approved_by: '', notes: '', location_id: mainCampus?.id || '' }); setEditingItem(null); };
 
   const openDonationModal = (donation = null) => {
     if (donation) {
@@ -6134,7 +6204,7 @@ function GivingPage({ plan, onNavigate }) {
   const openExpenseModal = (expense = null) => {
     if (expense) {
       setEditingItem(expense);
-      setExpenseForm({ category: expense.category || 'GENERAL', amount: expense.amount || '', description: expense.description || '', expense_date: expense.expense_date || '', payment_method: expense.payment_method || 'CASH', vendor_name: expense.vendor_name || '', notes: expense.notes || '', location_id: expense.location_id || '' });
+      setExpenseForm({ category: expense.category || '', amount: expense.amount || '', description: expense.description || '', expense_date: expense.expense_date || '', payment_method: expense.payment_method || 'CASH', vendor_name: expense.vendor_name || '', receipt_number: expense.receipt_number || '', approved_by: expense.approved_by || '', notes: expense.notes || '', location_id: expense.location_id || '' });
     } else { resetExpenseForm(); }
     setShowExpenseModal(true);
   };
@@ -6212,7 +6282,50 @@ function GivingPage({ plan, onNavigate }) {
     }
   };
 
+  // Picking a category surfaces its description on the expense: it fills the
+  // free-text Description when that field is still blank, but never overwrites
+  // what the user already typed (or an existing expense's own description).
+  const handleExpenseCategoryChange = (e) => {
+    const name = e.target.value;
+    const picked = sortedExpenseCategories.find(c => c.name === name);
+    setExpenseForm(prev => ({
+      ...prev,
+      category: name,
+      description: prev.description || picked?.description || ''
+    }));
+  };
+
+  const handleSaveNewCategory = async () => {
+    const name = (categoryForm.name || '').trim();
+    if (!name) { toast.warning(t('categoryName')); return; }
+    // The DB constraint is UNIQUE (church_id, name) and case-sensitive, so
+    // check case-insensitively here to keep 'Rent' and 'rent' from coexisting.
+    if (expenseCategoryRows.some(c => (c.name || '').toLowerCase() === name.toLowerCase())) {
+      toast.warning(t('categoryExists'));
+      return;
+    }
+    setSavingCategory(true);
+    try {
+      const result = await supabaseInsert('expense_categories', { name, description: (categoryForm.description || '').trim() || null, is_active: true });
+      const realRow = Array.isArray(result) ? result[0] : result;
+      if (realRow?.id) {
+        setExpenseCategoryRows(prev => [...prev, realRow]);
+        setExpenseForm(prev => ({ ...prev, category: realRow.name, description: prev.description || realRow.description || '' }));
+      }
+      logActivity({ action: 'expense_category_created', entity_type: 'expense_category', entity_id: realRow?.id || null, entity_name: name, details: null });
+      setShowCategoryModal(false);
+      setCategoryForm({ name: '', description: '' });
+      toast.success(t('categoryCreated'));
+    } catch (error) {
+      // 23505 = unique_violation, i.e. the name exists but is deactivated (so
+      // absent from expenseCategoryRows) or another admin just created it.
+      toast.error(/23505|duplicate key/i.test(error.message || '') ? t('categoryExists') : error.message);
+    }
+    setSavingCategory(false);
+  };
+
   const handleSaveExpense = async () => {
+    if (!expenseForm.category) { toast.warning(t('categoryRequired')); return; }
     if (!expenseForm.amount || !expenseForm.description) { toast.warning(t('amountDescRequired')); return; }
 
     const isInsert = !editingItem;
@@ -6586,7 +6699,7 @@ function GivingPage({ plan, onNavigate }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {categories.map((cat, i) => {
+                    {breakdownCategories.map((cat, i) => {
                       const income = filteredDonations.filter(d => d.category_type === cat).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                       const expense = filteredExpenses.filter(e => e.category === cat).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
                       const net = income - expense;
@@ -6643,17 +6756,48 @@ function GivingPage({ plan, onNavigate }) {
 
       {/* Expense Modal */}
       <Modal isOpen={showExpenseModal} onClose={() => { setShowExpenseModal(false); resetExpenseForm(); }} title={editingItem ? '✏️ Edit Expense' : '➕ Add Expense'}>
-        <FormInput label="Description *" value={expenseForm.description} onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} required placeholder="Office supplies" />
+        {/* Category picker + inline create. Hand-built rather than FormInput so
+            the "Add Category" button can sit beside the select. */}
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+            {t('category')} <span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <select value={expenseForm.category} onChange={handleExpenseCategoryChange} style={{ flex: 1, padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}>
+              <option value="">Select...</option>
+              {expenseCategoryOptions.map((opt, i) => <option key={i} value={opt.value}>{opt.label}</option>)}
+            </select>
+            {canManageCategories && (
+              <button type="button" onClick={() => { setCategoryForm({ name: '', description: '' }); setShowCategoryModal(true); }} style={{ flexShrink: 0, padding: '0 14px', minHeight: '44px', border: '1px dashed #6366f1', borderRadius: '10px', backgroundColor: '#eef2ff', color: '#6366f1', fontWeight: '600', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>➕ {t('addCategory')}</button>
+            )}
+          </div>
+          {selectedExpenseCategory?.description && (
+            <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#6b7280' }}>💡 {selectedExpenseCategory.description}</p>
+          )}
+        </div>
         <FormInput label="Amount (XAF) *" type="number" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} required placeholder="25000" />
+        <FormInput label="Description *" value={expenseForm.description} onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} required placeholder="Biscuits for Sunday school" />
         <FormInput label="Date" type="date" value={expenseForm.expense_date} onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })} />
-        <FormInput label="Category" type="select" value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })} options={expenseCategories.map(c => ({ value: c, label: c }))} />
-        <FormInput label="Vendor Name" value={expenseForm.vendor_name} onChange={(e) => setExpenseForm({ ...expenseForm, vendor_name: e.target.value })} placeholder="Supplier name" />
-        <FormInput label="Payment Method" type="select" value={expenseForm.payment_method} onChange={(e) => setExpenseForm({ ...expenseForm, payment_method: e.target.value })} options={paymentMethods.map(m => ({ value: m, label: m.replace('_', ' ') }))} />
+        <FormInput label={t('paymentMethod')} type="select" value={expenseForm.payment_method} onChange={(e) => setExpenseForm({ ...expenseForm, payment_method: e.target.value })} options={paymentMethods.map(m => ({ value: m, label: paymentMethodLabelKeys[m] ? t(paymentMethodLabelKeys[m]) : m.replace('_', ' ') }))} />
+        <FormInput label={`${t('vendor')} / ${t('paidTo')}`} value={expenseForm.vendor_name} onChange={(e) => setExpenseForm({ ...expenseForm, vendor_name: e.target.value })} placeholder="e.g., Brother Luke, Supermarket" />
+        <FormInput label={t('receiptNumber')} value={expenseForm.receipt_number} onChange={(e) => setExpenseForm({ ...expenseForm, receipt_number: e.target.value })} placeholder="e.g., REC-00142" />
+        <FormInput label={t('approvedBy')} value={expenseForm.approved_by} onChange={(e) => setExpenseForm({ ...expenseForm, approved_by: e.target.value })} placeholder="e.g., Pastor Daniel" />
         <FormInput label="📍 Location" type="select" value={expenseForm.location_id} onChange={(e) => setExpenseForm({ ...expenseForm, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
         <FormInput label="Notes" type="textarea" value={expenseForm.notes} onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })} />
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => { setShowExpenseModal(false); resetExpenseForm(); }}>Cancel</Button>
           <Button onClick={handleSaveExpense} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
+        </div>
+      </Modal>
+
+      {/* Inline category create, opened from the expense form. Rendered after
+          the expense modal so it layers above it. */}
+      <Modal isOpen={showCategoryModal} onClose={() => { setShowCategoryModal(false); setCategoryForm({ name: '', description: '' }); }} title={`➕ ${t('addCategory')}`} width="420px">
+        <FormInput label={`${t('categoryName')} *`} value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} required placeholder="e.g., Sunday School" />
+        <FormInput label={t('description')} type="textarea" value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} placeholder="What this category covers" />
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowCategoryModal(false); setCategoryForm({ name: '', description: '' }); }}>{t('cancel')}</Button>
+          <Button onClick={handleSaveNewCategory} disabled={savingCategory}>{savingCategory ? '⏳' : `💾 ${t('save')}`}</Button>
         </div>
       </Modal>
 
@@ -10669,10 +10813,22 @@ function SettingsPage() {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showAssignRoleModal, setShowAssignRoleModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showExpCategoryModal, setShowExpCategoryModal] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [editingExpCategory, setEditingExpCategory] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  // Expense categories, plus the lowercased category names actually referenced
+  // by this church's expenses. expenses.category holds the category NAME (no
+  // FK), so that name list is what tells us a category is still in use.
+  const [expenseCategories, setExpenseCategories] = useState([]);
+  const [usedExpenseCategoryNames, setUsedExpenseCategoryNames] = useState([]);
+  const [expCategoryForm, setExpCategoryForm] = useState({ name: '', description: '' });
+
+  // expense_categories writes are admin-only at the RLS layer.
+  const isChurchAdmin = user?.role === 'ADMIN' || !!user?.is_super_admin;
 
   // Forms
   const [locationForm, setLocationForm] = useState({ name: '', address: '', city: '', phone: '', pastor_name: '', capacity: '', is_main_campus: false, is_active: true });
@@ -10721,14 +10877,16 @@ function SettingsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [churchData, locationsData, rolesData, assignmentsData, logsData, automationData, templatesData] = await Promise.all([
+      const [churchData, locationsData, rolesData, assignmentsData, logsData, automationData, templatesData, expCategoriesData, expenseRows] = await Promise.all([
         supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
         supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('user_roles', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('user_role_assignments', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 50 }),
         supabaseQuery('automation_settings', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+        supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('expense_categories', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'name.asc' }),
+        supabaseQuery('expenses', { select: 'category', filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
       ]);
       setChurch(churchData);
       setLocations(locationsData || []);
@@ -10737,6 +10895,8 @@ function SettingsPage() {
       setActivityLogs(logsData || []);
       setAutomationSettings(automationData || []);
       setMessageTemplates(templatesData || []);
+      setExpenseCategories(expCategoriesData || []);
+      setUsedExpenseCategoryNames((expenseRows || []).map(e => (e.category || '').toLowerCase()).filter(Boolean));
     } catch (error) {
       console.error('Settings fetch error:', error);
     } finally {
@@ -11130,11 +11290,76 @@ function SettingsPage() {
     setSaving(false);
   };
 
+  // ============ EXPENSE CATEGORY HANDLERS ============
+  const resetExpCategoryForm = () => { setExpCategoryForm({ name: '', description: '' }); setEditingExpCategory(null); };
+
+  const openExpCategoryModal = (category = null) => {
+    if (category) {
+      setEditingExpCategory(category);
+      setExpCategoryForm({ name: category.name || '', description: category.description || '' });
+    } else { resetExpCategoryForm(); }
+    setShowExpCategoryModal(true);
+  };
+
+  const categoryIsInUse = (category) => usedExpenseCategoryNames.includes((category.name || '').toLowerCase());
+
+  const handleSaveExpCategory = async () => {
+    const name = (expCategoryForm.name || '').trim();
+    if (!name) { toast.warning(t('categoryName')); return; }
+    // UNIQUE (church_id, name) is case-sensitive in the DB; compare
+    // case-insensitively so 'Rent' and 'rent' can't both exist.
+    const clash = expenseCategories.some(c => c.id !== editingExpCategory?.id && (c.name || '').toLowerCase() === name.toLowerCase());
+    if (clash) { toast.warning(t('categoryExists')); return; }
+    setSaving(true);
+    try {
+      const payload = { name, description: (expCategoryForm.description || '').trim() || null };
+      if (editingExpCategory) {
+        await supabaseUpdate('expense_categories', editingExpCategory.id, payload);
+        logActivity({ action: 'expense_category_updated', entity_type: 'expense_category', entity_id: editingExpCategory.id, entity_name: name, details: null });
+        toast.success(t('savedSuccessfully'));
+      } else {
+        const result = await supabaseInsert('expense_categories', { ...payload, is_active: true });
+        const realRow = Array.isArray(result) ? result[0] : result;
+        logActivity({ action: 'expense_category_created', entity_type: 'expense_category', entity_id: realRow?.id || null, entity_name: name, details: null });
+        toast.success(t('categoryCreated'));
+      }
+      setShowExpCategoryModal(false); resetExpCategoryForm(); fetchData();
+    } catch (error) {
+      // 23505 = unique_violation, e.g. the name belongs to a deactivated row.
+      toast.error(/23505|duplicate key/i.test(error.message || '') ? t('categoryExists') : error.message);
+    }
+    setSaving(false);
+  };
+
+  const handleToggleExpCategory = async (category) => {
+    const next = !category.is_active;
+    // Optimistic flip; reverted from the server on the refetch below.
+    setExpenseCategories(prev => prev.map(c => c.id === category.id ? { ...c, is_active: next } : c));
+    try {
+      await supabaseUpdate('expense_categories', category.id, { is_active: next });
+      logActivity({ action: next ? 'expense_category_activated' : 'expense_category_deactivated', entity_type: 'expense_category', entity_id: category.id, entity_name: category.name || null, details: null });
+      fetchData();
+    } catch (error) {
+      setExpenseCategories(prev => prev.map(c => c.id === category.id ? { ...c, is_active: category.is_active } : c));
+      toast.error(error.message);
+    }
+  };
+
   // ============ DELETE HANDLER ============
   const handleDelete = async () => {
     if (!deleteConfirm) return;
     try {
       const target = deleteConfirm;
+      if (target.table === 'expense_categories' && categoryIsInUse(target)) {
+        // Expenses reference the category by name, so a hard delete would strand
+        // historical rows with a label nothing explains. Deactivate instead: the
+        // category leaves the picker but stays readable on past expenses.
+        await supabaseUpdate('expense_categories', target.id, { is_active: false });
+        logActivity({ action: 'expense_category_deactivated', entity_type: 'expense_category', entity_id: target.id, entity_name: target.name || null, details: { reason: 'has_linked_expenses' } });
+        toast.info(t('categoryDeactivated'));
+        setDeleteConfirm(null); fetchData();
+        return;
+      }
       if (target.table === 'church_locations') {
         if (target.is_main_campus) { toast.error('Cannot delete main campus'); setDeleteConfirm(null); return; }
       }
@@ -11148,6 +11373,8 @@ function SettingsPage() {
         logActivity({ action: 'custom_role_deleted', entity_type: 'custom_role', entity_id: target.id, entity_name: target.name || null, details: null });
       } else if (target.table === 'message_templates') {
         logActivity({ action: 'template_deleted', entity_type: 'template', entity_id: target.id, entity_name: target.name || null, details: null });
+      } else if (target.table === 'expense_categories') {
+        logActivity({ action: 'expense_category_deleted', entity_type: 'expense_category', entity_id: target.id, entity_name: target.name || null, details: null });
       }
       setDeleteConfirm(null); fetchData();
     } catch (error) { toast.error(error.message); }
@@ -11179,6 +11406,7 @@ function SettingsPage() {
     { id: 'general', label: `⚙️ ${t('general')}`, icon: '⚙️' },
     { id: 'billing', label: `💳 ${t('billing')}`, icon: '💳' },
     { id: 'locations', label: `📍 ${t('locations')}`, icon: '📍' },
+    ...(isChurchAdmin ? [{ id: 'expenseCategories', label: `🏷️ ${t('expenseCategories')}`, icon: '🏷️' }] : []),
     { id: 'automation', label: `🤖 ${t('automation')}`, icon: '🤖' },
     { id: 'roles', label: `👥 ${t('userRoles')}`, icon: '👥' },
     { id: 'logs', label: `📜 ${t('activityLogs')}`, icon: '📜' },
@@ -11478,6 +11706,67 @@ function SettingsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* ============ EXPENSE CATEGORIES ============ */}
+          {activeSection === 'expenseCategories' && isChurchAdmin && (
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>🏷️ {t('expenseCategories')}</h3>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{t('manageCategories')}</p>
+                </div>
+                <Button onClick={() => openExpCategoryModal()}>➕ {t('addCategory')}</Button>
+              </div>
+              <div style={{ padding: '16px', backgroundColor: '#f9fafb', display: 'flex', gap: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '20px' }}>🏷️</span><div><p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{expenseCategories.length}</p><p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>{t('total')}</p></div></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '20px' }}>✅</span><div><p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{expenseCategories.filter(c => c.is_active).length}</p><p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>{t('active')}</p></div></div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('categoryName')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('description')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('status')}</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenseCategories.map((cat) => (
+                      <tr key={cat.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: '500' }}>{cat.name}</td>
+                        <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '13px' }}>{cat.description || '—'}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                          {/* Clicking the pill toggles is_active. */}
+                          <button
+                            onClick={() => handleToggleExpCategory(cat)}
+                            style={{
+                              padding: '4px 12px', borderRadius: '9999px', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
+                              border: cat.is_active ? '1px solid #a7f3d0' : '1px solid #e5e7eb',
+                              backgroundColor: cat.is_active ? '#d1fae5' : '#f3f4f6',
+                              color: cat.is_active ? '#065f46' : '#6b7280'
+                            }}
+                          >
+                            {cat.is_active ? `✅ ${t('active')}` : `⚪ ${t('inactive')}`}
+                          </button>
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <button onClick={() => openExpCategoryModal(cat)} style={{ padding: '4px 10px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', marginRight: '6px', fontSize: '12px' }}>✏️</button>
+                          <button onClick={() => setDeleteConfirm({ ...cat, table: 'expense_categories' })} style={{ padding: '4px 10px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {expenseCategories.length === 0 && (
+                      <tr><td colSpan="4" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>{t('noRecords')}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <p style={{ margin: 0, padding: '12px 20px', borderTop: '1px solid #e5e7eb', fontSize: '12px', color: '#6b7280' }}>
+                ℹ️ {t('categoryDeleteHint')}
+              </p>
             </div>
           )}
 
@@ -12109,6 +12398,16 @@ function SettingsPage() {
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => { setShowTemplateModal(false); resetTemplateForm(); }}>Cancel</Button>
           <Button onClick={handleSaveTemplate} disabled={saving}>{saving ? '⏳' : '💾 Save'}</Button>
+        </div>
+      </Modal>
+
+      {/* Expense Category Modal (shared by "Add Category" and row edit) */}
+      <Modal isOpen={showExpCategoryModal} onClose={() => { setShowExpCategoryModal(false); resetExpCategoryForm(); }} title={editingExpCategory ? `✏️ ${t('edit')}` : `➕ ${t('addCategory')}`} width="420px">
+        <FormInput label={`${t('categoryName')} *`} value={expCategoryForm.name} onChange={(e) => setExpCategoryForm({ ...expCategoryForm, name: e.target.value })} required placeholder="e.g., Sunday School" />
+        <FormInput label={t('description')} type="textarea" value={expCategoryForm.description} onChange={(e) => setExpCategoryForm({ ...expCategoryForm, description: e.target.value })} placeholder="What this category covers" />
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => { setShowExpCategoryModal(false); resetExpCategoryForm(); }}>{t('cancel')}</Button>
+          <Button onClick={handleSaveExpCategory} disabled={saving}>{saving ? '⏳' : `💾 ${t('save')}`}</Button>
         </div>
       </Modal>
 
