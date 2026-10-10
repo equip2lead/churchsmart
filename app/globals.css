@@ -119,3 +119,73 @@ textarea {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ==========================================
+   DASHBOARD
+   ========================================== */
+
+/* Stat cards: 4 across on desktop, 2 on tablet, 1 on phone. */
+.cs-dash-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+/* Side-by-side panels (charts, activity/events). */
+.cs-dash-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Subtle lift on hover. Suppressed for pointer-coarse devices, where there is
+   no hover state and the transform only causes a flicker on tap. */
+.cs-dash-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+@media (hover: hover) {
+  .cs-dash-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* Skeleton placeholder shown while dashboard data loads. */
+.cs-skeleton {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e9ebef 37%, #f3f4f6 63%);
+  background-size: 400% 100%;
+  animation: cs-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+@keyframes cs-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* Birthday strip scrolls sideways rather than wrapping. */
+.cs-birthday-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+.cs-birthday-strip > * {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .cs-dash-stats { grid-template-columns: repeat(2, 1fr); }
+  .cs-dash-two { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .cs-dash-stats { grid-template-columns: 1fr; }
+}
+
+/* Respect a reduced-motion preference: no shimmer, no lift. */
+@media (prefers-reduced-motion: reduce) {
+  .cs-skeleton { animation: none; }
+  .cs-dash-card { transition: none; }
+  .cs-dash-card:hover { transform: none; }
+}

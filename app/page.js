@@ -574,6 +574,32 @@ const translations = {
     credentialsSaved: 'Credentials saved!',
     whatsappSentSummary: 'WhatsApp: {sent} sent, {failed} failed.',
     newToWhatsapp: 'New to WhatsApp? Download our setup guide',
+    // ── Dashboard redesign ──
+    // Greetings, totalMembers, attendance, upcomingEvents, quickActions,
+    // upcomingBirthdays and addMember already exist above and are reused
+    // rather than duplicated under snake_case names.
+    giving_this_month: 'Giving This Month',
+    new_visitors: 'New Visitors',
+    attendance_trend: 'Attendance Trend',
+    giving_trend: 'Giving Trend',
+    recent_activity: 'Recent Activity',
+    auto_greetings_enabled: 'Auto-greetings enabled',
+    enable_whatsapp_greetings: 'Enable WhatsApp for auto birthday greetings',
+    view_all: 'View all',
+    record_attendance: 'Record Attendance',
+    record_offering: 'Record Offering',
+    send_message: 'Send Message',
+    no_upcoming_events: 'No upcoming events',
+    no_recent_activity: 'No recent activity yet',
+    no_upcoming_birthdays: 'No birthdays in the next 7 days',
+    create_event: 'Create an event',
+    of_members: 'of members',
+    last_service: 'Last service',
+    vs_last_month: 'vs last month',
+    this_month: 'this month',
+    last_12_services: 'Last 12 services',
+    last_6_months: 'Last 6 months',
+    not_enough_data: 'Not enough data yet',
     setupGuide: 'Setup Guide',
     // ── In-app WhatsApp setup guide ──
     // Step bodies are arrays: t() returns the value as-is, so the walkthrough
@@ -1164,6 +1190,29 @@ const translations = {
     credentialsSaved: 'Identifiants enregistrés !',
     whatsappSentSummary: 'WhatsApp : {sent} envoyés, {failed} échoués.',
     newToWhatsapp: 'Nouveau sur WhatsApp ? Téléchargez notre guide de configuration',
+    // ── Refonte du tableau de bord ──
+    giving_this_month: 'Dons ce mois',
+    new_visitors: 'Nouveaux visiteurs',
+    attendance_trend: 'Tendance de pr\u00e9sence',
+    giving_trend: 'Tendance des dons',
+    recent_activity: 'Activit\u00e9 r\u00e9cente',
+    auto_greetings_enabled: 'Messages automatiques activ\u00e9s',
+    enable_whatsapp_greetings: "Activez WhatsApp pour les messages d'anniversaire automatiques",
+    view_all: 'Voir tout',
+    record_attendance: 'Enregistrer la pr\u00e9sence',
+    record_offering: 'Enregistrer une offrande',
+    send_message: 'Envoyer un message',
+    no_upcoming_events: '\u00c0 venir : aucun \u00e9v\u00e9nement',
+    no_recent_activity: "Aucune activit\u00e9 r\u00e9cente pour l'instant",
+    no_upcoming_birthdays: 'Aucun anniversaire dans les 7 prochains jours',
+    create_event: 'Cr\u00e9er un \u00e9v\u00e9nement',
+    of_members: 'des membres',
+    last_service: 'Dernier culte',
+    vs_last_month: 'vs mois dernier',
+    this_month: 'ce mois',
+    last_12_services: 'Les 12 derniers cultes',
+    last_6_months: 'Les 6 derniers mois',
+    not_enough_data: 'Pas encore assez de donn\u00e9es',
     setupGuide: 'Guide de configuration',
     // ── Guide de configuration WhatsApp dans l'app ──
     whatsapp_setup_guide: 'Guide de configuration WhatsApp',
@@ -3633,7 +3682,7 @@ function Dashboard() {
               <button onClick={() => setActiveTab('settings')} style={{ padding: '8px 20px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('viewPlans')}</button>
             </div>
           )}
-          {activeTab === 'dashboard' && (CHURCH_ID ? <DashboardPage /> : <DashboardWelcomeCard userName={user?.name} onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'dashboard' && (CHURCH_ID ? <DashboardPage onNavigate={setActiveTab} /> : <DashboardWelcomeCard userName={user?.name} onOpenSetup={openChurchSetup} />)}
           {activeTab === 'members' && (CHURCH_ID ? <PermissionGate permission="members" fallback={<AccessDenied onNavigate={setActiveTab} />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="members" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'visitors' && (CHURCH_ID ? <PermissionGate permission="visitors" fallback={<AccessDenied onNavigate={setActiveTab} />}><VisitorsPage /></PermissionGate> : <ChurchSetupRequired pageKey="visitors" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'attendance' && (CHURCH_ID ? <PermissionGate permission="attendance" fallback={<AccessDenied onNavigate={setActiveTab} />}><AttendancePage /></PermissionGate> : <ChurchSetupRequired pageKey="attendance" onOpenSetup={openChurchSetup} />)}
@@ -4059,7 +4108,333 @@ function SMSModal({ isOpen, onClose, recipient, onSend }) {
 // ==========================================
 // DASHBOARD PAGE - With Charts
 // ==========================================
-function DashboardPage() {
+// ==========================================
+// DASHBOARD BUILDING BLOCKS
+// ==========================================
+
+/**
+ * Animate a number from 0 to `target` on mount and whenever it changes.
+ * Uses requestAnimationFrame rather than an interval so it stays in step with
+ * the browser's paint, and honours prefers-reduced-motion by jumping straight
+ * to the value.
+ */
+function useCountUp(target, duration = 900) {
+  const [value, setValue] = useState(0);
+  const frame = useRef(null);
+
+  useEffect(() => {
+    const end = Number(target) || 0;
+
+    const reduceMotion = typeof window !== 'undefined'
+      && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // A reduced-motion preference collapses the duration to zero rather than
+    // taking a separate code path, so every update still happens inside the
+    // animation frame — never synchronously in the effect body.
+    const span = reduceMotion ? 0 : duration;
+    const start = performance.now();
+
+    const step = (now) => {
+      const progress = span <= 0 ? 1 : Math.min(1, (now - start) / span);
+      // easeOutCubic: fast at first, settling at the end.
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(progress < 1 ? end * eased : end);
+      if (progress < 1) frame.current = requestAnimationFrame(step);
+    };
+    frame.current = requestAnimationFrame(step);
+
+    return () => { if (frame.current) cancelAnimationFrame(frame.current); };
+  }, [target, duration]);
+
+  return value;
+}
+
+/** Grey placeholder with the shimmer from globals.css. */
+function Skeleton({ width = '100%', height = '14px', radius = '6px', style = {} }) {
+  return <div className="cs-skeleton" style={{ width, height, borderRadius: radius, ...style }} />;
+}
+
+function DashStatSkeleton() {
+  return (
+    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <Skeleton width="36px" height="36px" radius="10px" />
+      <Skeleton width="60%" height="28px" style={{ marginTop: '16px' }} />
+      <Skeleton width="40%" height="12px" style={{ marginTop: '10px' }} />
+    </div>
+  );
+}
+
+function DashPanelSkeleton({ height = '240px' }) {
+  return (
+    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <Skeleton width="40%" height="16px" />
+      <Skeleton width="100%" height={height} style={{ marginTop: '16px' }} />
+    </div>
+  );
+}
+
+/**
+ * One headline metric. `trend` is a percentage change vs the previous period;
+ * null means there is nothing to compare against yet, in which case no
+ * indicator is drawn rather than showing a misleading 0%.
+ */
+function DashStatCard({ icon, label, value, display, sublabel, trend, trendLabel, color = '#6366f1' }) {
+  const animated = useCountUp(value);
+  // `display` formats the animated number (currency, percentages); without it
+  // the raw count is shown.
+  const shown = display ? display(animated) : Math.round(animated).toLocaleString();
+  const up = trend != null && trend >= 0;
+
+  return (
+    <div
+      className="cs-dash-card"
+      style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <span style={{ width: '36px', height: '36px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', backgroundColor: `${color}14` }}>
+          {icon}
+        </span>
+        {trend != null && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: '600', backgroundColor: up ? '#dcfce7' : '#fef2f2', color: up ? '#166534' : '#991b1b' }}>
+            {up ? '↑' : '↓'} {Math.abs(Math.round(trend))}%
+          </span>
+        )}
+      </div>
+      <p style={{ margin: '14px 0 0 0', fontSize: '26px', fontWeight: '700', color: '#111827', lineHeight: '1.15', wordBreak: 'break-word' }}>{shown}</p>
+      <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>{label}</p>
+      {sublabel && <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>{sublabel}</p>}
+      {trend != null && trendLabel && (
+        <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{trendLabel}</p>
+      )}
+    </div>
+  );
+}
+
+// Charts are hand-rolled SVG: the only shapes needed are a polyline and some
+// rects, which is not worth a charting dependency. A viewBox plus width:100%
+// makes them scale; per-point invisible hit areas carry the hover handlers so
+// no mouse-coordinate maths is required.
+const CHART_W = 520;
+const CHART_H = 200;
+const PAD = { top: 16, right: 12, bottom: 28, left: 46 };
+
+/** Shared y-axis gridlines and labels. */
+function ChartGrid({ max, formatValue }) {
+  const innerH = CHART_H - PAD.top - PAD.bottom;
+  const ticks = [0, 0.5, 1];
+  return (
+    <g>
+      {ticks.map((frac, i) => {
+        const y = PAD.top + innerH * (1 - frac);
+        return (
+          <g key={i}>
+            <line x1={PAD.left} y1={y} x2={CHART_W - PAD.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
+            <text x={PAD.left - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#9ca3af">
+              {formatValue(max * frac)}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+function ChartTooltip({ x, y, lines }) {
+  const w = Math.max(72, ...lines.map(l => l.length * 6.2));
+  const h = 16 * lines.length + 10;
+  // Keep the box inside the viewBox when hovering near an edge.
+  const bx = Math.min(Math.max(x - w / 2, 2), CHART_W - w - 2);
+  const by = Math.max(y - h - 10, 2);
+  return (
+    <g pointerEvents="none">
+      <rect x={bx} y={by} width={w} height={h} rx="6" fill="#111827" opacity="0.92" />
+      {lines.map((line, i) => (
+        <text key={i} x={bx + w / 2} y={by + 16 + i * 16} textAnchor="middle" fontSize="11" fill="#ffffff" fontWeight={i === 0 ? '600' : '400'}>
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+/** Line chart over an ordered series of { label, value }. */
+function DashLineChart({ points, formatValue = (v) => String(Math.round(v)), color = '#6366f1', emptyLabel }) {
+  const [hover, setHover] = useState(null);
+
+  if (!points || points.length < 2) {
+    return <p style={{ margin: 0, padding: '48px 0', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{emptyLabel}</p>;
+  }
+
+  const max = Math.max(...points.map(p => p.value), 1);
+  const innerW = CHART_W - PAD.left - PAD.right;
+  const innerH = CHART_H - PAD.top - PAD.bottom;
+  const stepX = innerW / (points.length - 1);
+  const coords = points.map((p, i) => ({
+    ...p,
+    x: PAD.left + stepX * i,
+    y: PAD.top + innerH * (1 - p.value / max)
+  }));
+
+  // Label every other tick when the series is dense, so they cannot collide.
+  const labelEvery = points.length > 7 ? 2 : 1;
+
+  return (
+    <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} role="img">
+      <ChartGrid max={max} formatValue={formatValue} />
+
+      {/* Soft fill under the line */}
+      <polygon
+        points={`${coords.map(c => `${c.x},${c.y}`).join(' ')} ${coords[coords.length - 1].x},${PAD.top + innerH} ${coords[0].x},${PAD.top + innerH}`}
+        fill={color}
+        opacity="0.08"
+      />
+      <polyline
+        points={coords.map(c => `${c.x},${c.y}`).join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+
+      {coords.map((c, i) => (
+        <g key={i}>
+          <circle cx={c.x} cy={c.y} r={hover === i ? 5 : 3} fill="#ffffff" stroke={color} strokeWidth="2" />
+          {i % labelEvery === 0 && (
+            <text x={c.x} y={CHART_H - 8} textAnchor="middle" fontSize="10" fill="#9ca3af">{c.label}</text>
+          )}
+          {/* Invisible hit area so hovering anywhere in the column works. */}
+          <rect
+            x={c.x - stepX / 2} y={PAD.top} width={stepX} height={innerH}
+            fill="transparent"
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(null)}
+          />
+        </g>
+      ))}
+
+      {hover != null && (
+        <>
+          <line x1={coords[hover].x} y1={PAD.top} x2={coords[hover].x} y2={PAD.top + innerH} stroke={color} strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
+          <ChartTooltip x={coords[hover].x} y={coords[hover].y} lines={[formatValue(coords[hover].value), coords[hover].fullLabel || coords[hover].label]} />
+        </>
+      )}
+    </svg>
+  );
+}
+
+/** Bar chart over an ordered series of { label, value }. */
+function DashBarChart({ bars, formatValue = (v) => String(Math.round(v)), color = '#6366f1', emptyLabel }) {
+  const [hover, setHover] = useState(null);
+
+  if (!bars || bars.length === 0) {
+    return <p style={{ margin: 0, padding: '48px 0', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{emptyLabel}</p>;
+  }
+
+  const max = Math.max(...bars.map(b => b.value), 1);
+  const innerW = CHART_W - PAD.left - PAD.right;
+  const innerH = CHART_H - PAD.top - PAD.bottom;
+  const slot = innerW / bars.length;
+  const barW = Math.min(44, slot * 0.6);
+
+  return (
+    <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} role="img">
+      <ChartGrid max={max} formatValue={formatValue} />
+
+      {bars.map((b, i) => {
+        const h = (b.value / max) * innerH;
+        const x = PAD.left + slot * i + (slot - barW) / 2;
+        const y = PAD.top + innerH - h;
+        return (
+          <g key={i}>
+            <rect
+              x={x} y={y} width={barW} height={Math.max(h, b.value > 0 ? 2 : 0)} rx="5"
+              fill={color}
+              opacity={hover == null || hover === i ? 1 : 0.45}
+            />
+            <text x={x + barW / 2} y={CHART_H - 8} textAnchor="middle" fontSize="10" fill="#9ca3af">{b.label}</text>
+            <rect
+              x={PAD.left + slot * i} y={PAD.top} width={slot} height={innerH}
+              fill="transparent"
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(null)}
+            />
+          </g>
+        );
+      })}
+
+      {hover != null && (
+        <ChartTooltip
+          x={PAD.left + slot * hover + slot / 2}
+          y={PAD.top + innerH - (bars[hover].value / max) * innerH}
+          lines={[formatValue(bars[hover].value), bars[hover].fullLabel || bars[hover].label]}
+        />
+      )}
+    </svg>
+  );
+}
+
+/** 1234 -> "1.2k". Keeps chart axis labels narrow enough to not collide. */
+function compactNumber(value) {
+  const n = Number(value) || 0;
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
+  if (abs >= 1_000) return `${(n / 1_000).toFixed(abs >= 10_000 ? 0 : 1)}k`;
+  return String(Math.round(n));
+}
+
+/**
+ * Turn an activity_logs row into an icon, a colour and a one-line summary.
+ *
+ * `action` is a stored code such as 'member_created', so the summary is built
+ * from the code rather than translated: the values in the table are English
+ * and are not localised at write time.
+ */
+function activityMeta(log) {
+  const entity = String(log?.entity_type || '').toLowerCase();
+  const action = String(log?.action || '');
+
+  const byEntity = {
+    member: { icon: '\u{1F465}', color: '#6366f1' },
+    visitor: { icon: '\u{1F6B6}', color: '#f59e0b' },
+    donation: { icon: '\u{1F4B0}', color: '#10b981' },
+    expense: { icon: '\u{1F4E4}', color: '#ef4444' },
+    attendance: { icon: '\u{1F4C5}', color: '#0ea5e9' },
+    salvation: { icon: '❤️', color: '#ec4899' },
+    expense_category: { icon: '\u{1F3F7}️', color: '#8b5cf6' },
+    whatsapp_config: { icon: '\u{1F4AC}', color: '#25d366' },
+    template: { icon: '\u{1F4DD}', color: '#6b7280' },
+    location: { icon: '\u{1F4CD}', color: '#14b8a6' },
+    custom_role: { icon: '\u{1F512}', color: '#f97316' }
+  };
+  const look = byEntity[entity] || { icon: '•', color: '#6b7280' };
+
+  // 'member_created' -> 'member created'
+  const phrase = action.replace(/_/g, ' ').trim() || 'activity';
+  const name = log?.entity_name;
+  const text = name ? `${name} — ${phrase}` : phrase.charAt(0).toUpperCase() + phrase.slice(1);
+
+  return { ...look, text };
+}
+
+/** Initials bubble used by the birthday strip. */
+function InitialsAvatar({ name, color = '#6366f1', size = 44 }) {
+  const initials = String(name || '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(part => part[0] || '')
+    .join('')
+    .toUpperCase() || '?';
+  return (
+    <div style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: `${color}1a`, color, fontWeight: '700', fontSize: `${Math.round(size / 2.9)}px` }}>
+      {initials}
+    </div>
+  );
+}
+
+function DashboardPage({ onNavigate }) {
   const { t } = useLanguage();
   const toast = useToast();
   const { user } = useAuth();
@@ -4080,6 +4455,16 @@ function DashboardPage() {
     return false;
   });
   const [onboardingCounts, setOnboardingCounts] = useState({ members: 0, services: 0, donations: 0, profileComplete: false, teamMembers: 0 });
+  // Headline metrics, their period-over-period trends, and the chart series.
+  const [metrics, setMetrics] = useState({
+    members: 0, membersThisMonth: 0, membersTrend: null,
+    lastAttendance: null, attendanceRate: null, attendanceTrend: null,
+    givingThisMonth: 0, givingTrend: null,
+    visitorsThisMonth: 0, visitorsTrend: null,
+    attendanceSeries: [], givingSeries: []
+  });
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [whatsappActive, setWhatsappActive] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => { fetchData(); }, [filterLocation]);
@@ -4088,18 +4473,20 @@ function DashboardPage() {
     setLoading(true);
     try {
       // Use parallel requests with limits — don't fetch ALL records
-      const [members, visitors, salvations, donations, services, events, activityLogs, locationsData, memberCount, donationTotal] = await Promise.all([
-        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,first_name,last_name,date_of_birth,location_id,photo_url' }),
-        supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'visit_date.desc', limit: 5 }),
+      const [members, visitors, salvations, donations, services, events, activityLogs, locationsData, attendanceRows, whatsappCfg] = await Promise.all([
+        supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,first_name,last_name,date_of_birth,location_id,photo_url,created_at' }),
+        // Unlimited (scoped to a few columns): the monthly visitor counts and
+        // their trend need the whole set, not just the latest five.
+        supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,full_name,visit_date,location_id,followup_status', order: 'visit_date.desc' }),
         supabaseQuery('salvations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'salvation_date.desc', limit: 5 }),
         supabaseQuery('donations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,amount,donation_date,location_id' }),
         supabaseQuery('services', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,name,day_of_week,start_time,is_active' }),
         supabaseQuery('events', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,title,event_date,start_time,event_type', order: 'event_date.asc' }),
-        supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 5 }),
+        supabaseQuery('activity_logs', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'created_at.desc', limit: 10 }),
         supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        // Get count separately for stats
-        supabase.from('members').select('id', { count: 'exact', head: true }).eq('church_id', CHURCH_ID),
-        supabase.from('donations').select('amount').eq('church_id', CHURCH_ID)
+        supabaseQuery('attendance_records', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'id,service_date,total_count,location_id', order: 'service_date.desc', limit: 30 }),
+        // api_token is never selected into the client.
+        supabaseQuery('whatsapp_config', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], select: 'is_active,api_token_last4,phone_number_id', single: true })
       ]);
       setLocations(locationsData || []);
 
@@ -4110,7 +4497,75 @@ function DashboardPage() {
       const filteredDonations = filterLocation === 'all' ? (Array.isArray(donations) ? donations : []) : (Array.isArray(donations) ? donations : []).filter(d => d.location_id === filterLocation);
       
       // Calculate total donations
-      const totalDonations = filteredDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);      
+      const totalDonations = filteredDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+
+      // ── Headline metrics ──
+      // Trends compare the current calendar month with the previous one. A
+      // month with no baseline yields null, so the card hides the indicator
+      // instead of implying a 0% or +100% change. (The previous dashboard
+      // showed hardcoded "+5%" / "+8%" figures that were never computed.)
+      const monthOf = (value) => String(value || '').slice(0, 7);
+      const nowDate = new Date();
+      const thisMonthKey = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}`;
+      const prevMonthRef = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1);
+      const prevMonthKey = `${prevMonthRef.getFullYear()}-${String(prevMonthRef.getMonth() + 1).padStart(2, '0')}`;
+      const pctChange = (current, previous) => (previous ? ((current - previous) / previous) * 100 : null);
+      const sumAmount = (rows) => rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+
+      const membersThisMonth = filteredMembers.filter(m => monthOf(m.created_at) === thisMonthKey).length;
+      const membersPrevMonth = filteredMembers.filter(m => monthOf(m.created_at) === prevMonthKey).length;
+
+      const givingThisMonth = sumAmount(filteredDonations.filter(d => monthOf(d.donation_date) === thisMonthKey));
+      const givingPrevMonth = sumAmount(filteredDonations.filter(d => monthOf(d.donation_date) === prevMonthKey));
+
+      const visitorsThisMonth = filteredVisitors.filter(v => monthOf(v.visit_date) === thisMonthKey).length;
+      const visitorsPrevMonth = filteredVisitors.filter(v => monthOf(v.visit_date) === prevMonthKey).length;
+
+      // attendance_records arrives newest-first.
+      const attRows = (attendanceRows || []).filter(a => filterLocation === 'all' || a.location_id === filterLocation);
+      const lastAttendance = attRows[0]?.total_count ?? null;
+      const prevAttendance = attRows[1]?.total_count ?? null;
+      const attendanceRate = (lastAttendance != null && filteredMembers.length > 0)
+        ? (lastAttendance / filteredMembers.length) * 100
+        : null;
+
+      // Reversed so the chart reads left-to-right, oldest to newest.
+      const attendanceSeries = attRows.slice(0, 12).reverse().map(a => {
+        const d = new Date(a.service_date);
+        return {
+          label: isNaN(d.getTime()) ? '' : `${d.getDate()}/${d.getMonth() + 1}`,
+          fullLabel: isNaN(d.getTime()) ? String(a.service_date) : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          value: Number(a.total_count) || 0
+        };
+      });
+
+      const givingSeries = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        givingSeries.push({
+          label: d.toLocaleDateString(undefined, { month: 'short' }),
+          fullLabel: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+          value: sumAmount(filteredDonations.filter(dn => monthOf(dn.donation_date) === key))
+        });
+      }
+
+      setMetrics({
+        members: filteredMembers.length,
+        membersThisMonth,
+        membersTrend: pctChange(membersThisMonth, membersPrevMonth),
+        lastAttendance,
+        attendanceRate,
+        attendanceTrend: pctChange(lastAttendance, prevAttendance),
+        givingThisMonth,
+        givingTrend: pctChange(givingThisMonth, givingPrevMonth),
+        visitorsThisMonth,
+        visitorsTrend: pctChange(visitorsThisMonth, visitorsPrevMonth),
+        attendanceSeries,
+        givingSeries
+      });
+      setWhatsappActive(!!(whatsappCfg?.is_active && whatsappCfg?.api_token_last4 && whatsappCfg?.phone_number_id));
+      
       // Calculate weekly giving (last 7 days)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -4138,14 +4593,14 @@ function DashboardPage() {
         const nextYearBirthday = new Date(today.getFullYear() + 1, dob.getMonth(), dob.getDate());
         const diffThis = Math.ceil((thisYearBirthday - today) / (1000 * 60 * 60 * 24));
         const diffNext = Math.ceil((nextYearBirthday - today) / (1000 * 60 * 60 * 24));
-        return (diffThis >= 0 && diffThis <= 30) || (diffNext >= 0 && diffNext <= 30);
+        return (diffThis >= 0 && diffThis <= 7) || (diffNext >= 0 && diffNext <= 7);
       }).map(m => {
         const dob = new Date(m.date_of_birth);
         let birthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
         if (birthday < today) birthday = new Date(today.getFullYear() + 1, dob.getMonth(), dob.getDate());
         const daysUntil = Math.ceil((birthday - today) / (1000 * 60 * 60 * 24));
         return { ...m, birthday, daysUntil };
-      }).sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 5);
+      }).sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 12);
 
       // Calculate next occurrence for each service
       const dayMap = { 'SUNDAY': 0, 'MONDAY': 1, 'TUESDAY': 2, 'WEDNESDAY': 3, 'THURSDAY': 4, 'FRIDAY': 5, 'SATURDAY': 6 };
@@ -4195,7 +4650,8 @@ function DashboardPage() {
       setUpcomingBirthdays(birthdayMembers);
       setUpcomingItems(combined);
       setRecentActivity(activityLogs || []);
-      setRecentVisitors(filteredVisitors);
+      setRecentVisitors(filteredVisitors.slice(0, 5));
+      setUpcomingEvents(upcomingEvents.slice(0, 3));
       setRecentSalvations(filteredSalvations);
     } catch (error) { console.error('Dashboard fetch error:', error); }
     finally { setLoading(false); }
@@ -4270,7 +4726,24 @@ function DashboardPage() {
         </div>
       )}
 
-      {loading ? <LoadingSpinner /> : (
+      {/* Skeleton mirrors the real layout so the page does not jump when data
+          lands, rather than a spinner that discards the structure. */}
+      {loading ? (
+        <>
+          <div className="cs-dash-stats" style={{ marginBottom: '16px' }}>
+            {[0, 1, 2, 3].map(i => <DashStatSkeleton key={i} />)}
+          </div>
+          <div className="cs-dash-two" style={{ marginBottom: '16px' }}>
+            <DashPanelSkeleton />
+            <DashPanelSkeleton />
+          </div>
+          <div className="cs-dash-two" style={{ marginBottom: '16px' }}>
+            <DashPanelSkeleton height="180px" />
+            <DashPanelSkeleton height="180px" />
+          </div>
+          <DashPanelSkeleton height="92px" />
+        </>
+      ) : (
         <>
           {/* Onboarding Checklist */}
           {(() => {
@@ -4302,178 +4775,220 @@ function DashboardPage() {
             );
           })()}
 
-          {/* Stats Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-            <StatCard label={t('totalMembers')} value={stats.members} icon="👥" color="#6366f1" trend="+5%" />
-            <StatCard label={t('totalVisitors')} value={stats.visitors} icon="🚶" color="#f59e0b" trend="+3" />
-            <StatCard label={t('salvations')} value={stats.salvations} icon="❤️" color="#ef4444" trend="+2" />
-            {isFinanceVisible && <StatCard label={t('totalGiving')} value={formatCurrency(stats.donations)} icon="💰" color="#10b981" trend="+8%" />}
+          {/* ─────────── ROW 1 · Headline stats ─────────── */}
+          <div className="cs-dash-stats" style={{ marginBottom: '16px' }}>
+            <DashStatCard
+              icon="👥"
+              color="#6366f1"
+              label={t('totalMembers')}
+              value={metrics.members}
+              sublabel={metrics.membersThisMonth > 0 ? `+${metrics.membersThisMonth} ${t('this_month')}` : null}
+              trend={metrics.membersTrend}
+              trendLabel={t('vs_last_month')}
+            />
+            <DashStatCard
+              icon="⛪"
+              color="#0ea5e9"
+              label={t('attendance')}
+              value={metrics.lastAttendance ?? 0}
+              sublabel={metrics.attendanceRate != null
+                ? `${Math.round(metrics.attendanceRate)}% ${t('of_members')}`
+                : t('last_service')}
+              trend={metrics.attendanceTrend}
+              trendLabel={t('last_service')}
+            />
+            {isFinanceVisible && (
+              <DashStatCard
+                icon="💰"
+                color="#10b981"
+                label={t('giving_this_month')}
+                value={metrics.givingThisMonth}
+                display={(v) => formatCurrency(Math.round(v))}
+                trend={metrics.givingTrend}
+                trendLabel={t('vs_last_month')}
+              />
+            )}
+            <DashStatCard
+              icon="👋"
+              color="#f59e0b"
+              label={t('new_visitors')}
+              value={metrics.visitorsThisMonth}
+              sublabel={t('this_month')}
+              trend={metrics.visitorsTrend}
+              trendLabel={t('vs_last_month')}
+            />
           </div>
 
-          {/* Weekly Giving Chart */}
-          {isFinanceVisible && (
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-              <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#6b7280' }}>💰 Weekly Contributions</h3>
-                <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>{formatCurrency(weeklyTotal)}</p>
+          {/* ─────────── ROW 2 · Trends ─────────── */}
+          <div className="cs-dash-two" style={{ marginBottom: '16px' }}>
+            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>📈 {t('attendance_trend')}</h3>
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('last_12_services')}</span>
               </div>
-              <span style={{ fontSize: '14px', color: '#6b7280' }}>Last 7 days</span>
+              <DashLineChart
+                points={metrics.attendanceSeries}
+                color="#6366f1"
+                formatValue={(v) => String(Math.round(v))}
+                emptyLabel={t('not_enough_data')}
+              />
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '120px' }}>
-              {weeklyGiving.map((day, i) => (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '100%', backgroundColor: '#e0e7ff', borderRadius: '8px', position: 'relative', height: '100px', display: 'flex', alignItems: 'flex-end' }}>
-                    <div style={{
-                      width: '100%',
-                      backgroundColor: '#6366f1',
-                      borderRadius: '8px',
-                      height: `${Math.max((day.amount / maxDayAmount) * 100, 5)}%`,
-                      minHeight: day.amount > 0 ? '10px' : '4px',
-                      transition: 'height 0.3s ease'
-                    }} />
-                  </div>
-                  <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>{day.day}</span>
-                  <span style={{ fontSize: '10px', color: '#9ca3af' }}>{day.amount > 0 ? `${(day.amount / 1000).toFixed(0)}k` : '0'}</span>
+
+            {isFinanceVisible && (
+              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>💹 {t('giving_trend')}</h3>
+                  <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('last_6_months')}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-          )}
-
-          {/* Upcoming Birthdays */}
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🎂 Upcoming Birthdays</h3>
-              <span style={{ fontSize: '14px', color: '#6b7280' }}>Next 30 days</span>
-            </div>
-            {upcomingBirthdays.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
-                <span style={{ fontSize: '48px' }}>🎂</span>
-                <p>No upcoming birthdays</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
-                {upcomingBirthdays.map((member, i) => (
-                  <div key={i} style={{ minWidth: '140px', padding: '16px', backgroundColor: member.daysUntil === 0 ? '#fef2f2' : '#fef3c7', borderRadius: '12px', textAlign: 'center', border: member.daysUntil === 0 ? '2px solid #fecaca' : 'none' }}>
-                    <div style={{ width: '50px', height: '50px', backgroundColor: member.daysUntil === 0 ? '#ef4444' : '#fbbf24', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '18px', color: 'white', fontWeight: 'bold' }}>
-                      {member.first_name?.[0]}{member.last_name?.[0]}
-                    </div>
-                    <p style={{ margin: '0 0 4px 0', fontWeight: '600', fontSize: '14px' }}>{member.first_name}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: member.daysUntil === 0 ? '#dc2626' : '#92400e', fontWeight: '500' }}>
-                      {member.daysUntil === 0 ? '🎉 Today!' : member.daysUntil === 1 ? 'Tomorrow' : `In ${member.daysUntil} days`}
-                    </p>
-                  </div>
-                ))}
+                <DashBarChart
+                  bars={metrics.givingSeries}
+                  color="#10b981"
+                  /* Axis labels are compacted (12k) so they fit; the tooltip
+                     carries the exact figure. */
+                  formatValue={(v) => compactNumber(v)}
+                  emptyLabel={t('not_enough_data')}
+                />
               </div>
             )}
           </div>
 
-          {/* Main Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-            
-            {/* Recent Activity */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
-              <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>⚡ Recent Activity</h3>
-              {(() => {
-                const visibleActivity = isFinanceVisible ? recentActivity : recentActivity.filter(a => a.entity_type !== 'donation');
-                return visibleActivity.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No recent activity</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {visibleActivity.map((activity, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <div style={{ width: '36px', height: '36px', backgroundColor: '#f3f4f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
-                        {activity.entity_type === 'donation' ? '💰' : activity.entity_type === 'attendance' ? '📊' : activity.entity_type === 'salvation' ? '❤️' : activity.entity_type === 'visitor' ? '🚶' : '📝'}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>{activity.action === 'CREATE' ? 'New' : activity.action} {activity.entity_type}</p>
-                        <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activity.entity_name || activity.user_name}</p>
-                      </div>
-                      <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{timeAgo(activity.created_at)}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-              })()}
-            </div>
+          {/* ─────────── ROW 3 · Activity + events & actions ─────────── */}
+          <div className="cs-dash-two" style={{ marginBottom: '16px' }}>
+            {/* Recent activity */}
+            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>🔔 {t('recent_activity')}</h3>
+                <button
+                  type="button"
+                  onClick={() => onNavigate && onNavigate('settings')}
+                  style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '12px', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  {t('view_all')}
+                </button>
+              </div>
 
-            {/* Upcoming Services & Events */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
-              <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📅 Upcoming Services & Events</h3>
-              {upcomingItems.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px' }}>No upcoming items</p>
+              {recentActivity.length === 0 ? (
+                <p style={{ margin: 0, padding: '32px 0', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{t('no_recent_activity')}</p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {upcomingItems.map((item, i) => {
-                    const dayInfo = getDaysLabel(item.daysUntil);
+                <div style={{ display: 'grid', gap: '2px' }}>
+                  {recentActivity.map((log, i) => {
+                    const meta = activityMeta(log);
                     return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '10px', borderLeft: `4px solid ${item.color}` }}>
-                        <div style={{ width: '42px', height: '42px', backgroundColor: `${item.color}15`, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{item.icon}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{item.title}</p>
-                            {item.isEvent && <span style={{ padding: '2px 6px', backgroundColor: `${item.color}20`, color: item.color, borderRadius: '4px', fontSize: '10px', fontWeight: '600' }}>EVENT</span>}
-                          </div>
-                          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{formatDate(item.date)} {item.time && `at ${formatTime(item.time)}`}</p>
+                      <div key={log.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid #f3f4f6' }}>
+                        <span style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', backgroundColor: `${meta.color}14` }}>
+                          {meta.icon}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: '1.45' }}>{meta.text}</p>
+                          <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{timeAgo(log.created_at)}</p>
                         </div>
-                        <span style={{ padding: '4px 10px', backgroundColor: dayInfo.bg, color: dayInfo.color, borderRadius: '9999px', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' }}>{dayInfo.label}</span>
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
+
+            {/* Upcoming events + quick actions */}
+            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>📅 {t('upcomingEvents')}</h3>
+                {upcomingEvents.length === 0 ? (
+                  <div style={{ padding: '20px 0', textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#9ca3af' }}>{t('no_upcoming_events')}</p>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate && onNavigate('services')}
+                      style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      {t('create_event')} →
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {upcomingEvents.map((item, i) => {
+                      const dayInfo = getDaysLabel(item.daysUntil);
+                      return (
+                        <div key={item.id || i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', backgroundColor: '#f9fafb', borderRadius: '10px', borderLeft: `3px solid ${item.color}` }}>
+                          <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '500', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
+                            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#6b7280' }}>
+                              {formatDate(item.date)}{item.time ? ` · ${formatTime(item.time)}` : ''}
+                            </p>
+                          </div>
+                          <span style={{ flexShrink: 0, padding: '3px 9px', backgroundColor: dayInfo.bg, color: dayInfo.color, borderRadius: '9999px', fontSize: '10px', fontWeight: '600', whiteSpace: 'nowrap' }}>{dayInfo.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>⚡ {t('quickActions')}</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {[
+                    { icon: '👥', label: t('addMember'), tab: 'members' },
+                    { icon: '📅', label: t('record_attendance'), tab: 'attendance' },
+                    ...(isFinanceVisible ? [{ icon: '💰', label: t('record_offering'), tab: 'giving' }] : []),
+                    { icon: '💬', label: t('send_message'), tab: 'messaging' }
+                  ].map(action => (
+                    <button
+                      key={action.tab}
+                      type="button"
+                      onClick={() => onNavigate && onNavigate(action.tab)}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '9999px', border: '1px solid #e5e7eb', backgroundColor: 'white', color: '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                    >
+                      <span>{action.icon}</span>{action.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Bottom Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-            
-            {/* Recent Visitors */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>🚶 Recent Visitors</h3>
-                <span style={{ fontSize: '20px' }}>👥</span>
-              </div>
-              {recentVisitors.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '16px' }}>No recent visitors</p>
+          {/* ─────────── ROW 4 · Birthdays ─────────── */}
+          <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>🎂 {t('upcomingBirthdays')}</h3>
+              {whatsappActive ? (
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#166534', backgroundColor: '#dcfce7', padding: '4px 10px', borderRadius: '9999px' }}>
+                  {t('auto_greetings_enabled')} ✅
+                </span>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {recentVisitors.slice(0, 4).map((visitor, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-                      <div>
-                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{visitor.full_name}</p>
-                        <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{formatDate(visitor.visit_date)}</p>
-                      </div>
-                      {visitor.is_first_time && <span style={{ padding: '2px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '11px' }}>First Time</span>}
-                    </div>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate && onNavigate('settings')}
+                  style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '12px', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  {t('enable_whatsapp_greetings')} →
+                </button>
               )}
             </div>
 
-            {/* Salvation Decisions */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>❤️ Salvation Decisions</h3>
-                <span style={{ fontSize: '20px' }}>🙌</span>
-              </div>
-              {recentSalvations.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '16px' }}>No recent salvations</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {recentSalvations.slice(0, 4).map((salvation, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
-                      <div>
-                        <p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{salvation.full_name}</p>
-                        <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{formatDate(salvation.salvation_date)}</p>
-                      </div>
-                      <StatusBadge status={salvation.followup_status} />
+            {upcomingBirthdays.length === 0 ? (
+              <p style={{ margin: 0, padding: '20px 0', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{t('no_upcoming_birthdays')}</p>
+            ) : (
+              <div className="cs-birthday-strip">
+                {upcomingBirthdays.map((m, i) => (
+                  <div key={m.id || i} style={{ width: '104px', textAlign: 'center', padding: '12px 8px', borderRadius: '12px', backgroundColor: m.daysUntil === 0 ? '#fef3c7' : '#f9fafb' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                      <InitialsAvatar name={`${m.first_name || ''} ${m.last_name || ''}`} color={m.daysUntil === 0 ? '#f59e0b' : '#6366f1'} />
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {m.first_name} {(m.last_name || '').charAt(0)}{m.last_name ? '.' : ''}
+                    </p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#6b7280' }}>
+                      {m.birthday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '10px', fontWeight: '600', color: m.daysUntil === 0 ? '#b45309' : '#9ca3af' }}>
+                      {getDaysLabel(m.daysUntil).label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
