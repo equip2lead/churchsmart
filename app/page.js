@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, createContext, useCont
 import { createClient } from '@supabase/supabase-js';
 import { canAccessFeature, canAccess, getPlanLimits, getEmailLimit, getRequiredPlan, getPlanOrder, comparePlans, PLAN_PRICING, STRIPE_PRICE_IDS, isPlaceholderPriceId } from '../lib/featureGating';
 import { SUPER_ADMIN_EMAILS, ADMIN_ROLES, roleLabel, pawapayBaseUrl } from '../lib/superAdmin';
+import { listCountries, detectOperator, findOperator, localAmount, toMsisdn } from '../lib/pawapay';
 import UpgradePrompt from '../components/UpgradePrompt';
 import Papa from 'papaparse';
 
@@ -21,6 +22,20 @@ const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL || '';
 // lib/whatsapp.js, which is not imported here on purpose: that module reads the
 // platform's WhatsApp credentials and must stay server-side.
 const WHATSAPP_MAX_CHARS = 4096;
+
+// How long the mobile money checkout waits for a payer to confirm on their
+// handset before giving up and telling them to contact support.
+const MOMO_TIMEOUT_MS = 120000;
+const MOMO_POLL_MS = 5000;
+
+// Declared at module scope: a clock read inside a component body counts as
+// render-time to the React compiler, even from an async handler.
+function momoDeadline() {
+  return Date.now() + MOMO_TIMEOUT_MS;
+}
+function momoExpired(deadline) {
+  return Date.now() > deadline;
+}
 
 // Served statically from public/docs, so it is reachable without a session.
 const WHATSAPP_SETUP_GUIDE_URL = '/docs/ChurchSmart-WhatsApp-Setup-Guide.pdf';
@@ -708,6 +723,34 @@ const translations = {
     sa_role: 'Role',
     sa_last_login: 'Last login',
     sa_no_team: 'No team members yet',
+
+    // Mobile money (PawaPay)
+    momo_country: 'Country',
+    momo_phone: 'Mobile money number',
+    momo_phone_invalid: 'That number does not look valid for this country',
+    momo_provider: 'Provider',
+    momo_detected: '{provider} detected from the number',
+    momo_pay_now: 'Pay now',
+    momo_waiting_title: 'Check your phone',
+    momo_waiting_body: 'A payment prompt has been sent to your phone. Enter your PIN to confirm.',
+    momo_close: 'Close',
+    momo_done: 'Done',
+    momo_success_title: 'Payment successful \u2014 you are on {plan}',
+    momo_success_body: 'Your plan has been upgraded.',
+    momo_failed_title: 'Payment failed',
+    momo_failed_body: 'The payment did not go through. Please try again.',
+    momo_cancelled: 'The payment was cancelled on your phone.',
+    momo_try_again: 'Try again',
+    momo_timeout_title: 'Payment timed out',
+    momo_timeout_body: 'We stopped waiting after 2 minutes. If money was deducted, contact support and we will sort it out.',
+    momo_transactions: 'Mobile money transactions',
+    momo_all_countries: 'All countries',
+    momo_revenue_by_country: 'Revenue by country',
+    momo_revenue_by_provider: 'Revenue by provider',
+    momo_status_pending: 'Pending',
+    momo_status_completed: 'Completed',
+    momo_status_failed: 'Failed',
+    momo_status_cancelled: 'Cancelled',
     setupGuide: 'Setup Guide',
     // ── In-app WhatsApp setup guide ──
     // Step bodies are arrays: t() returns the value as-is, so the walkthrough
@@ -1428,6 +1471,34 @@ const translations = {
     sa_role: 'R\u00f4le',
     sa_last_login: 'Derni\u00e8re connexion',
     sa_no_team: "Aucun membre d'\u00e9quipe",
+
+    // Mobile money (PawaPay)
+    momo_country: 'Pays',
+    momo_phone: 'Num\u00e9ro mobile money',
+    momo_phone_invalid: 'Ce num\u00e9ro ne semble pas valide pour ce pays',
+    momo_provider: 'Op\u00e9rateur',
+    momo_detected: "{provider} d\u00e9tect\u00e9 d'apr\u00e8s le num\u00e9ro",
+    momo_pay_now: 'Payer maintenant',
+    momo_waiting_title: 'V\u00e9rifiez votre t\u00e9l\u00e9phone',
+    momo_waiting_body: 'Une demande de paiement a \u00e9t\u00e9 envoy\u00e9e \u00e0 votre t\u00e9l\u00e9phone. Saisissez votre code PIN pour confirmer.',
+    momo_close: 'Fermer',
+    momo_done: 'Termin\u00e9',
+    momo_success_title: 'Paiement r\u00e9ussi \u2014 vous \u00eates sur {plan}',
+    momo_success_body: 'Votre plan a \u00e9t\u00e9 mis \u00e0 niveau.',
+    momo_failed_title: 'Paiement \u00e9chou\u00e9',
+    momo_failed_body: "Le paiement n'a pas abouti. Veuillez r\u00e9essayer.",
+    momo_cancelled: 'Le paiement a \u00e9t\u00e9 annul\u00e9 sur votre t\u00e9l\u00e9phone.',
+    momo_try_again: 'R\u00e9essayer',
+    momo_timeout_title: 'D\u00e9lai de paiement d\u00e9pass\u00e9',
+    momo_timeout_body: "Nous avons arr\u00eat\u00e9 d'attendre apr\u00e8s 2 minutes. Si de l'argent a \u00e9t\u00e9 d\u00e9bit\u00e9, contactez le support.",
+    momo_transactions: 'Transactions mobile money',
+    momo_all_countries: 'Tous les pays',
+    momo_revenue_by_country: 'Revenus par pays',
+    momo_revenue_by_provider: 'Revenus par op\u00e9rateur',
+    momo_status_pending: 'En attente',
+    momo_status_completed: 'Compl\u00e9t\u00e9',
+    momo_status_failed: '\u00c9chou\u00e9',
+    momo_status_cancelled: 'Annul\u00e9',
     setupGuide: 'Guide de configuration',
     // ── Guide de configuration WhatsApp dans l'app ──
     whatsapp_setup_guide: 'Guide de configuration WhatsApp',
@@ -11074,6 +11145,8 @@ function SuperAdminPage({ onNavigate }) {
   const [confirmSend, setConfirmSend] = useState(false);
 
   const [logFilter, setLogFilter] = useState({ admin: 'all', action: 'all', from: '', to: '' });
+  const [mobilePayments, setMobilePayments] = useState([]);
+  const [momoFilter, setMomoFilter] = useState({ status: 'all', country: 'all', from: '', to: '' });
   const [expandedLog, setExpandedLog] = useState(null);
 
   const [showInvite, setShowInvite] = useState(false);
@@ -11113,18 +11186,20 @@ function SuperAdminPage({ onNavigate }) {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [churchRows, memberRows, subRows, logRows] = await Promise.all([
+      const [churchRows, memberRows, subRows, logRows, momoRows] = await Promise.all([
         supabaseQuery('churches', { select: 'id,name,email,plan,is_suspended,created_at,city,country', order: 'created_at.desc' }),
         // church_id only: enough to count members per church without pulling
         // every member record on the platform.
         supabaseQuery('members', { select: 'church_id' }),
         supabaseQuery('subscriptions', { select: 'church_id,plan,status,current_period_end' }),
-        supabaseQuery('admin_audit_log', { order: 'created_at.desc', limit: 200 })
+        supabaseQuery('admin_audit_log', { order: 'created_at.desc', limit: 200 }),
+        supabaseQuery('mobile_payments', { order: 'created_at.desc', limit: 300 })
       ]);
 
       setChurches(churchRows || []);
       setSubscriptions(subRows || []);
       setAuditLog(logRows || []);
+      setMobilePayments(momoRows || []);
 
       const counts = {};
       for (const row of (memberRows || [])) {
@@ -11206,6 +11281,32 @@ function SuperAdminPage({ onNavigate }) {
   });
 
   const emailCampaigns = auditLog.filter(l => l.action === 'email_sent');
+
+  const churchNameById = Object.fromEntries(churches.map(c => [c.id, c.name]));
+  const momoCountryOptions = [...new Set(mobilePayments.map(p => p.country_code).filter(Boolean))].sort();
+  const filteredMomo = mobilePayments.filter(p => {
+    if (momoFilter.status !== 'all' && p.status !== momoFilter.status) return false;
+    if (momoFilter.country !== 'all' && p.country_code !== momoFilter.country) return false;
+    if (momoFilter.from && new Date(p.created_at) < new Date(momoFilter.from)) return false;
+    if (momoFilter.to && new Date(p.created_at) >= new Date(new Date(momoFilter.to).getTime() + 86400000)) return false;
+    return true;
+  });
+
+  // Only completed payments count as revenue. Totals stay per currency rather
+  // than being converted: mixing XAF and KES into one number would be fiction.
+  const momoRevenue = (keyOf) => {
+    const totals = {};
+    for (const payment of filteredMomo) {
+      if (payment.status !== 'completed') continue;
+      const key = `${keyOf(payment)}|${payment.currency}`;
+      totals[key] = (totals[key] || 0) + Number(payment.amount || 0);
+    }
+    return Object.entries(totals)
+      .map(([key, total]) => { const [label, currency] = key.split('|'); return { label, currency, total }; })
+      .sort((a, b) => b.total - a.total);
+  };
+  const revenueByCountry = momoRevenue(p => p.country_code);
+  const revenueByProvider = momoRevenue(p => p.provider);
 
   const settingOf = (key) => settings.find(s => s.key === key) || null;
   const modeOf = (key, fallback = 'sandbox') => settingOf(key)?.value || fallback;
@@ -11691,6 +11792,103 @@ function SuperAdminPage({ onNavigate }) {
                   )}
                 </div>
               </div>
+
+              {/* ── Mobile money transactions ── */}
+              <div style={{ display: 'grid', gap: '16px' }}>
+                {(revenueByCountry.length > 0 || revenueByProvider.length > 0) && (
+                  <div className="cs-dash-two">
+                    {[
+                      { title: `🌍 ${t('momo_revenue_by_country')}`, rows: revenueByCountry },
+                      { title: `📱 ${t('momo_revenue_by_provider')}`, rows: revenueByProvider }
+                    ].map(card => (
+                      <div key={card.title} className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>{card.title}</h4>
+                        {card.rows.length === 0 ? (
+                          <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>{t('noRecords')}</p>
+                        ) : (
+                          <div style={{ display: 'grid', gap: '8px' }}>
+                            {card.rows.map(row => (
+                              <div key={`${card.title}-${row.label}-${row.currency}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '13px' }}>
+                                <span style={{ color: '#6b7280' }}>{row.label}</span>
+                                <strong style={{ color: '#111827' }}>{row.currency} {row.total.toLocaleString()}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                  <div style={{ padding: '18px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', flex: '1 1 160px' }}>📲 {t('momo_transactions')}</h3>
+                    <select value={momoFilter.status} onChange={(e) => setMomoFilter({ ...momoFilter, status: e.target.value })}
+                      style={{ padding: '9px 12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', minHeight: '40px' }}>
+                      <option value="all">{t('sa_all_actions')}</option>
+                      {['pending', 'completed', 'failed', 'cancelled'].map(st => <option key={st} value={st}>{t(`momo_status_${st}`)}</option>)}
+                    </select>
+                    <select value={momoFilter.country} onChange={(e) => setMomoFilter({ ...momoFilter, country: e.target.value })}
+                      style={{ padding: '9px 12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', minHeight: '40px' }}>
+                      <option value="all">{t('momo_all_countries')}</option>
+                      {momoCountryOptions.map(code => <option key={code} value={code}>{code}</option>)}
+                    </select>
+                    <input type="date" value={momoFilter.from} onChange={(e) => setMomoFilter({ ...momoFilter, from: e.target.value })}
+                      style={{ padding: '9px 12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', minHeight: '40px' }} />
+                    <input type="date" value={momoFilter.to} onChange={(e) => setMomoFilter({ ...momoFilter, to: e.target.value })}
+                      style={{ padding: '9px 12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', minHeight: '40px' }} />
+                    <span style={{ fontSize: '13px', color: '#6b7280' }}>{filteredMomo.length} / {mobilePayments.length}</span>
+                  </div>
+
+                  {filteredMomo.length === 0 ? (
+                    <p style={{ margin: 0, padding: '44px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{t('noRecords')}</p>
+                  ) : (
+                    <div className="cs-table-wrap">
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead style={{ backgroundColor: '#f9fafb' }}>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('date')}</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('sa_churches')}</th>
+                            <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('amount')}</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('momo_provider')}</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('billing')}</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('status')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredMomo.map(payment => {
+                            const look = {
+                              completed: { bg: '#dcfce7', fg: '#166534', icon: '✅' },
+                              pending: { bg: '#fef3c7', fg: '#92400e', icon: '⏳' },
+                              failed: { bg: '#fef2f2', fg: '#991b1b', icon: '❌' },
+                              cancelled: { bg: '#f3f4f6', fg: '#6b7280', icon: '⊖' }
+                            }[payment.status] || { bg: '#f3f4f6', fg: '#6b7280', icon: '•' };
+                            return (
+                              <tr key={payment.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatWhen(payment.created_at)}</td>
+                                <td style={{ padding: '12px 16px', fontSize: '13px' }}>{churchNameById[payment.church_id] || '—'}</td>
+                                <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                                  {payment.currency} {Number(payment.amount || 0).toLocaleString()}
+                                </td>
+                                <td style={{ padding: '12px 16px', fontSize: '13px' }}>
+                                  {payment.provider}
+                                  <span style={{ display: 'block', fontSize: '11px', color: '#9ca3af' }}>{payment.country_code}</span>
+                                </td>
+                                <td style={{ padding: '12px 16px', fontSize: '12px', textTransform: 'uppercase', color: '#6b7280' }}>{payment.plan}</td>
+                                <td style={{ padding: '12px 16px' }}>
+                                  <span style={{ padding: '3px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: '600', backgroundColor: look.bg, color: look.fg, whiteSpace: 'nowrap' }}>
+                                    {look.icon} {t(`momo_status_${payment.status}`)}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -12017,6 +12215,16 @@ function BillingSection({ churchId }) {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [churchPlanRow, setChurchPlanRow] = useState(null);
 
+  // Mobile money checkout. `stage` drives the modal: the form, then the
+  // waiting state while the payer confirms on their handset, then the outcome.
+  const [momoPlan, setMomoPlan] = useState(null);
+  const [momoStage, setMomoStage] = useState('form');
+  const [momoForm, setMomoForm] = useState({ country: 'CMR', phone: '', correspondent: '' });
+  const [momoDeposit, setMomoDeposit] = useState(null);
+  const [momoError, setMomoError] = useState('');
+  const [momoBusy, setMomoBusy] = useState(false);
+  const pollRef = useRef(null);
+
   // Check for pre-selected plan and billing period from landing page
   useEffect(() => {
     const selectedPlan = localStorage.getItem('selected_plan');
@@ -12129,6 +12337,18 @@ function BillingSection({ churchId }) {
 
   const handleUpgrade = async (plan) => {
     if (plan.id === 'free') return;
+
+    // Mobile money collects a number first, so it opens its own modal rather
+    // than redirecting to a hosted checkout.
+    if (paymentMethod === 'mobile_money') {
+      setMomoPlan(plan);
+      setMomoStage('form');
+      setMomoError('');
+      setMomoDeposit(null);
+      setMomoForm({ country: 'CMR', phone: '', correspondent: '' });
+      return;
+    }
+
     const priceId = billingPeriod === 'annual' ? plan.stripePriceIdAnnual : plan.stripePriceId;
     // Placeholder ids are rejected here: Stripe would return an opaque error
     // and the admin would have no idea the price was never configured.
@@ -12136,10 +12356,7 @@ function BillingSection({ churchId }) {
       toast.warning(t('stripe_not_configured'));
       return;
     }
-    if (paymentMethod !== 'card') {
-      toast.info(t('mobile_money_coming_soon'));
-      return;
-    }
+
     setUpgrading(true);
     try {
       const response = await fetch('/api/stripe/checkout', {
@@ -12165,6 +12382,102 @@ function BillingSection({ churchId }) {
       toast.error('Failed to start checkout. Please try again.');
     }
     setUpgrading(false);
+  };
+
+
+  // ── Mobile money ──
+  // Derived from the config, so a new country or operator needs no UI change.
+  const momoCountries = listCountries();
+  const momoCountry = momoCountries.find(c => c.iso3 === momoForm.country) || momoCountries[0];
+  const momoDetected = momoForm.phone ? detectOperator(momoForm.phone, momoForm.country) : null;
+  const momoOperator = (momoForm.correspondent && findOperator(momoForm.country, momoForm.correspondent)) || momoDetected;
+  const momoPhoneValid = !!toMsisdn(momoForm.phone, momoForm.country);
+  const momoPriced = momoPlan
+    ? localAmount(billingPeriod === 'annual' ? momoPlan.annualTotal : momoPlan.price, momoForm.country)
+    : null;
+
+  // Polling must stop when the modal closes or the component unmounts,
+  // otherwise it keeps hitting the status endpoint forever.
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  }, []);
+  useEffect(() => stopPolling, [stopPolling]);
+
+  const closeMomo = () => {
+    stopPolling();
+    setMomoPlan(null);
+    setMomoStage('form');
+    setMomoDeposit(null);
+    setMomoError('');
+  };
+
+  const startMomoPayment = async () => {
+    if (!momoPlan || !momoPhoneValid || !momoOperator) return;
+    setMomoBusy(true);
+    setMomoError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/pawapay/deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({
+          churchId,
+          plan: momoPlan.id,
+          billingPeriod,
+          country: momoForm.country,
+          phone: momoForm.phone,
+          correspondent: momoOperator.correspondent
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setMomoError(data.error || `HTTP ${response.status}`);
+        setMomoStage('failed');
+      } else {
+        setMomoDeposit(data);
+        setMomoStage('waiting');
+        beginPolling(data.depositId, momoDeadline());
+      }
+    } catch (error) {
+      setMomoError(error.message);
+      setMomoStage('failed');
+    }
+    setMomoBusy(false);
+  };
+
+  const beginPolling = (depositId, deadline) => {
+    stopPolling();
+
+    pollRef.current = setInterval(async () => {
+      if (momoExpired(deadline)) {
+        stopPolling();
+        setMomoStage('timeout');
+        return;
+      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(`/api/pawapay/status/${encodeURIComponent(depositId)}`, {
+          headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return; // transient; the next tick retries
+
+        if (data.status === 'completed') {
+          stopPolling();
+          setMomoStage('success');
+          // The plan has changed server-side, so reload billing to show it.
+          invalidateCache('churches');
+          loadBilling();
+        } else if (data.status === 'failed' || data.status === 'cancelled') {
+          stopPolling();
+          setMomoError(data.status === 'cancelled' ? t('momo_cancelled') : t('momo_failed_body'));
+          setMomoStage('failed');
+        }
+      } catch {
+        // Ignore and let the next tick retry.
+      }
+    }, MOMO_POLL_MS);
   };
 
   const handleBuyCredits = async (pack) => {
@@ -12338,6 +12651,123 @@ function BillingSection({ churchId }) {
         )}
       </div>
 
+
+      {/* ── Mobile money checkout ── */}
+      <Modal
+        isOpen={!!momoPlan}
+        onClose={closeMomo}
+        title={`📱 ${t('pay_with_mobile_money')}`}
+        width="440px"
+      >
+        {momoStage === 'form' && momoPlan && (
+          <>
+            <div style={{ padding: '12px 16px', borderRadius: '12px', backgroundColor: '#eef2ff', marginBottom: '18px' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#4338ca', fontWeight: '600' }}>
+                {momoPlan.name} · {billingPeriod === 'annual' ? t('billedAnnually') : t('billing_cycle')}
+              </p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '20px', fontWeight: '700', color: '#312e81' }}>
+                {momoPriced ? `${momoPriced.currency} ${Number(momoPriced.amount).toLocaleString()}` : '—'}
+              </p>
+              <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#6366f1' }}>
+                ≈ ${billingPeriod === 'annual' ? momoPlan.annualTotal : momoPlan.price} USD
+              </p>
+            </div>
+
+            <FormInput
+              label={t('momo_country')}
+              type="select"
+              value={momoForm.country}
+              onChange={(e) => setMomoForm({ ...momoForm, country: e.target.value, correspondent: '' })}
+              options={momoCountries.map(c => ({ value: c.iso3, label: `${c.name} (+${c.dial})` }))}
+            />
+
+            <FormInput
+              label={`${t('momo_phone')} *`}
+              type="tel"
+              value={momoForm.phone}
+              onChange={(e) => setMomoForm({ ...momoForm, phone: e.target.value, correspondent: '' })}
+              placeholder={`+${momoCountry?.dial} ...`}
+            />
+            {momoForm.phone && !momoPhoneValid && (
+              <p style={{ margin: '-10px 0 16px 0', fontSize: '12px', color: '#dc2626' }}>{t('momo_phone_invalid')}</p>
+            )}
+
+            {/* Auto-detected, but always overridable: prefix rules go stale. */}
+            <FormInput
+              label={t('momo_provider')}
+              type="select"
+              value={momoOperator?.correspondent || ''}
+              onChange={(e) => setMomoForm({ ...momoForm, correspondent: e.target.value })}
+              options={(momoCountry?.operators || []).map(o => ({ value: o.correspondent, label: o.name }))}
+            />
+            {momoDetected && !momoForm.correspondent && (
+              <p style={{ margin: '-10px 0 16px 0', fontSize: '12px', color: '#16a34a' }}>
+                ✓ {t('momo_detected').replace('{provider}', momoDetected.name)}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <Button variant="secondary" onClick={closeMomo}>{t('cancel')}</Button>
+              <Button onClick={startMomoPayment} disabled={momoBusy || !momoPhoneValid || !momoOperator}>
+                {momoBusy ? '⏳' : `📲 ${t('momo_pay_now')}`}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {momoStage === 'waiting' && (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <p style={{ fontSize: '44px', margin: '0 0 12px' }}>⏳</p>
+            <h4 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: '700', color: '#111827' }}>{t('momo_waiting_title')}</h4>
+            <p style={{ margin: '0 0 6px', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>{t('momo_waiting_body')}</p>
+            {momoDeposit && (
+              <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#374151', fontWeight: '600' }}>
+                {momoDeposit.provider} · {momoDeposit.phone}
+              </p>
+            )}
+            <div style={{ height: '4px', borderRadius: '2px', overflow: 'hidden', backgroundColor: '#eef2ff', marginBottom: '18px' }}>
+              <div className="cs-skeleton" style={{ height: '100%', borderRadius: '2px' }} />
+            </div>
+            <Button variant="secondary" onClick={closeMomo}>{t('momo_close')}</Button>
+          </div>
+        )}
+
+        {momoStage === 'success' && (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <p style={{ fontSize: '44px', margin: '0 0 12px' }}>✅</p>
+            <h4 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: '700', color: '#166534' }}>
+              {t('momo_success_title').replace('{plan}', momoPlan?.name || '')}
+            </h4>
+            <p style={{ margin: '0 0 20px', fontSize: '14px', color: '#6b7280' }}>{t('momo_success_body')}</p>
+            <Button onClick={closeMomo}>{t('momo_done')}</Button>
+          </div>
+        )}
+
+        {momoStage === 'failed' && (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <p style={{ fontSize: '44px', margin: '0 0 12px' }}>❌</p>
+            <h4 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: '700', color: '#991b1b' }}>{t('momo_failed_title')}</h4>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#6b7280', wordBreak: 'break-word' }}>{momoError || t('momo_failed_body')}</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <Button variant="secondary" onClick={closeMomo}>{t('cancel')}</Button>
+              <Button onClick={() => { setMomoStage('form'); setMomoError(''); }}>{t('momo_try_again')}</Button>
+            </div>
+          </div>
+        )}
+
+        {momoStage === 'timeout' && (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <p style={{ fontSize: '44px', margin: '0 0 12px' }}>⌛</p>
+            <h4 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: '700', color: '#92400e' }}>{t('momo_timeout_title')}</h4>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#6b7280', lineHeight: '1.6' }}>{t('momo_timeout_body')}</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <Button variant="secondary" onClick={closeMomo}>{t('momo_close')}</Button>
+              <Button onClick={() => { setMomoStage('form'); setMomoError(''); }}>{t('momo_try_again')}</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* ── Checkout payment method ── */}
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
         <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>💳 {t('payment_method')}</h3>
@@ -12351,16 +12781,13 @@ function BillingSection({ churchId }) {
             <span style={{ fontSize: '20px' }}>💳</span>
             <span style={{ fontSize: '14px', fontWeight: '600', color: paymentMethod === 'card' ? '#4338ca' : '#374151' }}>{t('pay_with_card')}</span>
           </button>
-          {/* Disabled until PawaPay is wired up. */}
           <button
             type="button"
-            disabled
-            title={t('mobile_money_coming_soon')}
-            style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '12px', cursor: 'not-allowed', textAlign: 'left', border: '1px dashed #e5e7eb', backgroundColor: '#f9fafb', opacity: 0.7 }}
+            onClick={() => setPaymentMethod('mobile_money')}
+            style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', border: paymentMethod === 'mobile_money' ? '2px solid #6366f1' : '1px solid #e5e7eb', backgroundColor: paymentMethod === 'mobile_money' ? '#eef2ff' : 'white' }}
           >
             <span style={{ fontSize: '20px' }}>📱</span>
-            <span style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: '#9ca3af' }}>{t('pay_with_mobile_money')}</span>
-            <span style={{ padding: '3px 8px', borderRadius: '9999px', fontSize: '10px', fontWeight: '700', backgroundColor: '#fef3c7', color: '#92400e', whiteSpace: 'nowrap' }}>{t('comingSoon')}</span>
+            <span style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: paymentMethod === 'mobile_money' ? '#4338ca' : '#374151' }}>{t('pay_with_mobile_money')}</span>
           </button>
         </div>
       </div>
