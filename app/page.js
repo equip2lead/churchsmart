@@ -21,6 +21,14 @@ const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL || '';
 // platform's WhatsApp credentials and must stay server-side.
 const WHATSAPP_MAX_CHARS = 4096;
 
+// Renders a saved access token as bullets plus its last 4 characters. Takes the
+// tail only — the full token is never selected into the client, so there is
+// nothing here to leak.
+function maskTokenTail(last4) {
+  if (!last4) return '';
+  return `\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022${last4}`;
+}
+
 // Guard for build time — Supabase client won't work during static generation
 const supabase = SUPABASE_URL && SUPABASE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -48,7 +56,7 @@ const translations = {
     save: 'Save',
     cancel: 'Cancel',
     loading: 'Loading...',
-    success: 'Success!',
+    success: 'success',
     error: 'Error',
     confirm: 'Confirm',
     yes: 'Yes',
@@ -520,7 +528,7 @@ const translations = {
     inviteResendComingSoon: 'Resend coming soon',
     // WhatsApp (central platform account — churches only supply their number)
     whatsapp: 'WhatsApp',
-    whatsappSettings: 'WhatsApp Settings',
+    whatsappSettings: 'WhatsApp',
     churchWhatsAppNumber: 'Church WhatsApp Number',
     activateWhatsApp: 'Activate WhatsApp Messaging',
     whatsappActive: 'WhatsApp: Active',
@@ -541,6 +549,27 @@ const translations = {
     testSuccess: 'Test message sent successfully!',
     testFailed: 'Test message failed',
     dailyLimitReached: 'Daily message limit reached',
+    // WhatsApp / Wamatas
+    connectWhatsApp: 'Connect a WhatsApp sender so your church can message members about their activities.',
+    provider: 'Provider',
+    comingSoon: 'Coming soon',
+    accessToken: 'Access token',
+    instanceId: 'Instance ID',
+    saveCredentials: 'Save credentials',
+    storedSecurely: 'Stored securely. Shown here as the last 4 characters only.',
+    phoneToTest: 'Phone number to test',
+    sendTestMessage: 'Send test message',
+    includeCountryCode: 'Include the country code, e.g. +237...',
+    viewLog: 'View log',
+    whatsappLog: 'WhatsApp log',
+    everyMessageTried: 'Every message the platform has tried to send.',
+    whatsappNotSetUp: 'WhatsApp is not set up for this church yet.',
+    nothingSentYet: 'Nothing sent yet',
+    messagesAppearHere: 'Messages appear here once you send a test or publish a schedule.',
+    lastTest: 'Last test',
+    testSentSuccess: 'Test sent! Message ID:',
+    credentialsSaved: 'Credentials saved!',
+    whatsappSentSummary: 'WhatsApp: {sent} sent, {failed} failed.',
   },
   fr: {
     // General
@@ -561,7 +590,7 @@ const translations = {
     save: 'Enregistrer',
     cancel: 'Annuler',
     loading: 'Chargement...',
-    success: 'Succès!',
+    success: 'réussi',
     error: 'Erreur',
     confirm: 'Confirmer',
     yes: 'Oui',
@@ -1033,7 +1062,7 @@ const translations = {
     inviteResendComingSoon: 'Renvoi bientôt disponible',
     // WhatsApp
     whatsapp: 'WhatsApp',
-    whatsappSettings: 'Paramètres WhatsApp',
+    whatsappSettings: 'WhatsApp',
     churchWhatsAppNumber: "Numéro WhatsApp de l'Église",
     activateWhatsApp: 'Activer la Messagerie WhatsApp',
     whatsappActive: 'WhatsApp : Actif',
@@ -1054,6 +1083,27 @@ const translations = {
     testSuccess: 'Message test envoyé avec succès !',
     testFailed: 'Échec du message test',
     dailyLimitReached: 'Limite journalière atteinte',
+    // WhatsApp / Wamatas
+    connectWhatsApp: "Connectez un expéditeur WhatsApp pour que votre église puisse envoyer des messages aux membres.",
+    provider: 'Fournisseur',
+    comingSoon: 'Bientôt disponible',
+    accessToken: "Jeton d'accès",
+    instanceId: "ID d'instance",
+    saveCredentials: 'Enregistrer les identifiants',
+    storedSecurely: 'Stocké en sécurité. Seuls les 4 derniers caractères sont affichés.',
+    phoneToTest: 'Numéro de téléphone pour tester',
+    sendTestMessage: 'Envoyer un message test',
+    includeCountryCode: "Incluez l'indicatif du pays, ex. +237...",
+    viewLog: 'Voir le journal',
+    whatsappLog: 'Journal WhatsApp',
+    everyMessageTried: 'Chaque message que la plateforme a tenté d\'envoyer.',
+    whatsappNotSetUp: "WhatsApp n'est pas encore configuré pour cette église.",
+    nothingSentYet: 'Rien envoyé pour le moment',
+    messagesAppearHere: 'Les messages apparaîtront ici après un test ou un envoi.',
+    lastTest: 'Dernier test',
+    testSentSuccess: 'Test envoyé ! ID du message :',
+    credentialsSaved: 'Identifiants enregistrés !',
+    whatsappSentSummary: 'WhatsApp : {sent} envoyés, {failed} échoués.',
   }
 };
 
@@ -1099,7 +1149,7 @@ const ALLOWED_TABLES = [
   'events', 'groups', 'volunteers', 'activity_logs', 'message_logs',
   'message_templates', 'automation_settings', 'user_roles', 'user_role_assignments',
   'super_admin_log', 'subscriptions', 'payment_history', 'message_credits',
-  'expense_categories', 'whatsapp_config'
+  'expense_categories', 'whatsapp_config', 'whatsapp_send_log'
 ];
 
 function sanitizeInput(val) {
@@ -3382,6 +3432,9 @@ function Dashboard() {
     { id: 'reports', label: 'Reports', icon: '📊', page: 'reports' },
     { id: 'services', label: t('services'), icon: '⛪', page: 'events' },
     { id: 'settings', label: t('settings'), icon: '⚙️', page: 'settings' },
+    // Sits under Settings and is admin-only: the log can expose who was
+    // messaged, and whatsapp_send_log's RLS only grants admins SELECT anyway.
+    ...((user?.role === 'ADMIN' || user?.is_super_admin) ? [{ id: 'whatsappLog', label: t('whatsappLog'), icon: '💬', page: 'settings' }] : []),
     ...(user?.is_super_admin ? [{ id: 'superadmin', label: '🛡️ Super Admin', icon: '🛡️', page: null }] : []),
   ];
   const menuItems = allMenuItems.filter(item => hasAccess(item.page));
@@ -3480,6 +3533,7 @@ function Dashboard() {
           {activeTab === 'reports' && (CHURCH_ID ? <PermissionGate permission="reports" fallback={<AccessDenied onNavigate={setActiveTab} />}><ReportsPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="reports" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'services' && (CHURCH_ID ? <PermissionGate permission="events" fallback={<AccessDenied onNavigate={setActiveTab} />}><ServicesPage /></PermissionGate> : <ChurchSetupRequired pageKey="services" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'settings' && (CHURCH_ID ? <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><SettingsPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="settings" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'whatsappLog' && (CHURCH_ID ? <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><WhatsAppLogPage onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="settings" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'superadmin' && <SuperAdminPage />}
         </main>
       </div>
@@ -7594,7 +7648,11 @@ function MessagingPage({ plan, onNavigate }) {
         supabaseQuery('messages', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'sent_at.desc', limit: 50 }),
         supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('whatsapp_config', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], single: true })
+        // api_token is deliberately NOT selected: the secret must not reach the
+        // browser. Settings only needs its last 4 characters, derived below.
+        // api_token is deliberately excluded: the secret must not reach the
+        // browser. api_token_last4 only says whether one is stored.
+        supabaseQuery('whatsapp_config', { select: 'id,is_active,provider,phone_number_id,messages_sent_today,daily_limit,api_token_last4', filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], single: true })
       ]);
       setMembers(membersData || []);
       setVisitors(visitorsData || []);
@@ -7695,7 +7753,12 @@ function MessagingPage({ plan, onNavigate }) {
   // ── WhatsApp recipients ──
   // WhatsApp can only reach a phone number, so members without one are left
   // out of the picker rather than silently failing at send time.
-  const whatsappEnabled = !!whatsappConfig?.is_active && canAccessFeature(plan, 'messaging_whatsapp');
+  // Requires an activated config AND stored credentials: without a token or
+  // instance id the send route would reject every attempt.
+  const whatsappEnabled = !!whatsappConfig?.is_active
+    && !!whatsappConfig?.api_token_last4
+    && !!whatsappConfig?.phone_number_id
+    && canAccessFeature(plan, 'messaging_whatsapp');
   const waMembers = members
     .filter(m => m.phone)
     .map(m => ({
@@ -7744,7 +7807,7 @@ function MessagingPage({ plan, onNavigate }) {
         const sent = data.sent || 0;
         const failed = data.failed || 0;
         setWaResult({ sent, failed });
-        const summary = t('messagesSentResult').replace('{sent}', sent).replace('{failed}', failed);
+        const summary = t('whatsappSentSummary').replace('{sent}', sent).replace('{failed}', failed);
         if (sent > 0) {
           toast.success(summary);
           setMessage({ ...message, body: '' });
@@ -8127,8 +8190,13 @@ function MessagingPage({ plan, onNavigate }) {
 
                     {/* Result of the last send */}
                     {waResult && (
-                      <div style={{ marginTop: '14px', padding: '12px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', backgroundColor: waResult.failed > 0 ? '#fef3c7' : '#dcfce7', color: waResult.failed > 0 ? '#92400e' : '#166534' }}>
-                        {t('messagesSentResult').replace('{sent}', waResult.sent).replace('{failed}', waResult.failed)}
+                      <div style={{ marginTop: '14px', padding: '12px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', backgroundColor: waResult.failed > 0 ? '#fef3c7' : '#dcfce7', color: waResult.failed > 0 ? '#92400e' : '#166534' }}>
+                        <span>{t('whatsappSentSummary').replace('{sent}', waResult.sent).replace('{failed}', waResult.failed)}</span>
+                        {/* Toast messages are plain strings in this app, so the
+                            link through to the per-recipient log lives here. */}
+                        <button type="button" onClick={() => onNavigate && onNavigate('whatsappLog')} style={{ border: 'none', background: 'none', padding: 0, color: 'inherit', fontSize: '14px', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}>
+                          {t('viewLog')}
+                        </button>
                       </div>
                     )}
 
@@ -11001,6 +11069,160 @@ function BillingSection({ churchId }) {
 }
 
 // ==========================================
+// WHATSAPP LOG PAGE
+// ==========================================
+// Every delivery attempt, successful or not, from whatsapp_send_log.
+// Admin-only: the table's RLS grants SELECT to church admins only, so a
+// non-admin would simply read an empty list.
+function WhatsAppLogPage({ onNavigate }) {
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const CHURCH_ID = user?.church_id;
+  const [entries, setEntries] = useState([]);
+  const [whatsappConfig, setWhatsappConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+
+  useEffect(() => { fetchLog(); }, []);
+
+  const fetchLog = async () => {
+    setLoading(true);
+    try {
+      const [logData, configData] = await Promise.all([
+        supabaseQuery('whatsapp_send_log', {
+          filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }],
+          order: 'created_at.desc',
+          limit: 200
+        }),
+        // api_token is never selected into the client.
+        supabaseQuery('whatsapp_config', {
+          select: 'id,is_active,provider,phone_number_id,api_token_last4',
+          filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }],
+          single: true
+        })
+      ]);
+      setEntries(logData || []);
+      setWhatsappConfig(configData || null);
+    } catch (error) {
+      console.error('WhatsApp log fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Matches the Settings rule: active without credentials cannot send.
+  const isSetUp = !!whatsappConfig?.is_active
+    && !!whatsappConfig?.api_token_last4
+    && !!whatsappConfig?.phone_number_id;
+
+  const filtered = entries.filter(e => {
+    if (filter === 'sent') return e.status === 'sent';
+    if (filter === 'failed') return e.status === 'failed';
+    return true;
+  });
+
+  const formatWhen = (iso) => {
+    if (!iso) return '\u2014';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '\u2014';
+    try {
+      return new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      }).format(d);
+    } catch {
+      return d.toLocaleString();
+    }
+  };
+
+  const tabs = [
+    { id: 'all', label: t('all') || 'All', count: entries.length },
+    { id: 'sent', label: '\u2705 Sent', count: entries.filter(e => e.status === 'sent').length },
+    { id: 'failed', label: '\u274c Failed', count: entries.filter(e => e.status === 'failed').length }
+  ];
+
+  return (
+    <div>
+      <PageHeader title={`\U0001f4ac ${t('whatsappLog')}`} subtitle={t('everyMessageTried')} />
+
+      {!isSetUp && (
+        <div style={{ padding: '14px 18px', marginBottom: '20px', borderRadius: '12px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span>\u2139\ufe0f {t('whatsappNotSetUp')}</span>
+          <button type="button" onClick={() => onNavigate && onNavigate('settings')} style={{ border: 'none', background: 'none', padding: 0, color: '#1d4ed8', fontWeight: '600', fontSize: '14px', cursor: 'pointer', textDecoration: 'underline' }}>
+            {t('settings')}
+          </button>
+        </div>
+      )}
+
+      {/* Status filters */}
+      <div className="cs-tab-row" style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setFilter(tab.id)}
+            style={{
+              padding: '10px 20px',
+              border: filter === tab.id ? '2px solid #6366f1' : '1px solid #e5e7eb',
+              borderRadius: '10px',
+              backgroundColor: filter === tab.id ? '#eef2ff' : 'white',
+              color: filter === tab.id ? '#6366f1' : '#6b7280',
+              fontWeight: filter === tab.id ? '600' : '400',
+              cursor: 'pointer', fontSize: '14px'
+            }}
+          >
+            {tab.label} ({tab.count})
+          </button>
+        ))}
+      </div>
+
+      {loading ? <LoadingSpinner /> : (
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '64px 24px', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>\U0001f4ac</div>
+              <p style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>{t('nothingSentYet')}</p>
+              <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{t('messagesAppearHere')}</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('date')}</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('phone')}</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Message</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('status')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((entry, i) => (
+                    <tr key={entry.id} style={{ borderTop: i === 0 ? 'none' : '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatWhen(entry.created_at)}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', fontFamily: 'monospace' }}>{entry.phone}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', color: '#374151', maxWidth: '420px' }}>
+                        {entry.message_preview || '\u2014'}
+                        {/* The reason a send failed is the point of the log. */}
+                        {entry.status === 'failed' && entry.error_message && (
+                          <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: '#dc2626' }}>{entry.error_message}</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: '500', backgroundColor: entry.status === 'sent' ? '#dcfce7' : '#fef2f2', color: entry.status === 'sent' ? '#166534' : '#991b1b' }}>
+                          {entry.status === 'sent' ? '\u2705 Sent' : '\u274c Failed'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
 // SETTINGS PAGE - Complete with All Features
 // ==========================================
 // Default role names seeded by the invitation-flow migration. Case-sensitive
@@ -11060,14 +11282,24 @@ function SettingsPage({ plan, onNavigate }) {
   // expense_categories writes are admin-only at the RLS layer.
   const isChurchAdmin = user?.role === 'ADMIN' || !!user?.is_super_admin;
 
-  // WhatsApp runs on the platform's central Business account, so the church
-  // only stores its own number plus the on/off switch and its daily counters.
+  // WhatsApp is sent through each church's own Wamatas instance. Credentials
+  // live on whatsapp_config: api_token is the access token and phone_number_id
+  // is repurposed to hold the Wamatas instance id.
   const [whatsappConfig, setWhatsappConfig] = useState(null);
-  const [whatsappForm, setWhatsappForm] = useState({ phone_number: '+237', is_active: false });
+  const [whatsappForm, setWhatsappForm] = useState({ provider: 'wamatas', access_token: '', instance_id: '' });
+  const [showToken, setShowToken] = useState(false);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [testingWhatsapp, setTestingWhatsapp] = useState(false);
+  // Result of a test fired in this session, so the message id can be shown.
+  const [testResult, setTestResult] = useState(null);
   const whatsappAvailable = canAccessFeature(plan, 'messaging_whatsapp');
+  // The saved token is never sent to the browser, only its last 4 characters.
+  const hasSavedCredentials = !!(whatsappConfig?.api_token_last4 && whatsappConfig?.phone_number_id);
+  // A config row can predate this provider (is_active = true from the earlier
+  // platform-account model) yet hold no Wamatas credentials. Such a row cannot
+  // send, so it must not be reported as active.
+  const whatsappConnected = !!whatsappConfig?.is_active && hasSavedCredentials;
 
   // Forms
   const [locationForm, setLocationForm] = useState({ name: '', address: '', city: '', phone: '', pastor_name: '', capacity: '', is_main_campus: false, is_active: true });
@@ -11126,7 +11358,9 @@ function SettingsPage({ plan, onNavigate }) {
         supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('expense_categories', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'name.asc' }),
         supabaseQuery('expenses', { select: 'category', filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('whatsapp_config', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], single: true })
+        // api_token is deliberately excluded so the secret never reaches the
+        // browser; the UI shows api_token_last4 instead.
+        supabaseQuery('whatsapp_config', { select: 'id,church_id,provider,phone_number_id,is_active,messages_sent_today,daily_limit,last_reset_date,last_test_sent_at,last_test_status,api_token_last4', filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], single: true })
       ]);
       setChurch(churchData);
       setLocations(locationsData || []);
@@ -11139,8 +11373,11 @@ function SettingsPage({ plan, onNavigate }) {
       setUsedExpenseCategoryNames((expenseRows || []).map(e => (e.category || '').toLowerCase()).filter(Boolean));
       setWhatsappConfig(whatsappData || null);
       setWhatsappForm({
-        phone_number: whatsappData?.phone_number || '+237',
-        is_active: !!whatsappData?.is_active
+        provider: whatsappData?.provider && whatsappData.provider !== 'none' ? whatsappData.provider : 'wamatas',
+        // Left blank on load: the saved token is write-only from the UI's point
+        // of view, so an empty field on save means "keep the existing token".
+        access_token: '',
+        instance_id: whatsappData?.phone_number_id || ''
       });
     } catch (error) {
       console.error('Settings fetch error:', error);
@@ -11535,52 +11772,64 @@ function SettingsPage({ plan, onNavigate }) {
     setSaving(false);
   };
 
-  // ============ WHATSAPP HANDLERS ============
-  // daily_limit is always derived from the subscription plan, never entered by
-  // the church, so an upgrade or downgrade is reflected on the next save.
-  const handleSaveWhatsapp = async () => {
-    const phone = (whatsappForm.phone_number || '').trim();
-    const hasDigits = /\d/.test(phone);
+  // ============ WHATSAPP (WAMATAS) HANDLERS ============
+  // Credentials are written straight to whatsapp_config (admin-only at the RLS
+  // layer). The token is only ever written, never read back: the client selects
+  // api_token_last4 instead, so the secret does not sit in the browser.
+  const handleSaveWhatsappCredentials = async () => {
+    const accessToken = (whatsappForm.access_token || '').trim();
+    const instanceId = (whatsappForm.instance_id || '').trim();
 
-    if (whatsappForm.is_active && !whatsappAvailable) { toast.warning(t('whatsappNotAvailable')); return; }
-    if (whatsappForm.is_active && !hasDigits) { toast.warning(t('churchWhatsAppNumber')); return; }
+    if (!whatsappAvailable) { toast.warning(t('whatsappNotAvailable')); return; }
+    if (!instanceId) { toast.warning(t('instanceId')); return; }
+    // An empty token field on an existing row means "keep the saved token".
+    if (!accessToken && !hasSavedCredentials) { toast.warning(t('accessToken')); return; }
 
     setSavingWhatsapp(true);
     try {
       const payload = {
-        phone_number: hasDigits ? phone : null,
-        is_active: whatsappForm.is_active,
-        daily_limit: getPlanLimits(plan).maxWhatsapp,
-        // Marks the row as using the platform's central Business account
-        // rather than per-church API credentials.
-        provider: 'platform'
+        provider: 'wamatas',
+        phone_number_id: instanceId,
+        daily_limit: getPlanLimits(plan).maxWhatsapp
       };
+      if (accessToken) payload.api_token = accessToken;
+
       if (whatsappConfig) {
         await supabaseUpdate('whatsapp_config', whatsappConfig.id, payload);
       } else {
+        // is_active stays false until the first test passes.
         await supabaseInsert('whatsapp_config', {
           ...payload,
+          is_active: false,
           messages_sent_today: 0,
           last_reset_date: new Date().toISOString().slice(0, 10)
         });
       }
+
+      // Audit the change without recording any part of the secret.
       logActivity({
-        action: whatsappForm.is_active ? 'whatsapp_activated' : 'whatsapp_deactivated',
+        action: 'whatsapp_credentials_saved',
         entity_type: 'whatsapp_config',
         entity_id: whatsappConfig?.id || null,
-        entity_name: phone || null,
-        details: { daily_limit: payload.daily_limit }
+        entity_name: 'wamatas',
+        details: { instance_id: instanceId, token_updated: !!accessToken }
       });
-      toast.success(t('savedSuccessfully'));
+
+      setWhatsappForm({ ...whatsappForm, access_token: '' });
+      setShowToken(false);
+      toast.success(t('credentialsSaved'));
+      invalidateCache('whatsapp_config');
       fetchData();
     } catch (error) { toast.error(error.message); }
     setSavingWhatsapp(false);
   };
 
   const handleTestWhatsapp = async () => {
-    const phone = (testPhone || whatsappForm.phone_number || '').trim();
-    if (!/\d/.test(phone)) { toast.warning(t('churchWhatsAppNumber')); return; }
+    const phone = (testPhone || '').trim();
+    if (!/\d/.test(phone)) { toast.warning(t('includeCountryCode')); return; }
+
     setTestingWhatsapp(true);
+    setTestResult(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/whatsapp/test', {
@@ -11589,14 +11838,19 @@ function SettingsPage({ plan, onNavigate }) {
         body: JSON.stringify({ churchId: CHURCH_ID, testPhone: phone })
       });
       const data = await response.json().catch(() => ({}));
+
       if (response.ok && data.success) {
+        // The route also flips is_active on, so refetch to pick that up.
+        setTestResult({ ok: true, messageId: data.providerMessageId || '' });
         toast.success(t('testSuccess'));
-        invalidateCache('whatsapp_config');
-        fetchData();
       } else {
+        setTestResult({ ok: false, error: data.error || `HTTP ${response.status}` });
         toast.error(`${t('testFailed')}: ${data.error || response.status}`);
       }
+      invalidateCache('whatsapp_config');
+      fetchData();
     } catch (error) {
+      setTestResult({ ok: false, error: error.message });
       toast.error(`${t('testFailed')}: ${error.message}`);
     }
     setTestingWhatsapp(false);
@@ -12022,7 +12276,7 @@ function SettingsPage({ plan, onNavigate }) {
             </div>
           )}
 
-          {/* ============ WHATSAPP ============ */}
+          {/* ============ WHATSAPP (WAMATAS) ============ */}
           {activeSection === 'whatsapp' && isChurchAdmin && (
             <div style={{ display: 'grid', gap: '24px' }}>
 
@@ -12035,83 +12289,126 @@ function SettingsPage({ plan, onNavigate }) {
                 </div>
               )}
 
+              {/* ── Credentials ── */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>💬 {t('whatsappSettings')}</h3>
-                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>
-                  {/* Reassure admins there is no Meta developer setup to do. */}
-                  Messages are sent through ChurchSmart&apos;s WhatsApp Business account. No API tokens or Meta developer account needed — just add your number.
-                </p>
-
-                {/* Status */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', padding: '14px 16px', borderRadius: '12px', marginBottom: '20px', backgroundColor: whatsappConfig?.is_active ? '#dcfce7' : '#f3f4f6' }}>
-                  <span style={{ fontSize: '14px', fontWeight: '600', color: whatsappConfig?.is_active ? '#166534' : '#6b7280' }}>
-                    {whatsappConfig?.is_active ? `${t('whatsappActive')} ✅` : t('whatsappInactive')}
-                  </span>
-                  {whatsappConfig?.is_active && (
-                    <span style={{ fontSize: '13px', color: '#166534' }}>
-                      · {t('messagesToday')}: <strong>{whatsappConfig.messages_sent_today || 0}</strong> / {whatsappConfig.daily_limit || 0}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💬 {t('whatsappSettings')}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '13px', fontWeight: '600', padding: '4px 12px', borderRadius: '9999px', backgroundColor: whatsappConnected ? '#dcfce7' : '#f3f4f6', color: whatsappConnected ? '#166534' : '#6b7280' }}>
+                      {whatsappConnected ? `${t('whatsappActive')} ✅` : t('whatsappInactive')}
                     </span>
+                    <button type="button" onClick={() => onNavigate && onNavigate('whatsappLog')} style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}>
+                      {t('viewLog')}
+                    </button>
+                  </div>
+                </div>
+                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>{t('connectWhatsApp')}</p>
+
+                {/* Provider — only Wamatas is wired up; the rest are placeholders. */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>{t('provider')}</label>
+                  <select
+                    value={whatsappForm.provider}
+                    onChange={(e) => setWhatsappForm({ ...whatsappForm, provider: e.target.value })}
+                    disabled={!whatsappAvailable}
+                    style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
+                  >
+                    <option value="wamatas">Wamatas</option>
+                    <option value="meta_cloud" disabled>{`Meta Cloud API (${t('comingSoon')})`}</option>
+                    <option value="twilio" disabled>{`Twilio (${t('comingSoon')})`}</option>
+                    <option value="360dialog" disabled>{`360dialog (${t('comingSoon')})`}</option>
+                  </select>
+                </div>
+
+                {/* Access token */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                    {t('accessToken')} {!hasSavedCredentials && <span style={{ color: '#ef4444' }}>*</span>}
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showToken ? 'text' : 'password'}
+                      value={whatsappForm.access_token}
+                      onChange={(e) => setWhatsappForm({ ...whatsappForm, access_token: e.target.value })}
+                      placeholder={hasSavedCredentials ? maskTokenTail(whatsappConfig.api_token_last4) : 'Paste your Wamatas access token'}
+                      autoComplete="off"
+                      disabled={!whatsappAvailable}
+                      style={{ width: '100%', padding: '12px 48px 12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowToken(v => !v)}
+                      aria-label={showToken ? 'Hide token' : 'Show token'}
+                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', fontSize: '16px', padding: '6px' }}
+                    >
+                      {showToken ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{t('storedSecurely')}</p>
+                  {hasSavedCredentials && (
+                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#374151', fontFamily: 'monospace' }}>
+                      {maskTokenTail(whatsappConfig.api_token_last4)}
+                    </p>
                   )}
                 </div>
 
-                {/* Church name, straight from the profile — read-only here. */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>{t('churchName')}</label>
-                  <input type="text" value={church?.name || ''} readOnly style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px', backgroundColor: '#f9fafb', color: '#6b7280' }} />
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-                    {t('churchWhatsAppNumber')} {whatsappForm.is_active && <span style={{ color: '#ef4444' }}>*</span>}
-                  </label>
+                {/* Instance ID */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>{t('instanceId')} <span style={{ color: '#ef4444' }}>*</span></label>
                   <input
-                    type="tel"
-                    value={whatsappForm.phone_number}
-                    onChange={(e) => setWhatsappForm({ ...whatsappForm, phone_number: e.target.value })}
-                    placeholder="+237 6XX XXX XXX"
+                    type="text"
+                    value={whatsappForm.instance_id}
+                    onChange={(e) => setWhatsappForm({ ...whatsappForm, instance_id: e.target.value })}
+                    placeholder="609ACF283XXXX"
                     disabled={!whatsappAvailable}
                     style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
                   />
                 </div>
 
-                {/* Activation toggle */}
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', cursor: whatsappAvailable ? 'pointer' : 'not-allowed', opacity: whatsappAvailable ? 1 : 0.5 }}>
-                  <input
-                    type="checkbox"
-                    checked={whatsappForm.is_active}
-                    disabled={!whatsappAvailable}
-                    onChange={(e) => setWhatsappForm({ ...whatsappForm, is_active: e.target.checked })}
-                    style={{ width: '18px', height: '18px', cursor: 'inherit' }}
-                  />
-                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>{t('activateWhatsApp')}</span>
-                </label>
-
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <Button onClick={handleSaveWhatsapp} disabled={savingWhatsapp || !whatsappAvailable}>
-                    {savingWhatsapp ? '⏳' : `💾 ${t('save')}`}
-                  </Button>
-                </div>
+                <Button onClick={handleSaveWhatsappCredentials} disabled={savingWhatsapp || !whatsappAvailable}>
+                  {savingWhatsapp ? '⏳' : `💾 ${t('saveCredentials')}`}
+                </Button>
               </div>
 
-              {/* Test send — only useful once the church is actually active. */}
-              {whatsappAvailable && whatsappConfig?.is_active && (
+              {/* ── Test send: only once credentials exist ── */}
+              {whatsappAvailable && hasSavedCredentials && (
                 <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🧪 {t('testMessage')}</h3>
-                  <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280' }}>
-                    Sends one confirmation message. It counts toward today&apos;s limit.
-                  </p>
-                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>🧪 {t('sendTestMessage')}</h3>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>{t('phoneToTest')}</label>
                     <input
                       type="tel"
                       value={testPhone}
                       onChange={(e) => setTestPhone(e.target.value)}
-                      placeholder={whatsappForm.phone_number || '+237 6XX XXX XXX'}
-                      style={{ flex: '1 1 220px', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
+                      placeholder="+237..."
+                      style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
                     />
-                    <Button variant="secondary" onClick={handleTestWhatsapp} disabled={testingWhatsapp}>
-                      {testingWhatsapp ? '⏳' : `📤 ${t('testMessage')}`}
-                    </Button>
+                    <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{t('includeCountryCode')}</p>
                   </div>
+
+                  <Button onClick={handleTestWhatsapp} disabled={testingWhatsapp}>
+                    {testingWhatsapp ? '⏳' : `📤 ${t('sendTestMessage')}`}
+                  </Button>
+
+                  {/* Outcome of a test fired in this session. */}
+                  {testResult && (
+                    <div style={{ marginTop: '16px', padding: '12px 16px', borderRadius: '10px', fontSize: '14px', backgroundColor: testResult.ok ? '#dcfce7' : '#fef2f2', color: testResult.ok ? '#166534' : '#991b1b' }}>
+                      {testResult.ok
+                        ? `✅ ${t('testSentSuccess')} ${testResult.messageId || '—'}`
+                        : `❌ ${testResult.error}`}
+                    </div>
+                  )}
+
+                  {/* Persisted result of the most recent test, from the DB. */}
+                  {whatsappConfig?.last_test_sent_at && (
+                    <p style={{ margin: '12px 0 0 0', fontSize: '13px', color: '#6b7280' }}>
+                      {t('lastTest')}: {timeAgo(whatsappConfig.last_test_sent_at)} —{' '}
+                      <span style={{ color: whatsappConfig.last_test_status === 'success' ? '#16a34a' : '#dc2626' }}>
+                        {whatsappConfig.last_test_status === 'success' ? t('success') : whatsappConfig.last_test_status}
+                      </span>
+                    </p>
+                  )}
                 </div>
               )}
             </div>

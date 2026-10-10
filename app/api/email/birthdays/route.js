@@ -3,11 +3,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { sendBirthdayEmail, sendBirthdayAdminNotification } from '../../../../lib/notifications';
 import {
-  getPlatformCredentials,
-  formatPhone,
-  sendWhatsAppText,
+  toWamatasNumber,
+  sendWamatasText,
   loadWhatsAppConfig,
-  recordSend
+  recordSend,
+  logSend,
+  delay,
+  SEND_SPACING_MS
 } from '../../../../lib/whatsapp';
 
 function getSupabase() {
@@ -33,14 +35,10 @@ export async function GET(request) {
   let whatsappSent = 0;
   const errors = [];
 
-  // Central WhatsApp credentials are read once: when they are absent the
-  // whole WhatsApp leg is skipped and birthday emails still go out.
-  const waCredentials = getPlatformCredentials();
-
   // Get all churches
   const { data: churches, error: churchErr } = await supabase
     .from('churches')
-    .select('id, name');
+    .select('id, name, default_language');
 
   if (churchErr || !churches) {
     return Response.json({ error: 'Failed to fetch churches', detail: churchErr?.message }, { status: 500 });
@@ -77,43 +75,70 @@ export async function GET(request) {
 
     // ── WhatsApp birthday wishes ──
     // Independent of the email leg above: a member with a phone but no email
-    // still gets a WhatsApp greeting, and vice versa.
-    if (waCredentials) {
+    // still gets a WhatsApp greeting, and vice versa. Credentials are the
+    // church's own Wamatas instance, so a church that has not connected one is
+    // skipped without affecting its emails.
+    {
       const configResult = await loadWhatsAppConfig(supabase, church.id);
       if (!configResult.error) {
+        const { config, instanceId, accessToken, dailyLimit } = configResult;
         let sentToday = configResult.sentToday;
         let churchWhatsappSent = 0;
-        const { dailyLimit } = configResult;
 
-        for (const member of birthdayMembers) {
+        // French is the default greeting; English churches get the English one.
+        const isEnglish = String(church.default_language || '').toLowerCase().startsWith('en');
+
+        const withPhone = birthdayMembers.filter(m => m.phone);
+        for (let i = 0; i < withPhone.length; i++) {
+          const member = withPhone[i];
+
           if (sentToday >= dailyLimit) {
             errors.push(`WhatsApp for ${church.name}: daily limit reached`);
             break;
           }
-          const phone = formatPhone(member.phone);
-          if (!phone) continue;
 
-          const message = `\u{1F382} Happy Birthday, ${member.first_name}! ${church.name} wishes you a blessed birthday. May God continue to bless you abundantly!`;
-          const result = await sendWhatsAppText({
-            token: waCredentials.token,
-            phoneNumberId: waCredentials.phoneNumberId,
-            to: phone,
-            message
-          });
+          const formatted = toWamatasNumber(member.phone);
+          if (!formatted) {
+            await logSend(supabase, {
+              churchId: church.id, recipientId: member.id, purpose: 'birthday',
+              phone: member.phone, message: '', status: 'failed',
+              errorMessage: 'Invalid phone number'
+            });
+            continue;
+          }
 
-          if (result.success) {
+          const message = isEnglish
+            ? `\u{1F382} Happy Birthday, ${member.first_name}! ${church.name} wishes you a blessed birthday. May God continue to bless you abundantly!`
+            : `\u{1F382} Joyeux anniversaire ${member.first_name} ! ${church.name} vous souhaite un anniversaire b\u00e9ni. Que Dieu continue de vous b\u00e9nir abondamment !`;
+
+          const result = await sendWamatasText({ to: member.phone, message, instanceId, accessToken });
+
+          if (result.ok) {
             whatsappSent++;
             churchWhatsappSent++;
             sentToday++;
-            await recordSend(supabase, configResult.config.id, sentToday);
+            await recordSend(supabase, config.id, sentToday);
+            await logSend(supabase, {
+              churchId: church.id, recipientId: member.id, purpose: 'birthday',
+              phone: formatted, message, status: 'sent',
+              providerMessageId: result.providerMessageId
+            });
           } else {
             errors.push(`WhatsApp ${member.first_name} ${member.last_name}: ${result.error}`);
+            await logSend(supabase, {
+              churchId: church.id, recipientId: member.id, purpose: 'birthday',
+              phone: formatted, message, status: 'failed',
+              errorMessage: result.error, raw: result.raw
+            });
           }
+
+          // Space out sends to stay under the provider's rate limit.
+          if (i < withPhone.length - 1) await delay(SEND_SPACING_MS);
         }
 
         if (churchWhatsappSent > 0) {
-          // Logged the same aggregate way as a manual blast so the History
-          // tab shows automated birthday messages alongside them.
+          // Logged the same aggregate way as a manual blast so the History tab
+          // shows automated birthday messages alongside them.
           await supabase.from('messages').insert({
             church_id: church.id,
             message_type: 'WHATSAPP',

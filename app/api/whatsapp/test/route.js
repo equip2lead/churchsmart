@@ -1,16 +1,17 @@
 // Rate limiting: Vercel provides basic DDoS protection. If abuse is detected,
 // add next-rate-limit or upstash/ratelimit middleware here.
 //
-// Sends a single confirmation message so an admin can verify their WhatsApp
-// setup works before messaging the congregation.
+// Sends one confirmation message so an admin can verify their Wamatas
+// credentials. The first successful test is what activates WhatsApp for the
+// church (is_active = true).
 import crypto from 'crypto';
 import {
   getServiceClient,
-  getPlatformCredentials,
-  formatPhone,
-  sendWhatsAppText,
+  toWamatasNumber,
+  sendWamatasText,
   loadWhatsAppConfig,
-  recordSend
+  recordSend,
+  logSend
 } from '../../../../lib/whatsapp';
 
 export async function POST(request) {
@@ -29,6 +30,7 @@ export async function POST(request) {
       console.error(`${tag} missing_supabase_env`);
       return Response.json({ success: false, error: 'Server is not configured', code: 'SERVER_NOT_CONFIGURED' }, { status: 503 });
     }
+
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !authUser) {
       return Response.json({ success: false, error: 'Invalid or expired session', code: 'INVALID_AUTH' }, { status: 401 });
@@ -61,24 +63,19 @@ export async function POST(request) {
       return Response.json({ success: false, error: 'Only church admins can send a test message', code: 'AUTH_INSUFFICIENT_ROLE' }, { status: 403 });
     }
 
-    const credentials = getPlatformCredentials();
-    if (!credentials) {
-      console.error(`${tag} missing_platform_credentials`);
-      return Response.json(
-        { success: false, error: 'WhatsApp is not configured on the server', code: 'PLATFORM_NOT_CONFIGURED' },
-        { status: 503 }
-      );
-    }
-
-    const formatted = formatPhone(testPhone);
+    const formatted = toWamatasNumber(testPhone);
     if (!formatted) {
       return Response.json({ success: false, error: 'Invalid phone number', code: 'INVALID_PHONE' }, { status: 400 });
     }
 
-    const configResult = await loadWhatsAppConfig(supabase, churchId);
+    // requireActive: false — a test runs on saved credentials before the church
+    // has ever been activated, since passing the test is what activates it.
+    const configResult = await loadWhatsAppConfig(supabase, churchId, { requireActive: false });
     if (configResult.error) {
       return Response.json({ success: false, error: configResult.error, code: configResult.code || 'CONFIG_ERROR' }, { status: 403 });
     }
+    const { config, instanceId, accessToken, dailyLimit } = configResult;
+
     if (configResult.remaining <= 0) {
       return Response.json({ success: false, error: 'Daily message limit reached', code: 'DAILY_LIMIT_REACHED' }, { status: 429 });
     }
@@ -90,32 +87,50 @@ export async function POST(request) {
       .maybeSingle();
 
     const churchName = church?.name || 'your church';
-    const message = `✅ This is a test from ChurchSmart for ${churchName}. WhatsApp messaging is active!`;
+    const message = `✅ ChurchSmart test — if you see this, WhatsApp is connected for ${churchName}.`;
 
-    const result = await sendWhatsAppText({
-      token: credentials.token,
-      phoneNumberId: credentials.phoneNumberId,
-      to: formatted,
-      message
+    const result = await sendWamatasText({ to: testPhone, message, instanceId, accessToken });
+    const now = new Date().toISOString();
+
+    await logSend(supabase, {
+      churchId,
+      purpose: 'test',
+      phone: formatted,
+      message,
+      status: result.ok ? 'sent' : 'failed',
+      providerMessageId: result.providerMessageId,
+      errorMessage: result.error,
+      raw: result.raw
     });
 
-    if (!result.success) {
-      console.log(`${tag} failed church_id=${churchId} error=${result.error}`);
+    if (!result.ok) {
+      // Record the failure so Settings can show what went wrong; is_active is
+      // deliberately left untouched.
+      await supabase
+        .from('whatsapp_config')
+        .update({ last_test_sent_at: now, last_test_status: String(result.error || 'failed').slice(0, 200) })
+        .eq('id', config.id);
+
+      console.log(`${tag} failed church_id=${churchId}`);
       return Response.json({ success: false, error: result.error, code: 'SEND_FAILED' }, { status: 502 });
     }
 
-    // A test message is a real message against the central account, so it
-    // counts toward the church's daily quota like any other.
+    // A passing test both proves the credentials and activates the channel.
     const sentToday = configResult.sentToday + 1;
-    await recordSend(supabase, configResult.config.id, sentToday);
+    await supabase
+      .from('whatsapp_config')
+      .update({ is_active: true, last_test_sent_at: now, last_test_status: 'success' })
+      .eq('id', config.id);
+    await recordSend(supabase, config.id, sentToday);
 
-    console.log(`${tag} sent church_id=${churchId} sent_today=${sentToday}/${configResult.dailyLimit}`);
+    console.log(`${tag} sent church_id=${churchId} sent_today=${sentToday}/${dailyLimit}`);
 
     return Response.json({
       success: true,
+      providerMessageId: result.providerMessageId,
       phone: formatted,
       sentToday,
-      dailyLimit: configResult.dailyLimit
+      dailyLimit
     });
   } catch (error) {
     console.error(`${tag} unhandled`, error);

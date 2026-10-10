@@ -1,17 +1,18 @@
 // Rate limiting: Vercel provides basic DDoS protection. If abuse is detected,
 // add next-rate-limit or upstash/ratelimit middleware here.
 //
-// Bulk WhatsApp send. Messages go out through the platform's central WhatsApp
-// Business account (env credentials); the church only has to be activated and
-// within its daily quota.
+// Bulk WhatsApp send through the church's own Wamatas instance. Credentials are
+// read server-side from whatsapp_config and never returned to the client.
 import crypto from 'crypto';
 import {
   getServiceClient,
-  getPlatformCredentials,
-  formatPhone,
-  sendWhatsAppText,
+  toWamatasNumber,
+  sendWamatasText,
   loadWhatsAppConfig,
   recordSend,
+  logSend,
+  delay,
+  SEND_SPACING_MS,
   WHATSAPP_MAX_LENGTH
 } from '../../../../lib/whatsapp';
 
@@ -32,6 +33,7 @@ export async function POST(request) {
       console.error(`${tag} missing_supabase_env`);
       return Response.json({ error: 'Server is not configured', code: 'SERVER_NOT_CONFIGURED' }, { status: 503 });
     }
+
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !authUser) {
       return Response.json({ error: 'Invalid or expired session', code: 'INVALID_AUTH' }, { status: 401 });
@@ -68,22 +70,12 @@ export async function POST(request) {
       return Response.json({ error: 'You are not a member of this church', code: 'AUTH_INSUFFICIENT_ROLE' }, { status: 403 });
     }
 
-    // ── Platform credentials ──
-    const credentials = getPlatformCredentials();
-    if (!credentials) {
-      console.error(`${tag} missing_platform_credentials`);
-      return Response.json(
-        { error: 'WhatsApp is not configured on the server', code: 'PLATFORM_NOT_CONFIGURED' },
-        { status: 503 }
-      );
-    }
-
-    // ── Church must be active and within quota ──
+    // ── Church credentials and quota ──
     const configResult = await loadWhatsAppConfig(supabase, churchId);
     if (configResult.error) {
       return Response.json({ error: configResult.error, code: configResult.code || 'CONFIG_ERROR' }, { status: 403 });
     }
-    const { config, dailyLimit } = configResult;
+    const { config, instanceId, accessToken, dailyLimit } = configResult;
     let sentToday = configResult.sentToday;
 
     if (configResult.remaining <= 0) {
@@ -94,9 +86,8 @@ export async function POST(request) {
     }
 
     // ── Resolve the recipient list ──
-    // A groupId is resolved here rather than in the browser: group_members is
-    // not readable with an anon session under current RLS, so the client has
-    // no way to expand a group itself.
+    // A groupId is expanded here rather than in the browser: group_members is
+    // not readable with an anon session under current RLS.
     let targets = [];
     if (groupId) {
       const { data: links, error: linkError } = await supabase
@@ -115,12 +106,12 @@ export async function POST(request) {
       if (memberIds.length > 0) {
         const { data: groupMembers } = await supabase
           .from('members')
-          .select('first_name, last_name, phone')
+          .select('id, first_name, last_name, phone')
           .eq('church_id', churchId)
           .in('id', memberIds);
         targets = (groupMembers || [])
           .filter(m => m.phone)
-          .map(m => ({ phone: m.phone, name: `${m.first_name || ''} ${m.last_name || ''}`.trim() }));
+          .map(m => ({ id: m.id, phone: m.phone, name: `${m.first_name || ''} ${m.last_name || ''}`.trim() }));
       }
     } else {
       if (!Array.isArray(recipients) || recipients.length === 0) {
@@ -133,18 +124,14 @@ export async function POST(request) {
       return Response.json({ error: 'No recipients with a phone number', code: 'NO_RECIPIENTS' }, { status: 400 });
     }
 
-    // Collapse duplicate numbers so one person isn't messaged twice (and
+    // Collapse duplicate numbers so one person is not messaged twice (and
     // charged twice against the quota) when they match several filters.
     const seen = new Set();
     const deduped = [];
     for (const target of targets) {
-      const formatted = formatPhone(target.phone);
-      if (!formatted) {
-        deduped.push({ ...target, formatted: null });
-        continue;
-      }
-      if (seen.has(formatted)) continue;
-      seen.add(formatted);
+      const formatted = toWamatasNumber(target.phone);
+      if (formatted && seen.has(formatted)) continue;
+      if (formatted) seen.add(formatted);
       deduped.push({ ...target, formatted });
     }
 
@@ -153,46 +140,64 @@ export async function POST(request) {
     let failed = 0;
     const errors = [];
 
-    for (const target of deduped) {
+    for (let i = 0; i < deduped.length; i++) {
+      const target = deduped[i];
       const label = target.name || target.phone;
+
+      // Re-checked every iteration: the quota is shared with the birthday
+      // automation, so it can run out mid-batch.
+      if (sentToday >= dailyLimit) {
+        failed++;
+        errors.push(`${label}: daily limit reached`);
+        await logSend(supabase, {
+          churchId, recipientId: target.id || null, purpose: 'bulk_message',
+          phone: target.phone, message, status: 'failed',
+          errorMessage: 'Daily message limit reached'
+        });
+        continue;
+      }
 
       if (!target.formatted) {
         failed++;
         errors.push(`${label}: invalid phone number`);
+        await logSend(supabase, {
+          churchId, recipientId: target.id || null, purpose: 'bulk_message',
+          phone: target.phone, message, status: 'failed',
+          errorMessage: 'Invalid phone number'
+        });
         continue;
       }
 
-      // Re-check before every send: the quota is shared across concurrent
-      // senders and birthday automation, so it can run out mid-batch.
-      if (sentToday >= dailyLimit) {
-        failed++;
-        errors.push(`${label}: daily limit reached`);
-        continue;
-      }
+      const result = await sendWamatasText({ to: target.phone, message, instanceId, accessToken });
 
-      const result = await sendWhatsAppText({
-        token: credentials.token,
-        phoneNumberId: credentials.phoneNumberId,
-        to: target.formatted,
-        message
-      });
-
-      if (result.success) {
+      if (result.ok) {
         sent++;
         sentToday++;
-        // Persisted per message so a function timeout can't leave sends
+        // Persisted per message so a function timeout cannot leave sends
         // uncounted and let the church overshoot its limit.
         await recordSend(supabase, config.id, sentToday);
+        await logSend(supabase, {
+          churchId, recipientId: target.id || null, purpose: 'bulk_message',
+          phone: target.formatted, message, status: 'sent',
+          providerMessageId: result.providerMessageId
+        });
       } else {
         failed++;
         errors.push(`${label}: ${result.error}`);
+        await logSend(supabase, {
+          churchId, recipientId: target.id || null, purpose: 'bulk_message',
+          phone: target.formatted || target.phone, message, status: 'failed',
+          errorMessage: result.error, raw: result.raw
+        });
       }
+
+      // Space out bulk sends to stay under the provider's rate limit.
+      if (i < deduped.length - 1) await delay(SEND_SPACING_MS);
     }
 
-    // ── Log the blast ──
-    // `messages` is aggregate-shaped (one row per send, recipient_count), which
-    // is what the History tab renders, so this records the batch rather than
-    // one row per recipient.
+    // Aggregate record for the Messaging History tab, which renders `messages`
+    // (one row per send, recipient_count). Per-recipient detail lives in
+    // whatsapp_send_log.
     if (sent > 0 || failed > 0) {
       const { error: logError } = await supabase.from('messages').insert({
         church_id: churchId,
@@ -203,7 +208,7 @@ export async function POST(request) {
         status: failed === 0 ? 'SENT' : (sent === 0 ? 'FAILED' : 'PARTIAL'),
         sent_by: caller.email || caller.full_name || 'Admin'
       });
-      if (logError) console.error(`${tag} log_failed`, logError.message);
+      if (logError) console.error(`${tag} message_log_failed`, logError.message);
     }
 
     console.log(`${tag} done church_id=${churchId} sent=${sent} failed=${failed} sent_today=${sentToday}/${dailyLimit}`);
