@@ -7948,18 +7948,94 @@ function MessagingPage({ plan, onNavigate }) {
     if (!message.body) { toast.warning('Please enter a message'); return; }
     if (recipientCount === 0) { toast.warning('No recipients selected'); return; }
 
+    const recipientType = audienceMode === 'segment' ? segmentFilters.category : 'INDIVIDUAL';
+
+    // ── Email actually goes out through Resend ──
+    // This used to write a `messages` row and toast success without ever
+    // dispatching anything, so nothing was delivered. The row is now written
+    // from the real result, after the send.
+    if (message.type === 'EMAIL') {
+      if (!message.subject?.trim()) { toast.warning('An email needs a subject'); return; }
+
+      const emailRecipients = getFinalRecipients()
+        .filter(c => c.email)
+        .map(c => ({ email: c.email, name: c.name }));
+
+      if (emailRecipients.length === 0) {
+        toast.warning('None of the selected recipients have an email address');
+        return;
+      }
+
+      setSending(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+          body: JSON.stringify({
+            churchId: CHURCH_ID,
+            recipients: emailRecipients,
+            subject: message.subject,
+            body: message.body
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          toast.error(data.error || `Email send failed (${response.status})`);
+          setSending(false);
+          return;
+        }
+
+        const sent = data.sent || 0;
+        const failed = data.failed || 0;
+
+        // Recorded only now, reflecting what the provider actually accepted.
+        await supabaseInsert('messages', {
+          message_type: 'EMAIL',
+          recipient_type: recipientType,
+          recipient_count: sent,
+          subject: message.subject,
+          body: message.body,
+          status: failed === 0 ? 'SENT' : (sent === 0 ? 'FAILED' : 'PARTIAL'),
+          sent_by: user?.email || 'Admin'
+        });
+
+        if (sent > 0) {
+          toast.success(`✉️ Email: ${sent} sent${failed ? `, ${failed} failed` : ''}`);
+          setMessage({ ...message, body: '', subject: '' });
+          if (audienceMode === 'individual') setSelectedIndividuals([]);
+        } else {
+          toast.error(`Email failed for all ${failed} recipient${failed !== 1 ? 's' : ''}`);
+        }
+        // Per-recipient reasons are too long for a toast but matter when
+        // diagnosing a bad address or a provider rejection.
+        if (Array.isArray(data.errors) && data.errors.length > 0) {
+          console.warn('[send-email] errors:', data.errors);
+        }
+        fetchData();
+      } catch (error) {
+        toast.error(error.message);
+      }
+      setSending(false);
+      return;
+    }
+
+    // ── SMS still only records the attempt ──
+    // No SMS provider is wired up, so this logs the message without sending
+    // it. Left as-is: wiring SMS is a separate piece of work.
     setSending(true);
     try {
       await supabaseInsert('messages', {
         message_type: message.type,
-        recipient_type: audienceMode === 'segment' ? segmentFilters.category : 'INDIVIDUAL',
+        recipient_type: recipientType,
         recipient_count: recipientCount,
         subject: message.subject,
         body: message.body,
         status: 'SENT',
-        sent_by: 'Admin'
+        sent_by: user?.email || 'Admin'
       });
-      toast.info(`✅ Message sent to ${recipientCount} recipient${recipientCount !== 1 ? 's' : ''}!`);
+      toast.info(`📝 ${message.type} logged for ${recipientCount} recipient${recipientCount !== 1 ? 's' : ''} (no SMS provider connected yet)`);
       setMessage({ ...message, body: '', subject: '' });
       if (audienceMode === 'individual') setSelectedIndividuals([]);
       fetchData();
