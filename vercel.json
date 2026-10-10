@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["cdg1"],
+  "regions": [
+    "cdg1"
+  ],
   "crons": [
     {
       "path": "/api/email/trial-reminders",
@@ -13,6 +15,10 @@
     {
       "path": "/api/email/visitor-followup",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/whatsapp/reset-daily",
+      "schedule": "0 0 * * *"
     }
   ]
 }

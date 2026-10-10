@@ -16,6 +16,11 @@ const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NE
 const SUPABASE_ANON_KEY = SUPABASE_KEY;
 const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL || '';
 
+// WhatsApp text messages cap at 4096 characters. Mirrors WHATSAPP_MAX_LENGTH in
+// lib/whatsapp.js, which is not imported here on purpose: that module reads the
+// platform's WhatsApp credentials and must stay server-side.
+const WHATSAPP_MAX_CHARS = 4096;
+
 // Guard for build time — Supabase client won't work during static generation
 const supabase = SUPABASE_URL && SUPABASE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -195,7 +200,7 @@ const translations = {
     recipients: 'Recipients',
     allMembers: 'All Members',
     allVisitors: 'All Visitors',
-    selectRecipients: 'Select Recipients',
+    selectRecipients: 'Select recipients',
     messageType: 'Message Type',
     compose: 'Compose',
     sent: 'Sent',
@@ -513,6 +518,29 @@ const translations = {
     inviteStatusAcceptedLabel: 'Accepted {date}',
     inviteStatusExpiredOnLabel: 'Expired on {date}',
     inviteResendComingSoon: 'Resend coming soon',
+    // WhatsApp (central platform account — churches only supply their number)
+    whatsapp: 'WhatsApp',
+    whatsappSettings: 'WhatsApp Settings',
+    churchWhatsAppNumber: 'Church WhatsApp Number',
+    activateWhatsApp: 'Activate WhatsApp Messaging',
+    whatsappActive: 'WhatsApp: Active',
+    whatsappInactive: 'WhatsApp: Not activated',
+    messagesToday: 'Messages sent today',
+    sendViaWhatsApp: 'Send via WhatsApp',
+    sendViaEmail: 'Send via Email',
+    selectChannel: 'Select channel',
+    selectAll: 'Select All',
+    membersWithPhone: 'Members with phone number',
+    noPhoneNumber: 'No phone number',
+    charLimit: 'characters remaining',
+    sendingMessages: 'Sending messages...',
+    messagesSentResult: 'Sent: {sent}, Failed: {failed}',
+    whatsappNotAvailable: 'WhatsApp messaging is available on Growth and Pro plans.',
+    upgradeToUnlockWhatsApp: 'Upgrade to unlock WhatsApp',
+    testMessage: 'Send Test Message',
+    testSuccess: 'Test message sent successfully!',
+    testFailed: 'Test message failed',
+    dailyLimitReached: 'Daily message limit reached',
   },
   fr: {
     // General
@@ -685,7 +713,7 @@ const translations = {
     recipients: 'Destinataires',
     allMembers: 'Tous les Membres',
     allVisitors: 'Tous les Visiteurs',
-    selectRecipients: 'Sélectionner Destinataires',
+    selectRecipients: 'Sélectionner les destinataires',
     messageType: 'Type de Message',
     compose: 'Composer',
     sent: 'Envoyé',
@@ -1003,6 +1031,29 @@ const translations = {
     inviteStatusAcceptedLabel: 'Accepté le {date}',
     inviteStatusExpiredOnLabel: 'Expiré le {date}',
     inviteResendComingSoon: 'Renvoi bientôt disponible',
+    // WhatsApp
+    whatsapp: 'WhatsApp',
+    whatsappSettings: 'Paramètres WhatsApp',
+    churchWhatsAppNumber: "Numéro WhatsApp de l'Église",
+    activateWhatsApp: 'Activer la Messagerie WhatsApp',
+    whatsappActive: 'WhatsApp : Actif',
+    whatsappInactive: 'WhatsApp : Non activé',
+    messagesToday: "Messages envoyés aujourd'hui",
+    sendViaWhatsApp: 'Envoyer par WhatsApp',
+    sendViaEmail: 'Envoyer par Email',
+    selectChannel: 'Sélectionner le canal',
+    selectAll: 'Tout sélectionner',
+    membersWithPhone: 'Membres avec numéro',
+    noPhoneNumber: 'Pas de numéro',
+    charLimit: 'caractères restants',
+    sendingMessages: 'Envoi des messages...',
+    messagesSentResult: 'Envoyés : {sent}, Échoués : {failed}',
+    whatsappNotAvailable: 'La messagerie WhatsApp est disponible sur les plans Growth et Pro.',
+    upgradeToUnlockWhatsApp: 'Mettez à niveau pour débloquer WhatsApp',
+    testMessage: 'Envoyer un Message Test',
+    testSuccess: 'Message test envoyé avec succès !',
+    testFailed: 'Échec du message test',
+    dailyLimitReached: 'Limite journalière atteinte',
   }
 };
 
@@ -1048,7 +1099,7 @@ const ALLOWED_TABLES = [
   'events', 'groups', 'volunteers', 'activity_logs', 'message_logs',
   'message_templates', 'automation_settings', 'user_roles', 'user_role_assignments',
   'super_admin_log', 'subscriptions', 'payment_history', 'message_credits',
-  'expense_categories'
+  'expense_categories', 'whatsapp_config'
 ];
 
 function sanitizeInput(val) {
@@ -3428,7 +3479,7 @@ function Dashboard() {
           {activeTab === 'messaging' && (CHURCH_ID ? <PermissionGate permission="messaging" fallback={<AccessDenied onNavigate={setActiveTab} />}><MessagingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="messaging" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'reports' && (CHURCH_ID ? <PermissionGate permission="reports" fallback={<AccessDenied onNavigate={setActiveTab} />}><ReportsPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="reports" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'services' && (CHURCH_ID ? <PermissionGate permission="events" fallback={<AccessDenied onNavigate={setActiveTab} />}><ServicesPage /></PermissionGate> : <ChurchSetupRequired pageKey="services" onOpenSetup={openChurchSetup} />)}
-          {activeTab === 'settings' && (CHURCH_ID ? <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><SettingsPage /></PermissionGate> : <ChurchSetupRequired pageKey="settings" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'settings' && (CHURCH_ID ? <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><SettingsPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="settings" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'superadmin' && <SuperAdminPage />}
         </main>
       </div>
@@ -7515,25 +7566,35 @@ function MessagingPage({ plan, onNavigate }) {
   const [contactSearch, setContactSearch] = useState('');
   const [showRecipientPreview, setShowRecipientPreview] = useState(false);
 
+  // Email is the default channel: it is the one every paid plan has, and the
+  // WhatsApp button stays hidden until the church activates WhatsApp.
   const [message, setMessage] = useState({
-    type: 'SMS',
+    type: 'EMAIL',
     subject: '',
     body: ''
   });
+
+  // WhatsApp sending state. Recipients are picked from members that have a
+  // phone number, or delegated to a group the API expands server-side.
+  const [whatsappConfig, setWhatsappConfig] = useState(null);
+  const [waSelectedIds, setWaSelectedIds] = useState([]);
+  const [waGroupId, setWaGroupId] = useState('');
+  const [waResult, setWaResult] = useState(null);
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [membersData, visitorsData, groupsData, volunteersData, messagesData, templatesData, locationsData] = await Promise.all([
+      const [membersData, visitorsData, groupsData, volunteersData, messagesData, templatesData, locationsData, whatsappData] = await Promise.all([
         supabaseQuery('members', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('visitors', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('groups', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('volunteers', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('messages', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'sent_at.desc', limit: 50 }),
         supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
-        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+        supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('whatsapp_config', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], single: true })
       ]);
       setMembers(membersData || []);
       setVisitors(visitorsData || []);
@@ -7542,6 +7603,7 @@ function MessagingPage({ plan, onNavigate }) {
       setMessageHistory(messagesData || []);
       setTemplates(templatesData || []);
       setLocations(locationsData || []);
+      setWhatsappConfig(whatsappData || null);
     } catch (error) {
       console.error('Messaging fetch error:', error);
     } finally {
@@ -7628,6 +7690,81 @@ function MessagingPage({ plan, onNavigate }) {
   // ── Handle template ──
   const applyTemplate = (template) => {
     setMessage({ ...message, body: template.body, subject: template.name });
+  };
+
+  // ── WhatsApp recipients ──
+  // WhatsApp can only reach a phone number, so members without one are left
+  // out of the picker rather than silently failing at send time.
+  const whatsappEnabled = !!whatsappConfig?.is_active && canAccessFeature(plan, 'messaging_whatsapp');
+  const waMembers = members
+    .filter(m => m.phone)
+    .map(m => ({
+      id: m.id,
+      name: `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.phone,
+      phone: m.phone
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const waAllSelected = waMembers.length > 0 && waSelectedIds.length === waMembers.length;
+  const toggleWaMember = (id) => setWaSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleWaSelectAll = () => setWaSelectedIds(waAllSelected ? [] : waMembers.map(m => m.id));
+
+  // With a group chosen the count is unknown client-side (group_members is not
+  // readable from the browser under current RLS), so the API resolves it.
+  const waRecipientCount = waGroupId ? null : waSelectedIds.length;
+  const waCharsRemaining = WHATSAPP_MAX_CHARS - message.body.length;
+
+  const handleSendWhatsapp = async () => {
+    if (!message.body.trim()) { toast.warning('Please enter a message'); return; }
+    if (!waGroupId && waSelectedIds.length === 0) { toast.warning(t('selectRecipients')); return; }
+
+    const recipients = waMembers
+      .filter(m => waSelectedIds.includes(m.id))
+      .map(m => ({ phone: m.phone, name: m.name }));
+
+    setSending(true);
+    setWaResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({
+          churchId: CHURCH_ID,
+          message: message.body,
+          recipients,
+          groupId: waGroupId || undefined
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        toast.error(data.code === 'DAILY_LIMIT_REACHED' ? t('dailyLimitReached') : (data.error || `HTTP ${response.status}`));
+      } else {
+        const sent = data.sent || 0;
+        const failed = data.failed || 0;
+        setWaResult({ sent, failed });
+        const summary = t('messagesSentResult').replace('{sent}', sent).replace('{failed}', failed);
+        if (sent > 0) {
+          toast.success(summary);
+          setMessage({ ...message, body: '' });
+          setWaSelectedIds([]);
+        } else {
+          toast.warning(summary);
+        }
+        // Per-recipient reasons are too long for a toast but matter when
+        // diagnosing a bad number or a revoked token.
+        if (Array.isArray(data.errors) && data.errors.length > 0) {
+          console.warn('[whatsapp] send errors:', data.errors);
+        }
+      }
+      invalidateCache('whatsapp_config');
+      invalidateCache('messages');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+    setSending(false);
   };
 
   // ── Handle send ──
@@ -7717,11 +7854,13 @@ function MessagingPage({ plan, onNavigate }) {
 
                 {/* Channel Selector */}
                 <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Channel</label>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('selectChannel')}</label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     {[
                       { id: 'SMS', icon: '📱', label: 'SMS', color: '#10b981', feature: 'sms' },
-                      { id: 'WHATSAPP', icon: '💬', label: 'WhatsApp', color: '#25d366', feature: 'messaging_whatsapp' },
+                      // WhatsApp only appears once the church has activated it in
+                      // Settings; without a config row there is nothing to send with.
+                      ...(whatsappEnabled ? [{ id: 'WHATSAPP', icon: '💬', label: t('whatsapp'), color: '#25d366', feature: 'messaging_whatsapp' }] : []),
                       { id: 'EMAIL', icon: '📧', label: 'Email', color: '#6366f1', feature: 'messaging_email' }
                     ].map(ch => {
                       const locked = !canAccessFeature(plan, ch.feature);
@@ -7740,7 +7879,8 @@ function MessagingPage({ plan, onNavigate }) {
                   </div>
                 </div>
 
-                {/* Audience Builder */}
+                {/* Audience Builder (SMS/Email only) */}
+                {message.type !== 'WHATSAPP' && (<>
                 <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Audience</label>
@@ -7925,7 +8065,96 @@ function MessagingPage({ plan, onNavigate }) {
                   )}
                 </div>
 
-                {/* Message Composer */}
+                </>)}
+
+                {/* ══════════ WHATSAPP COMPOSER ══════════ */}
+                {/* WhatsApp uses its own recipient model (members with a phone,
+                    or a group expanded server-side), so it replaces the generic
+                    audience builder rather than layering onto it. */}
+                {message.type === 'WHATSAPP' && (
+                  <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('selectRecipients')}</label>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                        {t('messagesToday')}: <strong>{whatsappConfig?.messages_sent_today || 0}</strong> / {whatsappConfig?.daily_limit || 0}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                      <select value={waGroupId} onChange={(e) => { setWaGroupId(e.target.value); setWaSelectedIds([]); }} style={{ flex: '1 1 200px', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}>
+                        <option value="">👥 {t('membersWithPhone')} ({waMembers.length})</option>
+                        {groups.map(g => <option key={g.id} value={g.id}>👪 {g.name}</option>)}
+                      </select>
+                      {!waGroupId && waMembers.length > 0 && (
+                        <button type="button" onClick={toggleWaSelectAll} style={{ flexShrink: 0, padding: '0 16px', minHeight: '44px', border: '1px solid #25d366', borderRadius: '10px', backgroundColor: waAllSelected ? '#25d36618' : 'white', color: '#16a34a', fontWeight: '600', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          {waAllSelected ? '✖️' : '✔️'} {t('selectAll')}
+                        </button>
+                      )}
+                    </div>
+
+                    {waGroupId ? (
+                      <div style={{ padding: '14px 16px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', marginBottom: '16px', fontSize: '13px', color: '#1e40af' }}>
+                        ℹ️ Every member of this group with a phone number will receive the message. The list is resolved when you send.
+                      </div>
+                    ) : (
+                      <div style={{ maxHeight: '280px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '10px', marginBottom: '16px' }}>
+                        {waMembers.map((m, i) => (
+                          <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderBottom: i < waMembers.length - 1 ? '1px solid #f3f4f6' : 'none', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={waSelectedIds.includes(m.id)} onChange={() => toggleWaMember(m.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                            <span style={{ flex: 1, fontSize: '14px', fontWeight: '500' }}>{m.name}</span>
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>{m.phone}</span>
+                          </label>
+                        ))}
+                        {waMembers.length === 0 && (
+                          <p style={{ margin: 0, padding: '32px', textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>{t('noPhoneNumber')}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Message */}
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message</label>
+                    <textarea
+                      value={message.body}
+                      onChange={(e) => setMessage({ ...message, body: e.target.value.slice(0, WHATSAPP_MAX_CHARS) })}
+                      maxLength={WHATSAPP_MAX_CHARS}
+                      placeholder="Type your WhatsApp message here..."
+                      style={{ width: '100%', padding: '14px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', minHeight: '140px', resize: 'vertical', lineHeight: '1.5', boxSizing: 'border-box' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', fontSize: '12px' }}>
+                      <span style={{ color: '#9ca3af' }}>{message.body.length} / {WHATSAPP_MAX_CHARS}</span>
+                      <span style={{ color: waCharsRemaining < 200 ? '#f59e0b' : '#9ca3af' }}>{waCharsRemaining} {t('charLimit')}</span>
+                    </div>
+
+                    {/* Result of the last send */}
+                    {waResult && (
+                      <div style={{ marginTop: '14px', padding: '12px 16px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', backgroundColor: waResult.failed > 0 ? '#fef3c7' : '#dcfce7', color: waResult.failed > 0 ? '#92400e' : '#166534' }}>
+                        {t('messagesSentResult').replace('{sent}', waResult.sent).replace('{failed}', waResult.failed)}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
+                      <button
+                        onClick={handleSendWhatsapp}
+                        disabled={sending || !message.body.trim() || (!waGroupId && waSelectedIds.length === 0)}
+                        style={{
+                          flex: 1, padding: '14px 24px', border: 'none', borderRadius: '10px',
+                          backgroundColor: (sending || !message.body.trim() || (!waGroupId && waSelectedIds.length === 0)) ? '#e5e7eb' : '#25d366',
+                          color: (sending || !message.body.trim() || (!waGroupId && waSelectedIds.length === 0)) ? '#9ca3af' : 'white',
+                          fontSize: '15px', fontWeight: '600',
+                          cursor: (sending || !message.body.trim() || (!waGroupId && waSelectedIds.length === 0)) ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s'
+                        }}
+                      >
+                        {sending
+                          ? `⏳ ${t('sendingMessages')}`
+                          : `📱 ${t('sendViaWhatsApp')}${waRecipientCount !== null ? ` (${waRecipientCount})` : ''}`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Message Composer (SMS/Email only) */}
+                {message.type !== 'WHATSAPP' && (
                 <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message</label>
 
@@ -7969,6 +8198,7 @@ function MessagingPage({ plan, onNavigate }) {
                     </button>
                   </div>
                 </div>
+                )}
               </div>
 
               {/* ── RIGHT SIDEBAR ── */}
@@ -10783,7 +11013,7 @@ const BASE_ROLE_TO_NAME = { ADMIN: 'Admin', STAFF: 'Staff', VOLUNTEER: 'Voluntee
 // then active (current team), then expired. Revoked rows are filtered out entirely.
 const ASSIGNMENT_STATUS_PRIORITY = { pending: 0, active: 1, expired: 2 };
 
-function SettingsPage() {
+function SettingsPage({ plan, onNavigate }) {
   const { user, logout } = useAuth();
   const toast = useToast();
   const CHURCH_ID = user?.church_id;
@@ -10829,6 +11059,15 @@ function SettingsPage() {
 
   // expense_categories writes are admin-only at the RLS layer.
   const isChurchAdmin = user?.role === 'ADMIN' || !!user?.is_super_admin;
+
+  // WhatsApp runs on the platform's central Business account, so the church
+  // only stores its own number plus the on/off switch and its daily counters.
+  const [whatsappConfig, setWhatsappConfig] = useState(null);
+  const [whatsappForm, setWhatsappForm] = useState({ phone_number: '+237', is_active: false });
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+  const [testPhone, setTestPhone] = useState('');
+  const [testingWhatsapp, setTestingWhatsapp] = useState(false);
+  const whatsappAvailable = canAccessFeature(plan, 'messaging_whatsapp');
 
   // Forms
   const [locationForm, setLocationForm] = useState({ name: '', address: '', city: '', phone: '', pastor_name: '', capacity: '', is_main_campus: false, is_active: true });
@@ -10877,7 +11116,7 @@ function SettingsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [churchData, locationsData, rolesData, assignmentsData, logsData, automationData, templatesData, expCategoriesData, expenseRows] = await Promise.all([
+      const [churchData, locationsData, rolesData, assignmentsData, logsData, automationData, templatesData, expCategoriesData, expenseRows, whatsappData] = await Promise.all([
         supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
         supabaseQuery('church_locations', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('user_roles', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
@@ -10886,7 +11125,8 @@ function SettingsPage() {
         supabaseQuery('automation_settings', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('message_templates', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
         supabaseQuery('expense_categories', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], order: 'name.asc' }),
-        supabaseQuery('expenses', { select: 'category', filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
+        supabaseQuery('expenses', { select: 'category', filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] }),
+        supabaseQuery('whatsapp_config', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }], single: true })
       ]);
       setChurch(churchData);
       setLocations(locationsData || []);
@@ -10897,6 +11137,11 @@ function SettingsPage() {
       setMessageTemplates(templatesData || []);
       setExpenseCategories(expCategoriesData || []);
       setUsedExpenseCategoryNames((expenseRows || []).map(e => (e.category || '').toLowerCase()).filter(Boolean));
+      setWhatsappConfig(whatsappData || null);
+      setWhatsappForm({
+        phone_number: whatsappData?.phone_number || '+237',
+        is_active: !!whatsappData?.is_active
+      });
     } catch (error) {
       console.error('Settings fetch error:', error);
     } finally {
@@ -11290,6 +11535,73 @@ function SettingsPage() {
     setSaving(false);
   };
 
+  // ============ WHATSAPP HANDLERS ============
+  // daily_limit is always derived from the subscription plan, never entered by
+  // the church, so an upgrade or downgrade is reflected on the next save.
+  const handleSaveWhatsapp = async () => {
+    const phone = (whatsappForm.phone_number || '').trim();
+    const hasDigits = /\d/.test(phone);
+
+    if (whatsappForm.is_active && !whatsappAvailable) { toast.warning(t('whatsappNotAvailable')); return; }
+    if (whatsappForm.is_active && !hasDigits) { toast.warning(t('churchWhatsAppNumber')); return; }
+
+    setSavingWhatsapp(true);
+    try {
+      const payload = {
+        phone_number: hasDigits ? phone : null,
+        is_active: whatsappForm.is_active,
+        daily_limit: getPlanLimits(plan).maxWhatsapp,
+        // Marks the row as using the platform's central Business account
+        // rather than per-church API credentials.
+        provider: 'platform'
+      };
+      if (whatsappConfig) {
+        await supabaseUpdate('whatsapp_config', whatsappConfig.id, payload);
+      } else {
+        await supabaseInsert('whatsapp_config', {
+          ...payload,
+          messages_sent_today: 0,
+          last_reset_date: new Date().toISOString().slice(0, 10)
+        });
+      }
+      logActivity({
+        action: whatsappForm.is_active ? 'whatsapp_activated' : 'whatsapp_deactivated',
+        entity_type: 'whatsapp_config',
+        entity_id: whatsappConfig?.id || null,
+        entity_name: phone || null,
+        details: { daily_limit: payload.daily_limit }
+      });
+      toast.success(t('savedSuccessfully'));
+      fetchData();
+    } catch (error) { toast.error(error.message); }
+    setSavingWhatsapp(false);
+  };
+
+  const handleTestWhatsapp = async () => {
+    const phone = (testPhone || whatsappForm.phone_number || '').trim();
+    if (!/\d/.test(phone)) { toast.warning(t('churchWhatsAppNumber')); return; }
+    setTestingWhatsapp(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/whatsapp/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({ churchId: CHURCH_ID, testPhone: phone })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.success) {
+        toast.success(t('testSuccess'));
+        invalidateCache('whatsapp_config');
+        fetchData();
+      } else {
+        toast.error(`${t('testFailed')}: ${data.error || response.status}`);
+      }
+    } catch (error) {
+      toast.error(`${t('testFailed')}: ${error.message}`);
+    }
+    setTestingWhatsapp(false);
+  };
+
   // ============ EXPENSE CATEGORY HANDLERS ============
   const resetExpCategoryForm = () => { setExpCategoryForm({ name: '', description: '' }); setEditingExpCategory(null); };
 
@@ -11407,6 +11719,7 @@ function SettingsPage() {
     { id: 'billing', label: `💳 ${t('billing')}`, icon: '💳' },
     { id: 'locations', label: `📍 ${t('locations')}`, icon: '📍' },
     ...(isChurchAdmin ? [{ id: 'expenseCategories', label: `🏷️ ${t('expenseCategories')}`, icon: '🏷️' }] : []),
+    ...(isChurchAdmin ? [{ id: 'whatsapp', label: `💬 ${t('whatsapp')}`, icon: '💬' }] : []),
     { id: 'automation', label: `🤖 ${t('automation')}`, icon: '🤖' },
     { id: 'roles', label: `👥 ${t('userRoles')}`, icon: '👥' },
     { id: 'logs', label: `📜 ${t('activityLogs')}`, icon: '📜' },
@@ -11706,6 +12019,101 @@ function SettingsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* ============ WHATSAPP ============ */}
+          {activeSection === 'whatsapp' && isChurchAdmin && (
+            <div style={{ display: 'grid', gap: '24px' }}>
+
+              {/* Plan gate: WhatsApp unlocks on Growth and above. */}
+              {!whatsappAvailable && (
+                <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '16px', padding: '24px' }}>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600', color: '#92400e' }}>🔒 {t('whatsappSettings')}</h3>
+                  <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#92400e' }}>{t('whatsappNotAvailable')}</p>
+                  <Button onClick={() => setActiveSection('billing')}>⬆️ {t('upgradeToUnlockWhatsApp')}</Button>
+                </div>
+              )}
+
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>💬 {t('whatsappSettings')}</h3>
+                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>
+                  {/* Reassure admins there is no Meta developer setup to do. */}
+                  Messages are sent through ChurchSmart&apos;s WhatsApp Business account. No API tokens or Meta developer account needed — just add your number.
+                </p>
+
+                {/* Status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', padding: '14px 16px', borderRadius: '12px', marginBottom: '20px', backgroundColor: whatsappConfig?.is_active ? '#dcfce7' : '#f3f4f6' }}>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: whatsappConfig?.is_active ? '#166534' : '#6b7280' }}>
+                    {whatsappConfig?.is_active ? `${t('whatsappActive')} ✅` : t('whatsappInactive')}
+                  </span>
+                  {whatsappConfig?.is_active && (
+                    <span style={{ fontSize: '13px', color: '#166534' }}>
+                      · {t('messagesToday')}: <strong>{whatsappConfig.messages_sent_today || 0}</strong> / {whatsappConfig.daily_limit || 0}
+                    </span>
+                  )}
+                </div>
+
+                {/* Church name, straight from the profile — read-only here. */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>{t('churchName')}</label>
+                  <input type="text" value={church?.name || ''} readOnly style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px', backgroundColor: '#f9fafb', color: '#6b7280' }} />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                    {t('churchWhatsAppNumber')} {whatsappForm.is_active && <span style={{ color: '#ef4444' }}>*</span>}
+                  </label>
+                  <input
+                    type="tel"
+                    value={whatsappForm.phone_number}
+                    onChange={(e) => setWhatsappForm({ ...whatsappForm, phone_number: e.target.value })}
+                    placeholder="+237 6XX XXX XXX"
+                    disabled={!whatsappAvailable}
+                    style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
+                  />
+                </div>
+
+                {/* Activation toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', cursor: whatsappAvailable ? 'pointer' : 'not-allowed', opacity: whatsappAvailable ? 1 : 0.5 }}>
+                  <input
+                    type="checkbox"
+                    checked={whatsappForm.is_active}
+                    disabled={!whatsappAvailable}
+                    onChange={(e) => setWhatsappForm({ ...whatsappForm, is_active: e.target.checked })}
+                    style={{ width: '18px', height: '18px', cursor: 'inherit' }}
+                  />
+                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>{t('activateWhatsApp')}</span>
+                </label>
+
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <Button onClick={handleSaveWhatsapp} disabled={savingWhatsapp || !whatsappAvailable}>
+                    {savingWhatsapp ? '⏳' : `💾 ${t('save')}`}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Test send — only useful once the church is actually active. */}
+              {whatsappAvailable && whatsappConfig?.is_active && (
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🧪 {t('testMessage')}</h3>
+                  <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280' }}>
+                    Sends one confirmation message. It counts toward today&apos;s limit.
+                  </p>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <input
+                      type="tel"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      placeholder={whatsappForm.phone_number || '+237 6XX XXX XXX'}
+                      style={{ flex: '1 1 220px', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
+                    />
+                    <Button variant="secondary" onClick={handleTestWhatsapp} disabled={testingWhatsapp}>
+                      {testingWhatsapp ? '⏳' : `📤 ${t('testMessage')}`}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

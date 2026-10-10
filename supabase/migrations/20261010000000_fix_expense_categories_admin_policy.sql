@@ -1,5 +1,7 @@
 -- Fix: writes to expense_categories were impossible for every user.
 --
+-- NOTE: already applied to the remote project; kept here as the record.
+--
 -- The table shipped with this policy:
 --   "Admins can manage expense categories"
 --   USING (church_id = get_my_church_id() AND is_church_admin_or_above())
