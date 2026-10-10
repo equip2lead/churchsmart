@@ -24,8 +24,8 @@ const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTION_URL || '';
 const WHATSAPP_MAX_CHARS = 4096;
 
 // How long the mobile money checkout waits for a payer to confirm on their
-// handset before giving up and telling them to contact support.
-const MOMO_TIMEOUT_MS = 120000;
+// handset before it stops polling and offers a manual retry.
+const MOMO_TIMEOUT_MS = 180000;
 const MOMO_POLL_MS = 5000;
 
 // Declared at module scope: a clock read inside a component body counts as
@@ -758,8 +758,8 @@ const translations = {
     momo_failed_body: 'The payment did not go through. Please try again.',
     momo_cancelled: 'The payment was cancelled on your phone.',
     momo_try_again: 'Try again',
-    momo_timeout_title: 'Payment timed out',
-    momo_timeout_body: 'We stopped waiting after 2 minutes. If money was deducted, contact support and we will sort it out.',
+    momo_timeout_title: 'Payment not confirmed yet',
+    momo_timeout_body: 'We stopped checking after 3 minutes. If you have already approved it on your phone, retry to check again. If money was deducted, contact support.',
     momo_transactions: 'Mobile money transactions',
     momo_all_countries: 'All countries',
     momo_revenue_by_country: 'Revenue by country',
@@ -807,6 +807,17 @@ const translations = {
     sa_donations_note: 'Donation totals are summed across church currencies.',
     sa_owners_hint: 'Set in code, not here. Add teammates under Team instead.',
     sa_you: 'You',
+
+    // Billing checkout
+    monthly: 'Monthly',
+    sa_year: 'yr',
+    plan_current: 'Current plan',
+    plan_upgrade_to: 'Upgrade to',
+    plan_contact_support: 'Contact support to downgrade',
+    plan_downgrade_hint: 'Downgrades are handled by support so your data is not lost.',
+    pay_with_card_hint: 'Visa, Mastercard \u2014 secure checkout',
+    pay_with_momo_hint: 'MTN, Orange, M-Pesa, Airtel and more',
+    momo_check_again: 'Check again',
     setupGuide: 'Setup Guide',
     // ── In-app WhatsApp setup guide ──
     // Step bodies are arrays: t() returns the value as-is, so the walkthrough
@@ -1545,8 +1556,8 @@ const translations = {
     momo_failed_body: "Le paiement n'a pas abouti. Veuillez r\u00e9essayer.",
     momo_cancelled: 'Le paiement a \u00e9t\u00e9 annul\u00e9 sur votre t\u00e9l\u00e9phone.',
     momo_try_again: 'R\u00e9essayer',
-    momo_timeout_title: 'D\u00e9lai de paiement d\u00e9pass\u00e9',
-    momo_timeout_body: "Nous avons arr\u00eat\u00e9 d'attendre apr\u00e8s 2 minutes. Si de l'argent a \u00e9t\u00e9 d\u00e9bit\u00e9, contactez le support.",
+    momo_timeout_title: "Paiement pas encore confirm\u00e9",
+    momo_timeout_body: "Nous avons arr\u00eat\u00e9 de v\u00e9rifier apr\u00e8s 3 minutes. Si vous avez d\u00e9j\u00e0 approuv\u00e9 sur votre t\u00e9l\u00e9phone, r\u00e9essayez. Si de l'argent a \u00e9t\u00e9 d\u00e9bit\u00e9, contactez le support.",
     momo_transactions: 'Transactions mobile money',
     momo_all_countries: 'Tous les pays',
     momo_revenue_by_country: 'Revenus par pays',
@@ -1594,6 +1605,17 @@ const translations = {
     sa_donations_note: 'Les dons sont additionn\u00e9s toutes devises confondues.',
     sa_owners_hint: 'D\u00e9finis dans le code. Ajoutez des coll\u00e8gues via \u00c9quipe.',
     sa_you: 'Vous',
+
+    // Paiement / abonnement
+    monthly: 'Mensuel',
+    sa_year: 'an',
+    plan_current: 'Plan actuel',
+    plan_upgrade_to: 'Passer \u00e0',
+    plan_contact_support: 'Contactez le support pour r\u00e9trograder',
+    plan_downgrade_hint: 'Les r\u00e9trogradations sont g\u00e9r\u00e9es par le support pour ne rien perdre.',
+    pay_with_card_hint: 'Visa, Mastercard \u2014 paiement s\u00e9curis\u00e9',
+    pay_with_momo_hint: 'MTN, Orange, M-Pesa, Airtel et plus',
+    momo_check_again: 'V\u00e9rifier \u00e0 nouveau',
     setupGuide: 'Guide de configuration',
     // ── Guide de configuration WhatsApp dans l'app ──
     whatsapp_setup_guide: 'Guide de configuration WhatsApp',
@@ -12651,8 +12673,6 @@ function BillingSection({ churchId }) {
   const [buyingCredits, setBuyingCredits] = useState(false);
   const [highlightedPlan, setHighlightedPlan] = useState(null);
   const [billingPeriod, setBillingPeriod] = useState('monthly');
-  // Only card is live; mobile money is shown but disabled.
-  const [paymentMethod, setPaymentMethod] = useState('card');
   const [churchPlanRow, setChurchPlanRow] = useState(null);
 
   // Mobile money checkout. `stage` drives the modal: the form, then the
@@ -12775,20 +12795,18 @@ function BillingSection({ churchId }) {
     setLoading(false);
   };
 
-  const handleUpgrade = async (plan) => {
+  // Clicking Upgrade on a plan opens checkout at the payment-method choice.
+  // Nothing about payment is shown until a plan has been picked.
+  const handleUpgrade = (plan) => {
     if (plan.id === 'free') return;
+    setMomoPlan(plan);
+    setMomoStage('method');
+    setMomoError('');
+    setMomoDeposit(null);
+    setMomoForm({ country: 'CMR', phone: '', correspondent: '' });
+  };
 
-    // Mobile money collects a number first, so it opens its own modal rather
-    // than redirecting to a hosted checkout.
-    if (paymentMethod === 'mobile_money') {
-      setMomoPlan(plan);
-      setMomoStage('form');
-      setMomoError('');
-      setMomoDeposit(null);
-      setMomoForm({ country: 'CMR', phone: '', correspondent: '' });
-      return;
-    }
-
+  const startCardCheckout = async (plan) => {
     const priceId = billingPeriod === 'annual' ? plan.stripePriceIdAnnual : plan.stripePriceId;
     // Placeholder ids are rejected here: Stripe would return an opaque error
     // and the admin would have no idea the price was never configured.
@@ -13096,23 +13114,71 @@ function BillingSection({ churchId }) {
       <Modal
         isOpen={!!momoPlan}
         onClose={closeMomo}
-        title={`📱 ${t('pay_with_mobile_money')}`}
+        title={momoStage === 'method'
+          ? `⬆️ ${t('plan_upgrade_to')} ${momoPlan?.name || ''}`
+          : `📱 ${t('pay_with_mobile_money')}`}
         width="440px"
       >
+        {/* Plan summary, shared by the method choice and the momo form. */}
+        {momoPlan && ['method', 'form'].includes(momoStage) && (
+          <div style={{ padding: '12px 16px', borderRadius: '12px', backgroundColor: '#eef2ff', marginBottom: '18px' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#4338ca', fontWeight: '600' }}>
+              {momoPlan.name} · {billingPeriod === 'annual' ? t('billedAnnually') : t('monthly')}
+            </p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '700', color: '#312e81' }}>
+              ${billingPeriod === 'annual' ? momoPlan.annualTotal : momoPlan.price}
+              <span style={{ fontSize: '13px', fontWeight: '500' }}> USD{billingPeriod === 'annual' ? `/${t('sa_year') || 'yr'}` : `/${t('month') || 'mo'}`}</span>
+            </p>
+            {/* Local equivalent only matters once a country is in play. */}
+            {momoStage === 'form' && momoPriced && (
+              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6366f1' }}>
+                ≈ {momoPriced.currency} {Number(momoPriced.amount).toLocaleString()}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── Stage 1 · how do you want to pay ── */}
+        {momoStage === 'method' && momoPlan && (
+          <>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>{t('payment_method')}</label>
+            <div style={{ display: 'grid', gap: '10px', marginBottom: '18px' }}>
+              <button
+                type="button"
+                onClick={() => startCardCheckout(momoPlan)}
+                disabled={upgrading}
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', cursor: upgrading ? 'wait' : 'pointer', textAlign: 'left', border: '1px solid #e5e7eb', backgroundColor: 'white' }}
+              >
+                <span style={{ fontSize: '22px' }}>💳</span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151' }}>{t('pay_with_card')}</span>
+                  <span style={{ display: 'block', fontSize: '12px', color: '#9ca3af' }}>{t('pay_with_card_hint')}</span>
+                </span>
+                <span style={{ fontSize: '14px', color: '#9ca3af' }}>{upgrading ? '⏳' : '→'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMomoStage('form')}
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', border: '1px solid #e5e7eb', backgroundColor: 'white' }}
+              >
+                <span style={{ fontSize: '22px' }}>📱</span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151' }}>{t('pay_with_mobile_money')}</span>
+                  <span style={{ display: 'block', fontSize: '12px', color: '#9ca3af' }}>{t('pay_with_momo_hint')}</span>
+                </span>
+                <span style={{ fontSize: '14px', color: '#9ca3af' }}>→</span>
+              </button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button variant="secondary" onClick={closeMomo}>{t('cancel')}</Button>
+            </div>
+          </>
+        )}
+
+        {/* ── Stage 2 · mobile money details ── */}
         {momoStage === 'form' && momoPlan && (
           <>
-            <div style={{ padding: '12px 16px', borderRadius: '12px', backgroundColor: '#eef2ff', marginBottom: '18px' }}>
-              <p style={{ margin: 0, fontSize: '13px', color: '#4338ca', fontWeight: '600' }}>
-                {momoPlan.name} · {billingPeriod === 'annual' ? t('billedAnnually') : t('billing_cycle')}
-              </p>
-              <p style={{ margin: '4px 0 0 0', fontSize: '20px', fontWeight: '700', color: '#312e81' }}>
-                {momoPriced ? `${momoPriced.currency} ${Number(momoPriced.amount).toLocaleString()}` : '—'}
-              </p>
-              <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#6366f1' }}>
-                ≈ ${billingPeriod === 'annual' ? momoPlan.annualTotal : momoPlan.price} USD
-              </p>
-            </div>
-
             <FormInput
               label={t('momo_country')}
               type="select"
@@ -13147,7 +13213,7 @@ function BillingSection({ churchId }) {
             )}
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <Button variant="secondary" onClick={closeMomo}>{t('cancel')}</Button>
+              <Button variant="secondary" onClick={() => setMomoStage('method')}>{t('back')}</Button>
               <Button onClick={startMomoPayment} disabled={momoBusy || !momoPhoneValid || !momoOperator}>
                 {momoBusy ? '⏳' : `📲 ${t('momo_pay_now')}`}
               </Button>
@@ -13200,37 +13266,21 @@ function BillingSection({ churchId }) {
             <p style={{ fontSize: '44px', margin: '0 0 12px' }}>⌛</p>
             <h4 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: '700', color: '#92400e' }}>{t('momo_timeout_title')}</h4>
             <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#6b7280', lineHeight: '1.6' }}>{t('momo_timeout_body')}</p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Button variant="secondary" onClick={closeMomo}>{t('momo_close')}</Button>
-              <Button onClick={() => { setMomoStage('form'); setMomoError(''); }}>{t('momo_try_again')}</Button>
+              {/* Re-checks the SAME deposit rather than creating another one,
+                  so a payment already approved on the handset is not charged
+                  twice. */}
+              {momoDeposit?.depositId && (
+                <Button onClick={() => { setMomoStage('waiting'); beginPolling(momoDeposit.depositId, momoDeadline()); }}>
+                  {t('momo_check_again')}
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => { setMomoStage('form'); setMomoError(''); setMomoDeposit(null); }}>{t('momo_try_again')}</Button>
             </div>
           </div>
         )}
       </Modal>
-
-      {/* ── Checkout payment method ── */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
-        <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>💳 {t('payment_method')}</h3>
-        <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>{t('payment_method_hint')}</p>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => setPaymentMethod('card')}
-            style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', border: paymentMethod === 'card' ? '2px solid #6366f1' : '1px solid #e5e7eb', backgroundColor: paymentMethod === 'card' ? '#eef2ff' : 'white' }}
-          >
-            <span style={{ fontSize: '20px' }}>💳</span>
-            <span style={{ fontSize: '14px', fontWeight: '600', color: paymentMethod === 'card' ? '#4338ca' : '#374151' }}>{t('pay_with_card')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPaymentMethod('mobile_money')}
-            style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', border: paymentMethod === 'mobile_money' ? '2px solid #6366f1' : '1px solid #e5e7eb', backgroundColor: paymentMethod === 'mobile_money' ? '#eef2ff' : 'white' }}
-          >
-            <span style={{ fontSize: '20px' }}>📱</span>
-            <span style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: paymentMethod === 'mobile_money' ? '#4338ca' : '#374151' }}>{t('pay_with_mobile_money')}</span>
-          </button>
-        </div>
-      </div>
 
       {/* WhatsApp Credits Meter */}
       {planLimits.whatsapp > 0 && credits && (
@@ -13364,19 +13414,26 @@ function BillingSection({ churchId }) {
                 </div>
                 {isCurrent ? (
                   <button disabled style={{ width: '100%', padding: '10px', border: '2px solid #6366f1', borderRadius: '10px', backgroundColor: '#eef2ff', color: '#6366f1', fontWeight: '600', fontSize: '14px', cursor: 'default' }}>
-                    {plan.id === 'free' ? (trialExpired ? '⏰ Trial Ended' : `✅ Current (${trialDaysLeft}d left)`) : '✅ Current Plan'}
+                    {plan.id === 'free' && trialExpired
+                      ? `⏰ ${t('trialEnded')}`
+                      : plan.id === 'free' && trialDaysLeft > 0
+                        ? `✅ ${t('plan_current')} · ${trialDaysLeft}d`
+                        : `✅ ${t('plan_current')}`}
                   </button>
                 ) : isDowngrade ? (
-                  <button disabled style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: '#f9fafb', color: '#9ca3af', fontSize: '14px', cursor: 'default' }}>
-                    Contact to Downgrade
+                  /* Downgrades are not self-serve: Stripe handles them through
+                     the billing portal, so this points at support instead of
+                     pretending to start one. */
+                  <button disabled title={t('plan_downgrade_hint')} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: '#f9fafb', color: '#9ca3af', fontSize: '14px', cursor: 'not-allowed' }}>
+                    {t('plan_contact_support')}
                   </button>
                 ) : (
                   <button
                     onClick={() => handleUpgrade(plan)}
                     disabled={upgrading}
-                    style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', backgroundColor: plan.popular ? '#4f46e5' : '#111827', color: 'white', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+                    style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '10px', backgroundColor: plan.popular ? '#4f46e5' : '#111827', color: 'white', fontWeight: '600', fontSize: '14px', cursor: upgrading ? 'wait' : 'pointer' }}
                   >
-                    {upgrading ? '⏳ Loading...' : plan.price === 0 ? 'Start Free' : `Upgrade to ${plan.name}`}
+                    {upgrading ? '⏳' : `${t('plan_upgrade_to')} ${plan.name}`}
                   </button>
                 )}
               </div>
