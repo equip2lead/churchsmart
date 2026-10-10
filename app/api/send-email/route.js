@@ -7,6 +7,7 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { sendChurchBroadcast, isValidEmailAddress } from '../../../lib/notifications';
+import { canAccess, getEmailLimit, getRequiredPlan } from '../../../lib/featureGating';
 
 // Keeps one blast inside the serverless function's time budget, and is well
 // above any realistic congregation size for a single send.
@@ -109,9 +110,64 @@ export async function POST(request) {
 
     const { data: church } = await supabase
       .from('churches')
-      .select('name')
+      .select('name, plan')
       .eq('id', churchId)
       .maybeSingle();
+
+    // ── Plan gate ──
+    // Email is a Starter+ feature, and each tier has a monthly allowance.
+    if (!canAccess(church, 'messaging_email')) {
+      return Response.json(
+        {
+          error: `Email messaging is available on the ${getRequiredPlan('messaging_email')} plan and above`,
+          code: 'PLAN_UPGRADE_REQUIRED',
+          requiredPlan: getRequiredPlan('messaging_email')
+        },
+        { status: 403 }
+      );
+    }
+
+    const monthlyLimit = getEmailLimit(church);
+    if (Number.isFinite(monthlyLimit)) {
+      // Usage is the recipients already emailed this calendar month. `messages`
+      // records one row per send with recipient_count set to what the provider
+      // accepted, so summing that column is the real delivered count.
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+
+      const { data: priorSends, error: usageError } = await supabase
+        .from('messages')
+        .select('recipient_count')
+        .eq('church_id', churchId)
+        .eq('message_type', 'EMAIL')
+        .gte('sent_at', monthStart.toISOString());
+
+      if (usageError) {
+        console.error(`${tag} usage_lookup_failed`, usageError.message);
+        return Response.json({ error: 'Failed to check your monthly email usage', code: 'USAGE_LOOKUP_FAILED' }, { status: 500 });
+      }
+
+      const usedThisMonth = (priorSends || []).reduce((sum, r) => sum + (r.recipient_count || 0), 0);
+      const remaining = Math.max(0, monthlyLimit - usedThisMonth);
+
+      // Checked before sending, as a whole: a partial blast would be harder to
+      // reason about than being told to narrow the selection.
+      if (valid.length > remaining) {
+        return Response.json(
+          {
+            error: remaining === 0
+              ? `You have used all ${monthlyLimit} emails included in your plan this month`
+              : `This send needs ${valid.length} emails but only ${remaining} of your monthly ${monthlyLimit} remain`,
+            code: 'EMAIL_LIMIT_REACHED',
+            limit: monthlyLimit,
+            used: usedThisMonth,
+            remaining
+          },
+          { status: 429 }
+        );
+      }
+    }
 
     const result = await sendChurchBroadcast({
       recipients: valid,

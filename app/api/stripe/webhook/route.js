@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { STRIPE_PRICE_IDS } from '../../../../lib/featureGating';
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -20,12 +21,25 @@ const PLAN_WHATSAPP_ALLOWANCE = {
   pro: 500
 };
 
-// Stripe Price ID → Plan ID mapping
-const PRICE_TO_PLAN = {
-  [process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER]: 'starter',
-  [process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH]: 'growth',
-  [process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO]: 'pro'
-};
+// Stripe Price ID → Plan ID mapping.
+// Built from the shared price table (monthly + annual per tier) plus the
+// original single-price env vars, so existing subscriptions keep resolving.
+// Placeholder ids are excluded: leaving them in would let an unrelated price
+// resolve to a paid plan once real ids are configured.
+const PRICE_TO_PLAN = (() => {
+  const map = {};
+  const add = (priceId, plan) => {
+    if (priceId && !String(priceId).includes('_placeholder')) map[priceId] = plan;
+  };
+  for (const plan of ['starter', 'growth', 'pro']) {
+    add(STRIPE_PRICE_IDS[plan]?.monthly, plan);
+    add(STRIPE_PRICE_IDS[plan]?.annual, plan);
+  }
+  add(process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER, 'starter');
+  add(process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH, 'growth');
+  add(process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO, 'pro');
+  return map;
+})();
 
 export async function POST(request) {
   const stripe = getStripe();
@@ -117,7 +131,9 @@ async function handleCheckoutCompleted(supabase, session) {
   // Update church plan
   await supabase
     .from('churches')
-    .update({ subscription_plan: planId, stripe_customer_id: customerId })
+    // plan is what feature gating reads; subscription_plan is kept in step
+    // for the legacy readers that still reference it.
+    .update({ plan: planId, subscription_plan: planId, stripe_customer_id: customerId })
     .eq('id', churchId);
 
   // Initialize/update message credits for new plan
@@ -154,7 +170,7 @@ async function handleSubscriptionUpdated(supabase, subscription) {
   // Update church plan
   await supabase
     .from('churches')
-    .update({ subscription_plan: planId })
+    .update({ plan: planId, subscription_plan: planId })
     .eq('id', churchId);
 
   // Update credits if plan changed
@@ -180,7 +196,7 @@ async function handleSubscriptionDeleted(supabase, subscription) {
 
   await supabase
     .from('churches')
-    .update({ subscription_plan: 'free' })
+    .update({ plan: 'free', subscription_plan: 'free' })
     .eq('id', churchId);
 
   // Zero out monthly allowance (keep bonus_credits until used)

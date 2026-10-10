@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { canAccessFeature, getPlanLimits } from '../lib/featureGating';
+import { canAccessFeature, canAccess, getPlanLimits, getEmailLimit, getRequiredPlan, getPlanOrder, comparePlans, PLAN_PRICING, STRIPE_PRICE_IDS, isPlaceholderPriceId } from '../lib/featureGating';
 import UpgradePrompt from '../components/UpgradePrompt';
 import Papa from 'papaparse';
 
@@ -600,6 +600,32 @@ const translations = {
     last_12_services: 'Last 12 services',
     last_6_months: 'Last 6 months',
     not_enough_data: 'Not enough data yet',
+    // Pricing tiers & feature gating
+    upgrade_to_unlock: 'Upgrade to {plan} to unlock',
+    plan_members_50: 'Up to 50 members',
+    plan_members_200: 'Up to 200 members',
+    plan_members_unlimited: 'Unlimited members',
+    plan_giving_basic: 'Giving \u2014 basic',
+    plan_giving_reports: 'Giving \u2014 full reports',
+    plan_giving_analytics: 'Giving \u2014 full + analytics',
+    plan_giving_export: 'Giving \u2014 full + analytics + export',
+    plan_email_none: 'No email messaging',
+    plan_email_100: '100 emails / month',
+    plan_email_500: '500 emails / month',
+    plan_email_unlimited: 'Unlimited email',
+    plan_custom_reports: 'Custom reports',
+    plan_priority_support: 'Priority support',
+    billing_cycle: 'Billing cycle',
+    next_payment: 'Next payment',
+    payment_method_on_file: 'Payment method',
+    cancels_at_period_end: 'Cancels at period end',
+    payment_method: 'Payment method',
+    payment_method_hint: 'Choose how you want to pay when you upgrade.',
+    pay_with_card: 'Pay with Card',
+    pay_with_mobile_money: 'Pay with Mobile Money',
+    mobile_money_coming_soon: 'Mobile Money payments are coming soon.',
+    stripe_not_configured: 'Card payments are not configured yet. Contact support to upgrade.',
+    events: 'Events & calendar',
     setupGuide: 'Setup Guide',
     // ── In-app WhatsApp setup guide ──
     // Step bodies are arrays: t() returns the value as-is, so the walkthrough
@@ -1213,6 +1239,32 @@ const translations = {
     last_12_services: 'Les 12 derniers cultes',
     last_6_months: 'Les 6 derniers mois',
     not_enough_data: 'Pas encore assez de donn\u00e9es',
+    // Offres et restrictions par plan
+    upgrade_to_unlock: 'Passez au plan {plan} pour d\u00e9bloquer',
+    plan_members_50: "Jusqu'\u00e0 50 membres",
+    plan_members_200: "Jusqu'\u00e0 200 membres",
+    plan_members_unlimited: 'Membres illimit\u00e9s',
+    plan_giving_basic: 'Dons \u2014 basique',
+    plan_giving_reports: 'Dons \u2014 rapports complets',
+    plan_giving_analytics: 'Dons \u2014 complets + analyses',
+    plan_giving_export: 'Dons \u2014 complets + analyses + export',
+    plan_email_none: 'Pas de messagerie email',
+    plan_email_100: '100 emails / mois',
+    plan_email_500: '500 emails / mois',
+    plan_email_unlimited: 'Emails illimit\u00e9s',
+    plan_custom_reports: 'Rapports personnalis\u00e9s',
+    plan_priority_support: 'Support prioritaire',
+    billing_cycle: 'P\u00e9riode de facturation',
+    next_payment: 'Prochain paiement',
+    payment_method_on_file: 'Moyen de paiement',
+    cancels_at_period_end: 'Annul\u00e9 \u00e0 la fin de la p\u00e9riode',
+    payment_method: 'Moyen de paiement',
+    payment_method_hint: 'Choisissez votre moyen de paiement pour la mise \u00e0 niveau.',
+    pay_with_card: 'Payer par carte',
+    pay_with_mobile_money: 'Payer par Mobile Money',
+    mobile_money_coming_soon: 'Les paiements Mobile Money arrivent bient\u00f4t.',
+    stripe_not_configured: "Les paiements par carte ne sont pas encore configur\u00e9s. Contactez le support.",
+    events: '\u00c9v\u00e9nements et calendrier',
     setupGuide: 'Guide de configuration',
     // ── Guide de configuration WhatsApp dans l'app ──
     whatsapp_setup_guide: 'Guide de configuration WhatsApp',
@@ -3573,11 +3625,25 @@ function Dashboard() {
           setTrialExpiredBanner(created < new Date());
         }
       }
-      setChurchPlan((sub?.plan || 'free').toLowerCase());
+      // churches.plan is the single source of truth, backfilled from the
+      // legacy columns and kept current by the Stripe webhook. The
+      // subscriptions row is still read above for billing-cycle display.
+      setChurchPlan((ch?.plan || 'free').toLowerCase());
     };
     fetchBranding();
   }, [CHURCH_ID]);
   const { hasAccess } = usePermissions();
+
+  // Features a sidebar item needs. Absent = available on every plan.
+  // The item stays clickable when locked: the page itself renders
+  // UpgradePrompt, which names the required plan and links to billing.
+  const MENU_FEATURE = {
+    visitors: 'visitors',
+    groups: 'groups',
+    volunteers: 'volunteers',
+    messaging: 'messaging_email',
+    reports: 'reports_basic'
+  };
 
   // Map sidebar items to role access page keys (null = always visible)
   const allMenuItems = [
@@ -3599,7 +3665,15 @@ function Dashboard() {
     ...((user?.role === 'ADMIN' || user?.is_super_admin) ? [{ id: 'whatsappLog', label: t('whatsappLog'), icon: '💬', page: 'settings' }] : []),
     ...(user?.is_super_admin ? [{ id: 'superadmin', label: '🛡️ Super Admin', icon: '🛡️', page: null }] : []),
   ];
-  const menuItems = allMenuItems.filter(item => hasAccess(item.page));
+  const menuItems = allMenuItems
+    .filter(item => hasAccess(item.page))
+    .map(item => {
+      const feature = MENU_FEATURE[item.id];
+      const locked = !!feature && !canAccessFeature(churchPlan, feature);
+      return locked
+        ? { ...item, locked: true, lockedHint: `${t('upgrade_to_unlock').replace('{plan}', getRequiredPlan(feature))}` }
+        : item;
+    });
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -3626,10 +3700,13 @@ function Dashboard() {
         {/* Menu Items */}
         <nav style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
           {menuItems.map(item => (
-            <button key={item.id} data-tab={item.id} onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 768) setSidebarOpen(false); }}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: sidebarOpen ? '10px 16px' : '10px', margin: '2px 0', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', backgroundColor: activeTab === item.id ? '#eef2ff' : 'transparent', color: activeTab === item.id ? '#6366f1' : '#4b5563', fontWeight: activeTab === item.id ? '600' : '400', justifyContent: sidebarOpen ? 'flex-start' : 'center', transition: 'all 0.2s' }}>
+            <button key={item.id} data-tab={item.id} title={item.locked ? item.lockedHint : undefined} onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: sidebarOpen ? '10px 16px' : '10px', margin: '2px 0', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', backgroundColor: activeTab === item.id ? '#eef2ff' : 'transparent', color: activeTab === item.id ? '#6366f1' : (item.locked ? '#9ca3af' : '#4b5563'), fontWeight: activeTab === item.id ? '600' : '400', justifyContent: sidebarOpen ? 'flex-start' : 'center', transition: 'all 0.2s' }}>
               <span style={{ fontSize: '18px' }}>{item.icon}</span>
-              {sidebarOpen && item.label}
+              {sidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>}
+              {/* Locked by plan. The item stays clickable; the page shows the
+                  upgrade prompt naming the plan that unlocks it. */}
+              {item.locked && <span style={{ fontSize: '12px', opacity: 0.75 }} aria-label={item.lockedHint}>🔒</span>}
             </button>
           ))}
         </nav>
@@ -3684,7 +3761,7 @@ function Dashboard() {
           )}
           {activeTab === 'dashboard' && (CHURCH_ID ? <DashboardPage onNavigate={setActiveTab} /> : <DashboardWelcomeCard userName={user?.name} onOpenSetup={openChurchSetup} />)}
           {activeTab === 'members' && (CHURCH_ID ? <PermissionGate permission="members" fallback={<AccessDenied onNavigate={setActiveTab} />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="members" onOpenSetup={openChurchSetup} />)}
-          {activeTab === 'visitors' && (CHURCH_ID ? <PermissionGate permission="visitors" fallback={<AccessDenied onNavigate={setActiveTab} />}><VisitorsPage /></PermissionGate> : <ChurchSetupRequired pageKey="visitors" onOpenSetup={openChurchSetup} />)}
+          {activeTab === 'visitors' && (CHURCH_ID ? (canAccessFeature(churchPlan, 'visitors') ? <PermissionGate permission="visitors" fallback={<AccessDenied onNavigate={setActiveTab} />}><VisitorsPage /></PermissionGate> : <UpgradePrompt feature="visitors" featureLabel={t('visitors')} onNavigate={setActiveTab} />) : <ChurchSetupRequired pageKey="visitors" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'attendance' && (CHURCH_ID ? <PermissionGate permission="attendance" fallback={<AccessDenied onNavigate={setActiveTab} />}><AttendancePage /></PermissionGate> : <ChurchSetupRequired pageKey="attendance" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'calendar' && (CHURCH_ID ? <CalendarPage /> : <ChurchSetupRequired pageKey="calendar" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'giving' && (CHURCH_ID ? <PermissionGate permission="giving" fallback={<AccessDenied onNavigate={setActiveTab} />}><GivingPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="giving" onOpenSetup={openChurchSetup} />)}
@@ -11266,15 +11343,23 @@ function SuperAdminPage() {
 // ==========================================
 // PLAN LIMITS & FEATURE GATING
 // ==========================================
-const PLAN_LIMITS = {
-  free:    { members: 50,       admins: 1,        locations: 1,        email: false, whatsapp: 0,   sms: false,           reports: 'basic',    import_export: false, auto_birthday: false, multi_location: false },
-  starter: { members: 200,      admins: 2,        locations: 1,        email: true,  whatsapp: 0,   sms: false,           reports: 'basic',    import_export: true,  auto_birthday: false, multi_location: false },
-  growth:  { members: 1000,     admins: 5,        locations: 3,        email: true,  whatsapp: 100, sms: false,           reports: 'advanced', import_export: true,  auto_birthday: true,  multi_location: true  },
-  pro:     { members: Infinity, admins: Infinity,  locations: Infinity, email: true,  whatsapp: 500, sms: 'contact_sales', reports: 'advanced', import_export: true,  auto_birthday: true,  multi_location: true  }
-};
-
+// Derived from lib/featureGating rather than a second hand-maintained table:
+// the previous local copy had drifted (it still capped Growth at 1,000 members
+// after the tier became unlimited).
 function getBillingPlanLimits(planId) {
-  return PLAN_LIMITS[planId] || PLAN_LIMITS.free;
+  const limits = getPlanLimits(planId);
+  return {
+    members: limits.maxMembers,
+    admins: limits.maxAdmins,
+    locations: limits.maxLocations,
+    whatsapp: limits.maxWhatsapp,
+    email: limits.maxEmailsPerMonth,
+    sms: canAccessFeature(planId, 'sms'),
+    reports: canAccessFeature(planId, 'reports_advanced') ? 'advanced' : 'basic',
+    import_export: canAccessFeature(planId, 'data_import_export'),
+    auto_birthday: canAccessFeature(planId, 'auto_birthday_messages'),
+    multi_location: canAccessFeature(planId, 'multi_location')
+  };
 }
 
 // ==========================================
@@ -11291,6 +11376,9 @@ function BillingSection({ churchId }) {
   const [buyingCredits, setBuyingCredits] = useState(false);
   const [highlightedPlan, setHighlightedPlan] = useState(null);
   const [billingPeriod, setBillingPeriod] = useState('monthly');
+  // Only card is live; mobile money is shown but disabled.
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [churchPlanRow, setChurchPlanRow] = useState(null);
 
   // Check for pre-selected plan and billing period from landing page
   useEffect(() => {
@@ -11306,60 +11394,53 @@ function BillingSection({ churchId }) {
     }
   }, []);
 
-  const plans = [
-    {
-      id: 'free',
-      name: 'Free',
-      price: 0,
-      interval: 'forever',
-      icon: '○',
-      features: ['Up to 50 members', '1 admin user', '1 location', 'Basic member management', 'Attendance tracking', 'Basic financial tracking', 'Basic reports'],
-      excluded: ['Email notifications', 'WhatsApp messaging', 'SMS messaging', 'Data import/export', 'Auto birthday messages', 'Multi-location', 'Advanced reports']
-    },
-    {
-      id: 'starter',
-      name: 'Starter',
-      price: 9,
-      priceAnnual: 7,
-      annualTotal: 84,
-      annualSavings: 24,
-      interval: 'month',
-      icon: '◆',
-      features: ['Up to 200 members', '2 admin users', '1 location', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Basic reports', 'Unlimited email', 'Data import/export', 'Email support (48hr)'],
-      excluded: ['WhatsApp messaging', 'SMS messaging', 'Auto birthday messages', 'Multi-location', 'Advanced reports'],
-      stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER,
-      stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_ANNUAL
-    },
-    {
-      id: 'growth',
-      name: 'Growth',
-      price: 25,
-      priceAnnual: 20,
-      annualTotal: 240,
-      annualSavings: 60,
-      interval: 'month',
-      icon: '◆◆',
-      popular: true,
-      features: ['Up to 1,000 members', '5 admin users', '3 locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '100 WhatsApp messages/mo', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Email support (24hr)'],
-      excluded: ['SMS messaging (contact sales)'],
-      stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH,
-      stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_GROWTH_ANNUAL
-    },
-    {
-      id: 'pro',
-      name: 'Pro',
-      price: 49,
-      priceAnnual: 39,
-      annualTotal: 468,
-      annualSavings: 120,
-      interval: 'month',
-      icon: '◆◆◆',
-      features: ['Unlimited members', 'Unlimited admin users', 'Unlimited locations', 'Full member management', 'Attendance tracking', 'Full financial tracking', 'Advanced reports', 'Unlimited email', '500 WhatsApp messages/mo', 'SMS (contact sales)', 'Data import/export', 'Auto birthday messages', 'Multi-location support', 'Phone + WhatsApp support'],
-      excluded: [],
-      stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO,
-      stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL
-    }
-  ];
+  // Plan cards are derived from the shared pricing table so the Billing page,
+  // the gating helpers and the Stripe webhook cannot drift apart.
+  // Annual pricing is ten months' worth, i.e. two months free.
+  const PLAN_COPY = {
+    free:    { name: 'Free',    icon: '○', members: t('plan_members_50'),  giving: t('plan_giving_basic'),     email: t('plan_email_none') },
+    starter: { name: 'Starter', icon: '◔', members: t('plan_members_200'), giving: t('plan_giving_reports'),   email: t('plan_email_100') },
+    growth:  { name: 'Growth',  icon: '◕', members: t('plan_members_unlimited'), giving: t('plan_giving_analytics'), email: t('plan_email_500') },
+    pro:     { name: 'Pro',     icon: '●', members: t('plan_members_unlimited'), giving: t('plan_giving_export'),    email: t('plan_email_unlimited') }
+  };
+
+  const plans = getPlanOrder().map(id => {
+    const price = PLAN_PRICING[id];
+    const copy = PLAN_COPY[id];
+    return {
+      id,
+      name: copy.name,
+      icon: copy.icon,
+      // Monthly equivalent when billed annually, for the "/mo" display.
+      price: price.monthlyUsd,
+      priceAnnual: Math.round((price.annualUsd / 12) * 100) / 100,
+      annualTotal: price.annualUsd,
+      monthlyXaf: price.monthlyXaf,
+      annualXaf: price.annualXaf,
+      interval: id === 'free' ? 'forever' : 'month',
+      stripePriceId: STRIPE_PRICE_IDS[id]?.monthly || null,
+      stripePriceIdAnnual: STRIPE_PRICE_IDS[id]?.annual || null,
+      features: [
+        copy.members,
+        t('attendance'),
+        copy.giving,
+        t('events'),
+        copy.email,
+        ...(canAccessFeature(id, 'visitors') ? [t('visitors')] : []),
+        ...(canAccessFeature(id, 'messaging_whatsapp') ? [t('whatsapp')] : []),
+        ...(canAccessFeature(id, 'activity_logs') ? [t('activityLogs')] : []),
+        ...(canAccessFeature(id, 'custom_reports') ? [t('plan_custom_reports')] : []),
+        ...(canAccessFeature(id, 'priority_support') ? [t('plan_priority_support')] : [])
+      ],
+      excluded: [
+        ...(canAccessFeature(id, 'visitors') ? [] : [t('visitors')]),
+        ...(canAccessFeature(id, 'messaging_whatsapp') ? [] : [t('whatsapp')]),
+        ...(canAccessFeature(id, 'activity_logs') ? [] : [t('activityLogs')]),
+        ...(canAccessFeature(id, 'custom_reports') ? [] : [t('plan_custom_reports')]),
+        ...(canAccessFeature(id, 'priority_support') ? [] : [t('plan_priority_support')])
+      ]
+    };
+  });
 
   const creditPacks = [
     { id: 'whatsapp_100', label: '100 WhatsApp Messages', price: 5, credits: 100, stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_WHATSAPP_100 },
@@ -11393,11 +11474,15 @@ function BillingSection({ churchId }) {
   const loadBilling = async () => {
     setLoading(true);
     try {
-      const [sub, hist, cred] = await Promise.all([
+      const [sub, hist, cred, churchRow] = await Promise.all([
         supabaseQuery('subscriptions', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }], single: true }),
         supabaseQuery('payment_history', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }], order: 'created_at.desc', limit: 10 }),
-        supabaseQuery('message_credits', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }], single: true })
+        supabaseQuery('message_credits', { filters: [{ column: 'church_id', operator: 'eq', value: churchId }], single: true }),
+        // churches.plan is the gating source of truth, so the Billing page has
+        // to read it too — a subscriptions row may not exist at all.
+        supabaseQuery('churches', { select: 'id,plan', filters: [{ column: 'id', operator: 'eq', value: churchId }], single: true })
       ]);
+      setChurchPlanRow(churchRow || null);
       setSubscription(sub || { plan: 'free', status: 'active' });
       setPayments(hist || []);
       setCredits(cred || null);
@@ -11408,8 +11493,14 @@ function BillingSection({ churchId }) {
   const handleUpgrade = async (plan) => {
     if (plan.id === 'free') return;
     const priceId = billingPeriod === 'annual' ? plan.stripePriceIdAnnual : plan.stripePriceId;
-    if (!priceId) {
-      toast.warning('Stripe is not configured yet. Contact support to upgrade.');
+    // Placeholder ids are rejected here: Stripe would return an opaque error
+    // and the admin would have no idea the price was never configured.
+    if (isPlaceholderPriceId(priceId)) {
+      toast.warning(t('stripe_not_configured'));
+      return;
+    }
+    if (paymentMethod !== 'card') {
+      toast.info(t('mobile_money_coming_soon'));
       return;
     }
     setUpgrading(true);
@@ -11426,7 +11517,9 @@ function BillingSection({ churchId }) {
       });
       const data = await response.json();
       if (data.url) {
-        window.location.href = data.url;
+        // assign() rather than setting location.href: the latter reads as a
+        // write to an external binding and trips react-hooks/immutability.
+        window.location.assign(data.url);
       } else {
         toast.error(data.error || 'Failed to create checkout session');
       }
@@ -11481,7 +11574,10 @@ function BillingSection({ churchId }) {
     }
   };
 
-  const currentPlan = plans.find(p => p.id === (subscription?.plan || 'free')) || plans[0];
+  // churches.plan wins; the subscriptions row is only a fallback for churches
+  // whose church row has not been read yet.
+  const activePlanId = String(churchPlanRow?.plan || subscription?.plan || 'free').toLowerCase();
+  const currentPlan = plans.find(p => p.id === activePlanId) || plans[0];
   const planLimits = getBillingPlanLimits(currentPlan.id);
   const whatsappUsed = credits?.whatsapp_used_this_month || 0;
   const whatsappTotal = (credits?.monthly_whatsapp_allowance || 0) + (credits?.bonus_credits || 0);
@@ -11570,6 +11666,65 @@ function BillingSection({ churchId }) {
               </p>
             )}
           </div>
+        </div>
+
+        {/* Billing cycle / next payment / method on file. Only meaningful once
+            a paid subscription exists. */}
+        {currentPlan.id !== 'free' && (
+          <div className="cs-dash-stats" style={{ marginTop: '18px', paddingTop: '18px', borderTop: '1px solid #c7d2fe' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6366f1', fontWeight: '600' }}>{t('billing_cycle')}</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600', color: '#312e81' }}>
+                {subscription?.current_period_start && subscription?.current_period_end
+                  ? `${new Date(subscription.current_period_start).toLocaleDateString()} – ${new Date(subscription.current_period_end).toLocaleDateString()}`
+                  : '—'}
+              </p>
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6366f1', fontWeight: '600' }}>{t('next_payment')}</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600', color: '#312e81' }}>
+                {subscription?.cancel_at_period_end
+                  ? t('cancels_at_period_end')
+                  : (subscription?.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString() : '—')}
+              </p>
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6366f1', fontWeight: '600' }}>{t('payment_method_on_file')}</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600', color: '#312e81' }}>
+                {/* Card details live in Stripe; only the provider is known here. */}
+                {subscription?.stripe_customer_id
+                  ? `💳 ${t('pay_with_card')}`
+                  : (subscription?.payment_provider === 'pawapay' ? `📱 ${t('pay_with_mobile_money')}` : '—')}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Checkout payment method ── */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+        <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>💳 {t('payment_method')}</h3>
+        <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>{t('payment_method_hint')}</p>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setPaymentMethod('card')}
+            style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', border: paymentMethod === 'card' ? '2px solid #6366f1' : '1px solid #e5e7eb', backgroundColor: paymentMethod === 'card' ? '#eef2ff' : 'white' }}
+          >
+            <span style={{ fontSize: '20px' }}>💳</span>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: paymentMethod === 'card' ? '#4338ca' : '#374151' }}>{t('pay_with_card')}</span>
+          </button>
+          {/* Disabled until PawaPay is wired up. */}
+          <button
+            type="button"
+            disabled
+            title={t('mobile_money_coming_soon')}
+            style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '12px', cursor: 'not-allowed', textAlign: 'left', border: '1px dashed #e5e7eb', backgroundColor: '#f9fafb', opacity: 0.7 }}
+          >
+            <span style={{ fontSize: '20px' }}>📱</span>
+            <span style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: '#9ca3af' }}>{t('pay_with_mobile_money')}</span>
+            <span style={{ padding: '3px 8px', borderRadius: '9999px', fontSize: '10px', fontWeight: '700', backgroundColor: '#fef3c7', color: '#92400e', whiteSpace: 'nowrap' }}>{t('comingSoon')}</span>
+          </button>
         </div>
       </div>
 
@@ -12692,7 +12847,7 @@ function SettingsPage({ plan, onNavigate }) {
     ...(isChurchAdmin ? [{ id: 'whatsapp', label: `💬 ${t('whatsapp')}`, icon: '💬' }] : []),
     { id: 'automation', label: `🤖 ${t('automation')}`, icon: '🤖' },
     { id: 'roles', label: `👥 ${t('userRoles')}`, icon: '👥' },
-    { id: 'logs', label: `📜 ${t('activityLogs')}`, icon: '📜' },
+    { id: 'logs', label: `${canAccessFeature(plan, 'activity_logs') ? '📜' : '🔒'} ${t('activityLogs')}`, icon: '📜' },
     { id: 'data', label: `📦 ${t('dataExport')}`, icon: '📦' },
     { id: 'help', label: `❓ ${t('helpSupport')}`, icon: '❓' },
     { id: 'account', label: `👤 ${t('account')}`, icon: '👤' },
@@ -13584,7 +13739,10 @@ function SettingsPage({ plan, onNavigate }) {
           )}
 
           {/* ============ ACTIVITY LOGS ============ */}
-          {activeSection === 'logs' && (
+          {activeSection === 'logs' && !canAccessFeature(plan, 'activity_logs') && (
+            <UpgradePrompt feature="activity_logs" featureLabel={t('activityLogs')} onNavigate={onNavigate} />
+          )}
+          {activeSection === 'logs' && canAccessFeature(plan, 'activity_logs') && (
             <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
               <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📜 Activity Logs</h3>
