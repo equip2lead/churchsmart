@@ -5,6 +5,10 @@
 -- equip2lead@gmail.com. Mirrors SUPER_ADMIN_EMAILS in lib/superAdmin.js —
 -- keep the two in step.
 --
+-- SUPERSEDED: the owner list here was reduced to a single address by
+-- 20261010000800_sole_platform_owner.sql. Kept as a record of what was
+-- applied at the time.
+--
 -- NOTE: already applied to the remote project; kept here as the record.
 --
 -- `stable` is retained from the original definition (the brief's version
