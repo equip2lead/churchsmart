@@ -1,4 +1,4 @@
-// Verify the stored PawaPay token against the wallet endpoint.
+// Verify the stored PawaPay token against the active-conf endpoint.
 import { requireSuperAdmin, getPlatformSetting, pawapayBaseUrl } from '../../../../lib/superAdmin';
 
 export async function POST(request) {
@@ -15,10 +15,20 @@ export async function POST(request) {
   const baseUrl = pawapayBaseUrl(mode);
 
   try {
-    const res = await fetch(`${baseUrl}/v1/wallets`, {
+    // Try v2 endpoint first, fall back to v1
+    let res = await fetch(`${baseUrl}/v2/active-conf`, {
       method: 'GET',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
+
+    // If v2 returns 404, try v1 path
+    if (res.status === 404) {
+      res = await fetch(`${baseUrl}/active-conf`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    }
+
     const payload = await res.json().catch(() => null);
 
     if (!res.ok) {
@@ -27,11 +37,14 @@ export async function POST(request) {
         { status: 200 }
       );
     }
+
+    // Count providers/correspondents from the response
+    const providers = payload?.providers || payload?.correspondents || [];
     return Response.json({
       connected: true,
       mode,
       baseUrl,
-      wallets: Array.isArray(payload) ? payload.length : (Array.isArray(payload?.wallets) ? payload.wallets.length : null)
+      providers: Array.isArray(providers) ? providers.length : 0
     });
   } catch (error) {
     return Response.json(
