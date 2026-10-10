@@ -30,6 +30,23 @@ const MOMO_POLL_MS = 5000;
 
 // Declared at module scope: a clock read inside a component body counts as
 // render-time to the React compiler, even from an async handler.
+/** Compact relative time for the platform activity feed. */
+function timeAgoShort(iso) {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return '';
+  const seconds = Math.floor((Date.now() - then) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
 function momoDeadline() {
   return Date.now() + MOMO_TIMEOUT_MS;
 }
@@ -751,6 +768,45 @@ const translations = {
     momo_status_completed: 'Completed',
     momo_status_failed: 'Failed',
     momo_status_cancelled: 'Cancelled',
+
+    // Super admin dashboard
+    platform_admin: 'Platform Admin',
+    sa_vs_prev_30: 'vs previous 30 days',
+    sa_revenue_this_month: 'Revenue this month',
+    sa_active_subs: 'Active subscriptions',
+    sa_last_12_months: 'Last 12 months',
+    sa_revenue_chart: 'Revenue trend',
+    sa_revenue_note: 'Card and mobile money combined, in USD at configured rates.',
+    sa_plan_distribution: 'Plan distribution',
+    sa_recent_platform_activity: 'Recent platform activity',
+    sa_act_signup: 'signed up',
+    sa_act_plan: 'plan changed',
+    sa_act_payment: 'payment received',
+    sa_top_churches: 'Top churches by members',
+    sa_view_all_churches: 'View all churches',
+    sa_payment_settings: 'Payment settings',
+    sa_manage_team: 'Manage team',
+    sa_export_report: 'Export platform report',
+    sa_export_hint: 'A CSV of every church with its plan, admin, member count and last activity.',
+    sa_report_exported: 'Report downloaded',
+    sa_platform_health: 'Platform health',
+    sa_api_status: 'API status',
+    sa_operational: 'Operational',
+    sa_database_size: 'Database size',
+    sa_last_backup: 'Last backup',
+    sa_not_available: 'Not available',
+    sa_health_note: 'Database size and backup times are not exposed by the client API.',
+    sa_suspended_churches: 'Suspended churches',
+    sa_past_due: 'Subscriptions past due',
+    sa_by_country: 'Churches by country',
+    sa_engagement: 'Engagement',
+    sa_avg_members: 'Average members per church',
+    sa_active_7d: 'Churches active in last 7 days',
+    sa_messages_month: 'Messages sent this month',
+    sa_donations_month: 'Donations processed this month',
+    sa_donations_note: 'Donation totals are summed across church currencies.',
+    sa_owners_hint: 'Set in code, not here. Add teammates under Team instead.',
+    sa_you: 'You',
     setupGuide: 'Setup Guide',
     // ── In-app WhatsApp setup guide ──
     // Step bodies are arrays: t() returns the value as-is, so the walkthrough
@@ -1499,6 +1555,45 @@ const translations = {
     momo_status_completed: 'Compl\u00e9t\u00e9',
     momo_status_failed: '\u00c9chou\u00e9',
     momo_status_cancelled: 'Annul\u00e9',
+
+    // Tableau de bord super admin
+    platform_admin: 'Admin Plateforme',
+    sa_vs_prev_30: 'vs 30 jours pr\u00e9c\u00e9dents',
+    sa_revenue_this_month: 'Revenus ce mois',
+    sa_active_subs: 'Abonnements actifs',
+    sa_last_12_months: 'Les 12 derniers mois',
+    sa_revenue_chart: 'Tendance des revenus',
+    sa_revenue_note: 'Carte et mobile money combin\u00e9s, en USD aux taux configur\u00e9s.',
+    sa_plan_distribution: 'R\u00e9partition des plans',
+    sa_recent_platform_activity: 'Activit\u00e9 r\u00e9cente de la plateforme',
+    sa_act_signup: 'inscrite',
+    sa_act_plan: 'plan modifi\u00e9',
+    sa_act_payment: 'paiement re\u00e7u',
+    sa_top_churches: 'Principales \u00e9glises par membres',
+    sa_view_all_churches: 'Voir toutes les \u00e9glises',
+    sa_payment_settings: 'Param\u00e8tres de paiement',
+    sa_manage_team: "G\u00e9rer l'\u00e9quipe",
+    sa_export_report: 'Exporter le rapport',
+    sa_export_hint: 'Un CSV de chaque \u00e9glise avec son plan, son admin, ses membres et sa derni\u00e8re activit\u00e9.',
+    sa_report_exported: 'Rapport t\u00e9l\u00e9charg\u00e9',
+    sa_platform_health: '\u00c9tat de la plateforme',
+    sa_api_status: "\u00c9tat de l'API",
+    sa_operational: 'Op\u00e9rationnel',
+    sa_database_size: 'Taille de la base',
+    sa_last_backup: 'Dernière sauvegarde',
+    sa_not_available: 'Non disponible',
+    sa_health_note: "La taille de la base et les sauvegardes ne sont pas expos\u00e9es par l'API client.",
+    sa_suspended_churches: '\u00c9glises suspendues',
+    sa_past_due: 'Abonnements en retard',
+    sa_by_country: '\u00c9glises par pays',
+    sa_engagement: 'Engagement',
+    sa_avg_members: 'Membres moyens par \u00e9glise',
+    sa_active_7d: '\u00c9glises actives (7 jours)',
+    sa_messages_month: 'Messages envoy\u00e9s ce mois',
+    sa_donations_month: 'Dons trait\u00e9s ce mois',
+    sa_donations_note: 'Les dons sont additionn\u00e9s toutes devises confondues.',
+    sa_owners_hint: 'D\u00e9finis dans le code. Ajoutez des coll\u00e8gues via \u00c9quipe.',
+    sa_you: 'Vous',
     setupGuide: 'Guide de configuration',
     // ── Guide de configuration WhatsApp dans l'app ──
     whatsapp_setup_guide: 'Guide de configuration WhatsApp',
@@ -3830,6 +3925,13 @@ function Dashboard() {
     return 'dashboard';
   })();
   const [activeTab, setActiveTab] = useState(initialTab);
+  // The platform owner has no church of their own, so the whole church app —
+  // including the "Set Up My Church" prompt — is replaced by the admin panel.
+  // A super admin who DOES belong to a church keeps the normal church view and
+  // reaches the panel through its sidebar item, as before.
+  const isPlatformOwner = !!user?.is_super_admin || isHardcodedSuperAdmin(user?.email);
+  const platformOnly = isPlatformOwner && !CHURCH_ID;
+  const [superTab, setSuperTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth > 768 : true);
   const [churchLogo, setChurchLogo] = useState('');
   const [churchName, setChurchName] = useState('');
@@ -3902,7 +4004,18 @@ function Dashboard() {
     // granted access by the API but have no way to reach the panel.
     ...((user?.is_super_admin || isHardcodedSuperAdmin(user?.email)) ? [{ id: 'superadmin', label: '🛡️ Super Admin', icon: '🛡️', page: null }] : []),
   ];
-  const menuItems = allMenuItems
+  // Mirrors the panel's own tab ids so a sidebar click selects the tab.
+  const platformMenuItems = [
+    { id: 'dashboard', label: t('dashboard'), icon: '🏠', page: null },
+    { id: 'churches', label: t('sa_churches'), icon: '⛪', page: null },
+    { id: 'payments', label: t('sa_payments'), icon: '💳', page: null },
+    { id: 'comms', label: t('sa_communications'), icon: '📧', page: null },
+    { id: 'log', label: t('activityLogs'), icon: '📋', page: null },
+    { id: 'team', label: t('sa_team'), icon: '👥', page: null },
+    { id: 'settings', label: t('settings'), icon: '⚙️', page: null }
+  ];
+
+  const menuItems = platformOnly ? platformMenuItems : allMenuItems
     .filter(item => hasAccess(item.page))
     .map(item => {
       const feature = MENU_FEATURE[item.id];
@@ -3927,18 +4040,23 @@ function Dashboard() {
             upload. maxHeight on the container caps the visual footprint so
             portrait-style uploads can't blow up the sidebar. */}
         <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', maxHeight: '180px' }}>
-          {churchLogo ? (
+          {churchLogo && !platformOnly ? (
             <img src={churchLogo} alt={churchName || 'Church'} style={{ height: sidebarOpen ? '80px' : '40px', maxWidth: sidebarOpen ? '180px' : '40px', width: 'auto', objectFit: 'contain' }} />
           ) : (
             <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: sidebarOpen ? '60px' : '40px', width: 'auto' }} />
+          )}
+          {platformOnly && sidebarOpen && (
+            <span style={{ padding: '3px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: '700', letterSpacing: '0.03em', backgroundColor: '#eef2ff', color: '#4338ca', whiteSpace: 'nowrap' }}>
+              🛡️ {t('platform_admin')}
+            </span>
           )}
         </div>
 
         {/* Menu Items */}
         <nav style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
           {menuItems.map(item => (
-            <button key={item.id} data-tab={item.id} title={item.locked ? item.lockedHint : undefined} onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 768) setSidebarOpen(false); }}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: sidebarOpen ? '10px 16px' : '10px', margin: '2px 0', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', backgroundColor: activeTab === item.id ? '#eef2ff' : 'transparent', color: activeTab === item.id ? '#6366f1' : (item.locked ? '#9ca3af' : '#4b5563'), fontWeight: activeTab === item.id ? '600' : '400', justifyContent: sidebarOpen ? 'flex-start' : 'center', transition: 'all 0.2s' }}>
+            <button key={item.id} data-tab={item.id} title={item.locked ? item.lockedHint : undefined} onClick={() => { if (platformOnly) setSuperTab(item.id); else setActiveTab(item.id); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: sidebarOpen ? '10px 16px' : '10px', margin: '2px 0', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', backgroundColor: (platformOnly ? superTab : activeTab) === item.id ? '#eef2ff' : 'transparent', color: (platformOnly ? superTab : activeTab) === item.id ? '#6366f1' : (item.locked ? '#9ca3af' : '#4b5563'), fontWeight: (platformOnly ? superTab : activeTab) === item.id ? '600' : '400', justifyContent: sidebarOpen ? 'flex-start' : 'center', transition: 'all 0.2s' }}>
               <span style={{ fontSize: '18px' }}>{item.icon}</span>
               {sidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>}
               {/* Locked by plan. The item stays clickable; the page shows the
@@ -3974,7 +4092,7 @@ function Dashboard() {
               ☰
             </button>
             <div className="header-title">
-            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827' }}>{churchName || 'ChurchSmart'}</h1>
+            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827' }}>{platformOnly ? t('platform_admin') : (churchName || 'ChurchSmart')}</h1>
             <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{user?.name || ''}</p>
             </div>
           </div>
@@ -3990,12 +4108,18 @@ function Dashboard() {
         {/* Page Content */}
         <main className="main-page" style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
           {/* Trial expired banner */}
-          {churchPlan === 'free' && trialExpiredBanner && (
+          {/* Not for the platform owner: they have no church and no trial. */}
+          {!platformOnly && churchPlan === 'free' && trialExpiredBanner && (
             <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '14px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <p style={{ margin: 0, fontSize: '14px', color: '#991b1b' }}>{t('trialEnded')} <strong>{t('upgradeToUse')}</strong></p>
               <button onClick={() => setActiveTab('settings')} style={{ padding: '8px 20px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('viewPlans')}</button>
             </div>
           )}
+          {/* The platform owner has no church, so the church app is replaced
+              wholesale rather than each tab falling through to a setup prompt. */}
+          {platformOnly ? (
+            <SuperAdminPage tab={superTab} onTabChange={setSuperTab} onNavigate={setActiveTab} />
+          ) : (<>
           {activeTab === 'dashboard' && (CHURCH_ID ? <DashboardPage onNavigate={setActiveTab} /> : <DashboardWelcomeCard userName={user?.name} onOpenSetup={openChurchSetup} />)}
           {activeTab === 'members' && (CHURCH_ID ? <PermissionGate permission="members" fallback={<AccessDenied onNavigate={setActiveTab} />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="members" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'visitors' && (CHURCH_ID ? (canAccessFeature(churchPlan, 'visitors') ? <PermissionGate permission="visitors" fallback={<AccessDenied onNavigate={setActiveTab} />}><VisitorsPage /></PermissionGate> : <UpgradePrompt feature="visitors" featureLabel={t('visitors')} onNavigate={setActiveTab} />) : <ChurchSetupRequired pageKey="visitors" onOpenSetup={openChurchSetup} />)}
@@ -4011,9 +4135,10 @@ function Dashboard() {
           {activeTab === 'settings' && (CHURCH_ID ? <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><SettingsPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="settings" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'whatsappLog' && (CHURCH_ID ? <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><WhatsAppLogPage onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="settings" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'superadmin' && <SuperAdminPage onNavigate={setActiveTab} />}
+          </>)}
         </main>
       </div>
-      {showChurchSetupModal && user && (
+      {showChurchSetupModal && user && !platformOnly && (
         <GoogleChurchSetup user={user} onClose={() => setShowChurchSetupModal(false)} />
       )}
     </div>
@@ -11114,7 +11239,7 @@ function ServicesPage() {
 // ==========================================
 // SUPER ADMIN PAGE
 // ==========================================
-function SuperAdminPage({ onNavigate }) {
+function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
   const { t, language } = useLanguage();
   const toast = useToast();
 
@@ -11122,7 +11247,10 @@ function SuperAdminPage({ onNavigate }) {
   // the tabs are a convenience, and every route re-checks the role itself.
   const [me, setMe] = useState(null);
   const [authState, setAuthState] = useState('checking');
-  const [tab, setTab] = useState('dashboard');
+  const [internalTab, setInternalTab] = useState('dashboard');
+  // Controlled when the platform sidebar owns the selection, otherwise local.
+  const tab = controlledTab ?? internalTab;
+  const setTab = onTabChange || setInternalTab;
 
   const [churches, setChurches] = useState([]);
   const [memberCounts, setMemberCounts] = useState({});
@@ -11149,6 +11277,9 @@ function SuperAdminPage({ onNavigate }) {
 
   const [logFilter, setLogFilter] = useState({ admin: 'all', action: 'all', from: '', to: '' });
   const [mobilePayments, setMobilePayments] = useState([]);
+  // Platform KPIs, computed server-side in one request.
+  const [stats, setStats] = useState(null);
+  const [exporting, setExporting] = useState(false);
   const [momoFilter, setMomoFilter] = useState({ status: 'all', country: 'all', from: '', to: '' });
   const [expandedLog, setExpandedLog] = useState(null);
 
@@ -11210,6 +11341,9 @@ function SuperAdminPage({ onNavigate }) {
         counts[row.church_id] = (counts[row.church_id] || 0) + 1;
       }
       setMemberCounts(counts);
+
+      const platformStats = await api('dashboard-stats');
+      if (platformStats.ok) setStats(platformStats.data);
 
       const team = await api('sub-admins');
       if (team.ok) setSubAdmins(team.data.subAdmins || []);
@@ -11420,6 +11554,34 @@ function SuperAdminPage({ onNavigate }) {
     setInviting(false);
   };
 
+  const exportReport = async () => {
+    setExporting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/super-admin/export-report', {
+        headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.error || t('sa_action_failed'));
+      } else {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `churchsmart-platform-report-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        toast.success(t('sa_report_exported'));
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+    setExporting(false);
+  };
+
   const updateSubAdmin = async (id, updates) => {
     const { ok, data } = await api('sub-admins', { method: 'PATCH', body: JSON.stringify({ id, ...updates }) });
     if (ok) { toast.success(t('savedSuccessfully')); loadData(); }
@@ -11447,7 +11609,8 @@ function SuperAdminPage({ onNavigate }) {
     { id: 'payments', label: `💳 ${t('sa_payments')}`, permission: 'view_payment_settings' },
     { id: 'comms', label: `📣 ${t('sa_communications')}`, permission: 'send_communications' },
     { id: 'log', label: `📜 ${t('activityLogs')}`, permission: 'view_activity_log' },
-    { id: 'team', label: `👤 ${t('sa_team')}`, permission: 'manage_sub_admins' }
+    { id: 'team', label: `👤 ${t('sa_team')}`, permission: 'manage_sub_admins' },
+    { id: 'settings', label: `⚙️ ${t('settings')}`, permission: 'view_stats' }
   ].filter(tabDef => can(tabDef.permission));
 
   // A role can lose access to the tab it is sitting on (or start on one it
@@ -11551,31 +11714,305 @@ function SuperAdminPage({ onNavigate }) {
           {/* ═══════════ DASHBOARD ═══════════ */}
           {activeTab === 'dashboard' && (
             <div style={{ display: 'grid', gap: '16px' }}>
+
+              {/* ── ROW 1 · Platform KPIs ── */}
               <div className="cs-dash-stats">
-                <DashStatCard icon="⛪" color="#6366f1" label={t('sa_total_churches')} value={churches.length} />
-                <DashStatCard icon="👥" color="#0ea5e9" label={t('sa_total_members')} value={totalMembers} />
-                <DashStatCard icon="💰" color="#10b981" label={t('sa_mrr')} value={mrrUsd} display={(v) => `$${Math.round(v).toLocaleString()}`} sublabel={t('sa_mrr_hint')} />
-                <DashStatCard icon="📈" color="#f59e0b" label={t('sa_new_signups')} value={signupsThisMonth} sublabel={`${signupsThisWeek} ${t('sa_this_week')}`} />
+                <DashStatCard
+                  icon="⛪" color="#6366f1"
+                  label={t('sa_total_churches')}
+                  value={stats?.totalChurches ?? churches.length}
+                  trend={stats?.totalChurchesTrend}
+                  trendLabel={t('sa_vs_prev_30')}
+                />
+                <DashStatCard
+                  icon="👥" color="#0ea5e9"
+                  label={t('sa_total_members')}
+                  value={stats?.totalMembers ?? totalMembers}
+                  trend={stats?.totalMembersTrend}
+                  trendLabel={t('sa_vs_prev_30')}
+                />
+                <DashStatCard
+                  icon="💰" color="#10b981"
+                  label={t('sa_revenue_this_month')}
+                  value={stats?.revenueThisMonth ?? 0}
+                  display={(v) => `$${Math.round(v).toLocaleString()}`}
+                  sublabel={`${t('sa_mrr')}: $${(stats?.mrr ?? mrrUsd).toLocaleString()}`}
+                  trend={stats?.revenueTrend}
+                  trendLabel={t('vs_last_month')}
+                />
+                <DashStatCard
+                  icon="📈" color="#f59e0b"
+                  label={t('sa_active_subs')}
+                  value={stats?.activeSubscriptions ?? 0}
+                  sublabel={`${stats?.totalChurches ?? churches.length} ${t('sa_total_churches').toLowerCase()}`}
+                  trend={stats?.activeSubscriptionsTrend}
+                  trendLabel={t('sa_vs_prev_30')}
+                />
               </div>
 
-              <div className="cs-dash-stats">
-                {getPlanOrder().map(plan => (
-                  <div key={plan} className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                    <p style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9ca3af', fontWeight: '600' }}>{plan}</p>
-                    <p style={{ margin: '6px 0 0 0', fontSize: '24px', fontWeight: '700', color: '#111827' }}>{planCounts[plan] || 0}</p>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
-                      {plan === 'free' ? '—' : `$${PLAN_PRICING[plan].monthlyUsd}/mo`}
-                    </p>
+              {/* ── ROW 2 · Growth ── */}
+              <div className="cs-dash-two">
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>📈 {t('sa_signups_chart')}</h3>
+                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('sa_last_12_months')}</span>
+                  </div>
+                  <DashLineChart
+                    points={stats?.churchSignupsByMonth || []}
+                    color="#6366f1"
+                    formatValue={(v) => String(Math.round(v))}
+                    emptyLabel={t('not_enough_data')}
+                  />
+                </div>
+
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>💹 {t('sa_revenue_chart')}</h3>
+                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('sa_last_12_months')}</span>
+                  </div>
+                  <DashBarChart
+                    bars={stats?.revenueByMonth || []}
+                    color="#10b981"
+                    formatValue={(v) => `$${compactNumber(v)}`}
+                    emptyLabel={t('not_enough_data')}
+                  />
+                  <p style={{ margin: '10px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{t('sa_revenue_note')}</p>
+                </div>
+              </div>
+
+              {/* ── ROW 3 · Plan mix + activity ── */}
+              <div className="cs-dash-two">
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600' }}>🧩 {t('sa_plan_distribution')}</h3>
+                  {(() => {
+                    const dist = stats?.churchesByPlan || planCounts;
+                    const total = Object.values(dist).reduce((sum, n) => sum + n, 0) || 1;
+                    const colors = { free: '#9ca3af', starter: '#0ea5e9', growth: '#6366f1', pro: '#10b981' };
+                    return (
+                      <div style={{ display: 'grid', gap: '14px' }}>
+                        {getPlanOrder().map(plan => {
+                          const count = dist[plan] || 0;
+                          const pct = Math.round((count / total) * 100);
+                          return (
+                            <div key={plan}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '5px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: '600', textTransform: 'capitalize', color: '#374151' }}>{plan}</span>
+                                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                                  <strong style={{ color: '#111827' }}>{count}</strong> · {pct}%
+                                </span>
+                              </div>
+                              <div style={{ height: '8px', borderRadius: '4px', backgroundColor: '#f3f4f6', overflow: 'hidden' }}>
+                                <div style={{ width: `${pct}%`, height: '100%', borderRadius: '4px', backgroundColor: colors[plan], transition: 'width 0.4s ease' }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '600' }}>🔔 {t('sa_recent_platform_activity')}</h3>
+                  {(stats?.recentActivity || []).length === 0 ? (
+                    <p style={{ margin: 0, padding: '28px 0', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{t('no_recent_activity')}</p>
+                  ) : (
+                    <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'grid', gap: '2px' }}>
+                      {stats.recentActivity.map((item, i) => {
+                        const look = {
+                          signup: { icon: '🎉', color: '#6366f1', label: t('sa_act_signup') },
+                          plan_changed: { icon: '🔀', color: '#f59e0b', label: t('sa_act_plan') },
+                          payment: { icon: '💰', color: '#10b981', label: t('sa_act_payment') }
+                        }[item.kind] || { icon: '•', color: '#6b7280', label: item.kind };
+                        return (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid #f3f4f6' }}>
+                            <span style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', backgroundColor: `${look.color}14` }}>
+                              {look.icon}
+                            </span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: '1.45' }}>
+                                <strong>{item.churchName}</strong> · {look.label}
+                              </p>
+                              <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>
+                                {item.detail} · {timeAgoShort(item.at)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── ROW 4 · Top churches + quick actions ── */}
+              <div className="cs-dash-two">
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                  <div style={{ padding: '18px 20px', borderBottom: '1px solid #e5e7eb' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>🏆 {t('sa_top_churches')}</h3>
+                  </div>
+                  {(stats?.topChurches || []).length === 0 ? (
+                    <p style={{ margin: 0, padding: '32px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{t('noRecords')}</p>
+                  ) : (
+                    <div className="cs-table-wrap">
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead style={{ backgroundColor: '#f9fafb' }}>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', fontWeight: '600', color: '#6b7280' }}>#</th>
+                            <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', fontWeight: '600', color: '#6b7280' }}>{t('name')}</th>
+                            <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', fontWeight: '600', color: '#6b7280' }}>{t('billing')}</th>
+                            <th style={{ textAlign: 'right', padding: '10px 16px', fontSize: '11px', fontWeight: '600', color: '#6b7280' }}>{t('members')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stats.topChurches.map((church, i) => (
+                            <tr key={church.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                              <td style={{ padding: '10px 16px', fontSize: '12px', color: '#9ca3af', fontWeight: '600' }}>{i + 1}</td>
+                              <td style={{ padding: '10px 16px' }}>
+                                <p style={{ margin: 0, fontSize: '13px', fontWeight: '500' }}>{church.name}</p>
+                                <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af' }}>{church.adminEmail || '—'}</p>
+                              </td>
+                              <td style={{ padding: '10px 16px' }}>
+                                <span style={{ padding: '2px 9px', borderRadius: '9999px', fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', backgroundColor: '#eef2ff', color: '#4338ca' }}>{church.plan}</span>
+                              </td>
+                              <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: '600' }}>{church.members}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '600' }}>⚡ {t('quickActions')}</h3>
+                  <div style={{ display: 'grid', gap: '8px', marginBottom: '20px' }}>
+                    {[
+                      { icon: '⛪', label: t('sa_view_all_churches'), go: 'churches', show: can('view_churches') },
+                      { icon: '💳', label: t('sa_payment_settings'), go: 'payments', show: can('view_payment_settings') },
+                      { icon: '👥', label: t('sa_manage_team'), go: 'team', show: can('manage_sub_admins') }
+                    ].filter(a => a.show).map(action => (
+                      <button key={action.go} type="button" onClick={() => setTab(action.go)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: 'white', color: '#374151', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textAlign: 'left' }}>
+                        <span>{action.icon}</span>{action.label}
+                      </button>
+                    ))}
+                    <button type="button" onClick={exportReport} disabled={exporting}
+                      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', borderRadius: '10px', border: '1px solid #c7d2fe', backgroundColor: '#eef2ff', color: '#4338ca', fontSize: '13px', fontWeight: '600', cursor: exporting ? 'wait' : 'pointer', textAlign: 'left' }}>
+                      <span>📥</span>{exporting ? '⏳' : t('sa_export_report')}
+                    </button>
+                  </div>
+
+                  {/* Health. Database size and backup time are not exposed by
+                      the Supabase client, so they are shown as unavailable
+                      rather than invented. */}
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9ca3af' }}>{t('sa_platform_health')}</h4>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {[
+                      { label: t('sa_api_status'), value: `🟢 ${t('sa_operational')}` },
+                      { label: t('sa_database_size'), value: t('sa_not_available') },
+                      { label: t('sa_last_backup'), value: t('sa_not_available') },
+                      { label: t('sa_suspended_churches'), value: String(stats?.engagementMetrics?.suspendedChurches ?? 0) },
+                      { label: t('sa_past_due'), value: String(stats?.engagementMetrics?.subscriptionsPastDue ?? 0) }
+                    ].map(row => (
+                      <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '12px' }}>
+                        <span style={{ color: '#6b7280' }}>{row.label}</span>
+                        <strong style={{ color: '#111827' }}>{row.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── ROW 5 · Geography + engagement ── */}
+              <div className="cs-dash-two">
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600' }}>🌍 {t('sa_by_country')}</h3>
+                  {(() => {
+                    const rows = stats?.churchesByCountry || [];
+                    const max = Math.max(...rows.map(r => r.count), 1);
+                    if (rows.length === 0) {
+                      return <p style={{ margin: 0, padding: '28px 0', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{t('noRecords')}</p>;
+                    }
+                    return (
+                      <div style={{ display: 'grid', gap: '12px', maxHeight: '280px', overflowY: 'auto' }}>
+                        {rows.map(row => (
+                          <div key={row.country}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '12px' }}>
+                              <span style={{ color: '#374151', fontWeight: '500' }}>{row.country}</span>
+                              <strong style={{ color: '#111827' }}>{row.count}</strong>
+                            </div>
+                            <div style={{ height: '6px', borderRadius: '3px', backgroundColor: '#f3f4f6', overflow: 'hidden' }}>
+                              <div style={{ width: `${Math.round((row.count / max) * 100)}%`, height: '100%', borderRadius: '3px', backgroundColor: '#0ea5e9' }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600' }}>📊 {t('sa_engagement')}</h3>
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    {[
+                      { label: t('sa_avg_members'), value: stats?.engagementMetrics?.avgMembersPerChurch ?? 0 },
+                      { label: t('sa_active_7d'), value: stats?.engagementMetrics?.activeChurchesLast7Days ?? 0 },
+                      { label: t('sa_messages_month'), value: (stats?.engagementMetrics?.messagesThisMonth ?? 0).toLocaleString() },
+                      { label: t('sa_donations_month'), value: (stats?.engagementMetrics?.donationsThisMonth ?? 0).toLocaleString() }
+                    ].map(metric => (
+                      <div key={metric.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#f9fafb' }}>
+                        <span style={{ fontSize: '13px', color: '#6b7280' }}>{metric.label}</span>
+                        <strong style={{ fontSize: '18px', color: '#111827' }}>{metric.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ margin: '12px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{t('sa_donations_note')}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════ PLATFORM SETTINGS ═══════════ */}
+          {activeTab === 'settings' && (
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>🛡️ {t('sa_owners')}</h3>
+                <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>{t('sa_owners_hint')}</p>
+                {SUPER_ADMIN_EMAILS.map(email => (
+                  <div key={email} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', backgroundColor: '#f9fafb', marginBottom: '8px' }}>
+                    <InitialsAvatar name={email} size={30} />
+                    <span style={{ fontSize: '13px', color: '#374151' }}>{email}</span>
+                    {email === me?.email && (
+                      <span style={{ marginLeft: 'auto', padding: '2px 9px', borderRadius: '9999px', fontSize: '10px', fontWeight: '700', backgroundColor: '#dcfce7', color: '#166534' }}>{t('sa_you')}</span>
+                    )}
                   </div>
                 ))}
               </div>
 
               <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>📈 {t('sa_signups_chart')}</h3>
-                  <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('last_6_months')}</span>
+                <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', fontWeight: '600' }}>💓 {t('sa_platform_health')}</h3>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {[
+                    { label: t('sa_api_status'), value: `🟢 ${t('sa_operational')}` },
+                    { label: t('sa_database_size'), value: t('sa_not_available') },
+                    { label: t('sa_last_backup'), value: t('sa_not_available') },
+                    { label: t('sa_total_churches'), value: String(stats?.totalChurches ?? churches.length) },
+                    { label: t('sa_total_members'), value: String(stats?.totalMembers ?? totalMembers) }
+                  ].map(row => (
+                    <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '13px', padding: '10px 14px', borderRadius: '10px', backgroundColor: '#f9fafb' }}>
+                      <span style={{ color: '#6b7280' }}>{row.label}</span>
+                      <strong style={{ color: '#111827' }}>{row.value}</strong>
+                    </div>
+                  ))}
                 </div>
-                <DashBarChart bars={signupSeries} color="#6366f1" formatValue={(v) => String(Math.round(v))} emptyLabel={t('not_enough_data')} />
+                <p style={{ margin: '12px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{t('sa_health_note')}</p>
+              </div>
+
+              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>📥 {t('sa_export_report')}</h3>
+                <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>{t('sa_export_hint')}</p>
+                <Button onClick={exportReport} disabled={exporting}>{exporting ? '⏳' : `📥 ${t('sa_export_report')}`}</Button>
               </div>
             </div>
           )}
