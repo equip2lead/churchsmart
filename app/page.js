@@ -705,7 +705,7 @@ const translations = {
     sa_connected: 'Connected',
     sa_not_connected: 'Not connected',
     sa_untested: 'Not tested yet',
-    sa_wallets: 'wallets',
+    sa_wallets: 'providers',
     sa_paste_key: 'Paste the key',
     sa_nothing_to_save: 'Enter a value first',
     sa_settings_saved: 'Settings saved',
@@ -1503,7 +1503,7 @@ const translations = {
     sa_connected: 'Connect\u00e9',
     sa_not_connected: 'Non connect\u00e9',
     sa_untested: 'Pas encore test\u00e9',
-    sa_wallets: 'portefeuilles',
+    sa_wallets: 'fournisseurs',
     sa_paste_key: 'Collez la cl\u00e9',
     sa_nothing_to_save: "Saisissez d'abord une valeur",
     sa_settings_saved: 'Param\u00e8tres enregistr\u00e9s',
@@ -12248,7 +12248,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                   {testResult.pawapay && (
                     <p style={{ margin: '12px 0 0 0', fontSize: '12px', color: testResult.pawapay.connected ? '#166534' : '#991b1b', wordBreak: 'break-word' }}>
                       {testResult.pawapay.connected
-                        ? `${testResult.pawapay.mode} · ${testResult.pawapay.wallets ?? '?'} ${t('sa_wallets')}`
+                        ? `${testResult.pawapay.mode} · ${testResult.pawapay.providers ?? '?'} ${t('sa_wallets')}`
                         : testResult.pawapay.error}
                     </p>
                   )}
