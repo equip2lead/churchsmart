@@ -8,6 +8,7 @@ import { PermissionGate, AccessDenied, LoadingSpinner } from '../components/cs-u
 import { canAccessFeature, getRequiredPlan } from '../lib/featureGating';
 import { isHardcodedSuperAdmin } from '../lib/superAdmin';
 import UpgradePrompt from '../components/UpgradePrompt';
+import LandingPage from '../components/LandingPage';
 
 // ==========================================
 // DYNAMIC IMPORTS — each page loads only when needed
@@ -261,7 +262,7 @@ function AppContent() {
   }
 
   if (!user || passwordRecovery) {
-    return <LoginPage />;
+    return <LandingPage />;
   }
 
   return <Dashboard />;

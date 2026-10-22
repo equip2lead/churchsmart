@@ -189,3 +189,64 @@ textarea {
   .cs-dash-card { transition: none; }
   .cs-dash-card:hover { transform: none; }
 }
+
+/* ==========================================
+   LANDING PAGE
+   ========================================== */
+
+/* Tablet (max 1024px) */
+@media (max-width: 1024px) {
+  .cs-landing-features-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .cs-landing-pricing-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    max-width: 700px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  .cs-landing-footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 32px !important;
+  }
+}
+
+/* Mobile (max 768px) */
+@media (max-width: 768px) {
+  .cs-landing-nav-links {
+    display: none !important;
+  }
+  .cs-landing-signin-btn {
+    display: none !important;
+  }
+  .cs-landing-features-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .cs-landing-pricing-grid {
+    grid-template-columns: 1fr !important;
+    max-width: 400px !important;
+  }
+  .cs-landing-hero-btns {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  .cs-landing-hero-btns > * {
+    width: 100% !important;
+    max-width: 320px !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+  .cs-landing-stats {
+    gap: 32px !important;
+  }
+  .cs-landing-footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  .cs-landing-auth-modal {
+    padding: 24px !important;
+    border-radius: 16px !important;
+    max-height: 95vh !important;
+  }
+}
