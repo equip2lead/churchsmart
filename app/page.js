@@ -8,7 +8,7 @@ import { PermissionGate, AccessDenied, LoadingSpinner } from '../components/cs-u
 import { canAccessFeature, getRequiredPlan } from '../lib/featureGating';
 import { isHardcodedSuperAdmin } from '../lib/superAdmin';
 import UpgradePrompt from '../components/UpgradePrompt';
-import LandingPage from '../components/LandingPage';
+// LoginPage is defined at the bottom of this file
 
 // ==========================================
 // DYNAMIC IMPORTS — each page loads only when needed
@@ -262,7 +262,7 @@ function AppContent() {
   }
 
   if (!user || passwordRecovery) {
-    return <LandingPage />;
+    return <LoginPage />;
   }
 
   return <Dashboard />;
@@ -803,9 +803,8 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [step, setStep] = useState(1); // Registration steps: 1=user info + signUp/OTP-send, 2=OTP verify
+  const [step, setStep] = useState(1);
 
-  // Detect password reset redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('reset') === 'true' || window.location.hash?.includes('type=recovery')) {
@@ -822,79 +821,80 @@ function LoginPage() {
 
   const txt = {
     en: {
-      welcome: 'Welcome back!', signInDesc: 'Sign in to access your church dashboard',
-      createAccount: 'Create your account', getStarted: 'Get started with ChurchSmart today',
-      signIn: 'Sign In', register: 'Register', email: 'Email Address', password: 'Password',
+      welcome: 'Welcome back', signInDesc: 'Sign in to manage your church',
+      createAccount: 'Create account', getStarted: 'Start your free 30-day trial',
+      signIn: 'Sign In', register: 'Register', email: 'Email', password: 'Password',
       fullName: 'Full Name', phone: 'Phone', confirmPassword: 'Confirm Password',
       rememberMe: 'Remember me', forgotPassword: 'Forgot password?',
-      signingIn: 'Please wait...', signInBtn: 'Sign In →', createBtn: 'Next: Church Info →',
-      demoAccounts: 'Demo Accounts', clickToFill: 'Click to fill →',
-      secure: 'Secure • Encrypted • GDPR Compliant',
-      orContinueWith: 'or continue with',
-      googleSignIn: 'Sign in with Google',
+      signingIn: 'Signing in...', signInBtn: 'Sign In', createBtn: 'Continue',
+      secure: 'Secure · Encrypted · GDPR Compliant',
+      orContinueWith: 'or',
+      googleSignIn: 'Continue with Google',
       googleLinkNeeded: 'Google account not linked to any church. Please register first or contact your administrator.',
-      forgotTitle: 'Reset Password', forgotDesc: 'Enter your email and we\'ll send a reset link',
-      sendResetLink: 'Send Reset Link', backToLogin: '← Back to Login',
-      resetSent: 'Password reset link sent! Check your email.',
-      newPasswordTitle: 'Set New Password', newPasswordDesc: 'Enter your new password below',
-      newPassword: 'New Password', confirmNewPassword: 'Confirm New Password',
-      updatePassword: 'Update Password', passwordUpdated: 'Password updated! You can now sign in.',
-      otpTitle: 'Verify Your Email', otpDesc: 'We sent an 8-digit code to',
-      otpPlaceholder: '00000000', verifyCode: 'Verify Code', verifying: 'Verifying...',
+      forgotTitle: 'Reset Password', forgotDesc: 'We’ll send a reset link to your email',
+      sendResetLink: 'Send Reset Link', backToLogin: '← Back to Sign In',
+      resetSent: 'Reset link sent! Check your inbox.',
+      newPasswordTitle: 'New Password', newPasswordDesc: 'Choose a strong password for your account',
+      newPassword: 'New Password', confirmNewPassword: 'Confirm Password',
+      updatePassword: 'Update Password', passwordUpdated: 'Password updated! Redirecting...',
+      otpTitle: 'Check your email', otpDesc: 'Enter the 8-digit code sent to',
+      otpPlaceholder: '00000000', verifyCode: 'Verify', verifying: 'Verifying...',
       resendCode: 'Resend code', codeSent: 'New code sent!', invalidCode: 'Invalid code. Please try again.',
-      tagline: 'The all-in-one church management platform built for African churches. Manage your congregation with ease.',
-      churches: 'Churches', membersManaged: 'Members Managed', countries: 'Countries',
+      tagline: 'The all-in-one platform built for African churches',
+      subtitle: 'Track members, manage finances, send messages, and grow your ministry — all from one place.',
+      churches: 'Churches', membersManaged: 'Members', countries: 'Countries',
       memberMgmt: 'Member Management', memberDesc: 'Track members, visitors & groups across all locations',
-      finance: 'Financial Tracking', financeDesc: 'Manage tithes, offerings, expenses & generate reports',
-      reports: 'Smart Reports', reportsDesc: 'Real-time analytics for attendance, giving & growth',
-      messaging: 'SMS & WhatsApp', messagingDesc: 'Automated birthday messages & bulk communication',
-      volunteers: 'Volunteer Management', volunteersDesc: 'Organize ministries, schedules & team leaders',
-      multiLoc: 'Multi-Location', multiLocDesc: 'Manage multiple campuses from one dashboard',
-      footer: '© 2026 ChurchSmart by DigiSmart Africa',
-      // Step 2
+      finance: 'Financial Tracking', financeDesc: 'Tithes, offerings, expenses & reports',
+      reports: 'Smart Reports', reportsDesc: 'Real-time analytics for growth',
+      messaging: 'SMS & WhatsApp', messagingDesc: 'Automated messages & bulk comms',
+      volunteers: 'Volunteer Scheduling', volunteersDesc: 'Ministries, rosters & team leads',
+      multiLoc: 'Multi-Location', multiLocDesc: 'Multiple campuses, one dashboard',
+      footer: '© 2026 ChurchSmart by DigiSmart Africa. All rights reserved.',
       churchInfo: 'Church Information', churchInfoDesc: 'Tell us about your church',
       churchName: 'Church Name *', churchAddress: 'Address', churchCity: 'City',
       churchPhone: 'Church Phone', churchEmail: 'Church Email', pastorName: 'Senior Pastor',
       denomination: 'Denomination', currency: 'Currency',
-      back: '← Back', finishBtn: 'Send Verification Code →', creating: 'Sending...',
-      step1: 'Sign Up', step2: 'Verify'
+      back: '← Back', finishBtn: 'Send Verification Code', creating: 'Sending...',
+      step1: 'Sign Up', step2: 'Verify',
+      visitSite: 'Learn more at churchsmartnow.com'
     },
     fr: {
-      welcome: 'Bon retour!', signInDesc: 'Connectez-vous pour accéder à votre tableau de bord',
-      createAccount: 'Créer votre compte', getStarted: 'Commencez avec ChurchSmart aujourd\'hui',
-      signIn: 'Connexion', register: 'S\'inscrire', email: 'Adresse Email', password: 'Mot de passe',
-      fullName: 'Nom Complet', phone: 'Téléphone', confirmPassword: 'Confirmer le mot de passe',
-      rememberMe: 'Se souvenir de moi', forgotPassword: 'Mot de passe oublié?',
-      signingIn: 'Veuillez patienter...', signInBtn: 'Connexion →', createBtn: 'Suivant: Info Église →',
-      demoAccounts: 'Comptes Démo', clickToFill: 'Cliquer pour remplir →',
-      secure: 'Sécurisé • Chiffré • Conforme RGPD',
-      tagline: 'La plateforme de gestion d\'église tout-en-un conçue pour les églises africaines. Gérez votre congrégation facilement.',
-      churches: 'Églises', membersManaged: 'Membres Gérés', countries: 'Pays',
-      memberMgmt: 'Gestion des Membres', memberDesc: 'Suivre les membres, visiteurs et groupes dans tous les sites',
-      finance: 'Suivi Financier', financeDesc: 'Gérer les dîmes, offrandes, dépenses et rapports',
-      reports: 'Rapports Intelligents', reportsDesc: 'Analyses en temps réel pour la fréquentation et les dons',
-      messaging: 'SMS & WhatsApp', messagingDesc: 'Messages d\'anniversaire automatiques et communication en masse',
-      volunteers: 'Gestion des Bénévoles', volunteersDesc: 'Organiser les ministères, horaires et chefs d\'équipe',
-      multiLoc: 'Multi-Sites', multiLocDesc: 'Gérer plusieurs campus depuis un seul tableau de bord',
-      footer: '© 2026 ChurchSmart par DigiSmart Africa',
-      orContinueWith: 'ou continuer avec',
-      googleSignIn: 'Se connecter avec Google',
-      googleLinkNeeded: 'Compte Google non lié à une église. Inscrivez-vous d\'abord ou contactez votre administrateur.',
-      forgotTitle: 'Réinitialiser le mot de passe', forgotDesc: 'Entrez votre email et nous vous enverrons un lien',
-      sendResetLink: 'Envoyer le lien', backToLogin: '← Retour à la connexion',
-      resetSent: 'Lien de réinitialisation envoyé! Vérifiez votre email.',
-      newPasswordTitle: 'Nouveau mot de passe', newPasswordDesc: 'Entrez votre nouveau mot de passe',
-      newPassword: 'Nouveau mot de passe', confirmNewPassword: 'Confirmer le mot de passe',
-      updatePassword: 'Mettre à jour', passwordUpdated: 'Mot de passe mis à jour! Vous pouvez vous connecter.',
-      otpTitle: 'Vérifiez votre email', otpDesc: 'Nous avons envoyé un code à 8 chiffres à',
-      otpPlaceholder: '00000000', verifyCode: 'Vérifier le code', verifying: 'Vérification...',
-      resendCode: 'Renvoyer le code', codeSent: 'Nouveau code envoyé!', invalidCode: 'Code invalide. Réessayez.',
-      churchInfo: 'Informations de l\'Église', churchInfoDesc: 'Parlez-nous de votre église',
-      churchName: 'Nom de l\'Église *', churchAddress: 'Adresse', churchCity: 'Ville',
-      churchPhone: 'Téléphone de l\'Église', churchEmail: 'Email de l\'Église', pastorName: 'Pasteur Principal',
+      welcome: 'Bienvenue', signInDesc: 'Connectez-vous pour gérer votre église',
+      createAccount: 'Créer un compte', getStarted: 'Essai gratuit de 30 jours',
+      signIn: 'Connexion', register: 'S’inscrire', email: 'Email', password: 'Mot de passe',
+      fullName: 'Nom complet', phone: 'Téléphone', confirmPassword: 'Confirmer',
+      rememberMe: 'Se souvenir', forgotPassword: 'Mot de passe oublié ?',
+      signingIn: 'Connexion...', signInBtn: 'Connexion', createBtn: 'Continuer',
+      secure: 'Sécurisé · Chiffré · Conforme RGPD',
+      orContinueWith: 'ou',
+      googleSignIn: 'Continuer avec Google',
+      googleLinkNeeded: 'Compte Google non lié. Inscrivez-vous d’abord.',
+      forgotTitle: 'Réinitialiser', forgotDesc: 'Nous enverrons un lien à votre email',
+      sendResetLink: 'Envoyer le lien', backToLogin: '← Retour',
+      resetSent: 'Lien envoyé ! Vérifiez votre boîte.',
+      newPasswordTitle: 'Nouveau mot de passe', newPasswordDesc: 'Choisissez un mot de passe fort',
+      newPassword: 'Nouveau mot de passe', confirmNewPassword: 'Confirmer',
+      updatePassword: 'Mettre à jour', passwordUpdated: 'Mis à jour ! Redirection...',
+      otpTitle: 'Vérifiez votre email', otpDesc: 'Entrez le code à 8 chiffres envoyé à',
+      otpPlaceholder: '00000000', verifyCode: 'Vérifier', verifying: 'Vérification...',
+      resendCode: 'Renvoyer', codeSent: 'Code renvoyé !', invalidCode: 'Code invalide.',
+      tagline: 'La plateforme tout-en-un pour les églises africaines',
+      subtitle: 'Suivez vos membres, gérez les finances, envoyez des messages et développez votre ministère.',
+      churches: 'Églises', membersManaged: 'Membres', countries: 'Pays',
+      memberMgmt: 'Gestion des Membres', memberDesc: 'Membres, visiteurs et groupes',
+      finance: 'Suivi Financier', financeDesc: 'Dîmes, offrandes et rapports',
+      reports: 'Rapports', reportsDesc: 'Analyses en temps réel',
+      messaging: 'SMS & WhatsApp', messagingDesc: 'Messages automatisés',
+      volunteers: 'Bénévoles', volunteersDesc: 'Ministères et plannings',
+      multiLoc: 'Multi-Sites', multiLocDesc: 'Plusieurs campus, un tableau de bord',
+      footer: '© 2026 ChurchSmart par DigiSmart Africa. Tous droits réservés.',
+      churchInfo: 'Informations', churchInfoDesc: 'Parlez-nous de votre église',
+      churchName: 'Nom *', churchAddress: 'Adresse', churchCity: 'Ville',
+      churchPhone: 'Téléphone', churchEmail: 'Email', pastorName: 'Pasteur',
       denomination: 'Dénomination', currency: 'Devise',
-      back: '← Retour', finishBtn: 'Envoyer le Code →', creating: 'Envoi...',
-      step1: 'Inscription', step2: 'Vérifier'
+      back: '← Retour', finishBtn: 'Envoyer le code', creating: 'Envoi...',
+      step1: 'Inscription', step2: 'Vérifier',
+      visitSite: 'En savoir plus sur churchsmartnow.com'
     }
   };
   const t = txt[lang];
@@ -902,7 +902,6 @@ function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setSuccess('');
-
     if (isLogin) {
       setLoading(true);
       const result = await login(form.email, form.password);
@@ -910,84 +909,47 @@ function LoginPage() {
       setLoading(false);
     } else {
       if (step === 1) {
-        if (!form.full_name || !form.email || !form.password) { setError(lang === 'fr' ? 'Veuillez remplir tous les champs obligatoires' : 'Please fill in all required fields'); return; }
-        if (!isValidEmail(form.email)) { setError(lang === 'fr' ? 'Format d\'email invalide' : 'Invalid email format'); return; }
-        if (form.password !== form.confirm_password) { setError(lang === 'fr' ? 'Les mots de passe ne correspondent pas' : 'Passwords do not match'); return; }
-        if (form.password.length < 8) { setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 8 caractères' : 'Password must be at least 8 characters'); return; }
-        if (!/[A-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError(lang === 'fr' ? 'Le mot de passe doit contenir une majuscule et un chiffre' : 'Password must include an uppercase letter and a number'); return; }
-        // Create Supabase Auth account — this sends OTP code email (using our custom template)
+        if (!form.full_name || !form.email || !form.password) { setError(lang === 'fr' ? 'Veuillez remplir tous les champs' : 'Please fill in all required fields'); return; }
+        if (!isValidEmail(form.email)) { setError(lang === 'fr' ? 'Email invalide' : 'Invalid email format'); return; }
+        if (form.password !== form.confirm_password) { setError(lang === 'fr' ? 'Mots de passe différents' : 'Passwords do not match'); return; }
+        if (form.password.length < 8) { setError(lang === 'fr' ? 'Min. 8 caractères' : 'Password must be at least 8 characters'); return; }
+        if (!/[A-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError(lang === 'fr' ? 'Majuscule + chiffre requis' : 'Must include uppercase + number'); return; }
         setLoading(true);
         try {
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: form.email.trim().toLowerCase(),
             password: form.password,
-            options: {
-              data: { full_name: form.full_name },
-              emailRedirectTo: undefined
-            }
+            options: { data: { full_name: form.full_name }, emailRedirectTo: undefined }
           });
-
           if (authError) {
-            if (authError.message?.includes('already registered')) {
-              setError(lang === 'fr' ? 'Cet email est déjà enregistré. Connectez-vous.' : 'This email is already registered. Please sign in.');
-            } else {
-              setError(authError.message);
-            }
-            setLoading(false);
-            return;
+            setError(authError.message?.includes('already registered')
+              ? (lang === 'fr' ? 'Email déjà utilisé. Connectez-vous.' : 'Email already registered. Please sign in.')
+              : authError.message);
+            setLoading(false); return;
           }
-
           setOtpEmail(form.email.trim().toLowerCase());
           setStep(2);
-        } catch (err) {
-          setError('Failed to send verification code');
-        }
+        } catch (err) { setError('Failed to send verification code'); }
         setLoading(false);
       } else if (step === 2) {
-        // Verify the OTP code from email
-        if (!otpCode || otpCode.length !== 8) { setError(lang === 'fr' ? 'Entrez le code à 8 chiffres' : 'Enter the 8-digit code'); return; }
+        if (!otpCode || otpCode.length !== 8) { setError(lang === 'fr' ? 'Code à 8 chiffres requis' : 'Enter the 8-digit code'); return; }
         setLoading(true);
         try {
-          const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-            email: otpEmail,
-            token: otpCode,
-            type: 'signup'
-          });
-          if (verifyError) {
-            setError(t.invalidCode);
-            setLoading(false);
-            return;
-          }
-
-          // verifyOtp already establishes the session — adopt it directly.
-          // Manual signOut/signInWithPassword here can deadlock the GoTrue session lock.
-          if (verifyData?.session) {
-            await supabase.auth.setSession(verifyData.session);
-          }
-
-          // Reload — AuthProvider's onAuthStateChange creates the church_users row
-          // (role='ADMIN', church_id=NULL) on first sign-in, then App routes to
-          // GoogleChurchSetup where the user enters church info exactly once.
-          window.location.reload();
-          return;
-        } catch (err) {
-          setError(err.message || 'Verification failed');
-        }
+          const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({ email: otpEmail, token: otpCode, type: 'signup' });
+          if (verifyError) { setError(t.invalidCode); setLoading(false); return; }
+          if (verifyData?.session) { await supabase.auth.setSession(verifyData.session); }
+          window.location.reload(); return;
+        } catch (err) { setError(err.message || 'Verification failed'); }
         setLoading(false);
       }
     }
   };
 
   const handleResendOTP = async () => {
-    setError(''); setSuccess('');
-    setLoading(true);
+    setError(''); setSuccess(''); setLoading(true);
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: otpEmail
-      });
-      if (error) { setError(error.message); }
-      else { setSuccess(t.codeSent); }
+      const { error } = await supabase.auth.resend({ type: 'signup', email: otpEmail });
+      if (error) { setError(error.message); } else { setSuccess(t.codeSent); }
     } catch (err) { setError('Failed to resend code'); }
     setLoading(false);
   };
@@ -995,21 +957,9 @@ function LoginPage() {
   const handleGoogleSignIn = async () => {
     setError(''); setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-      }
-      // Redirect happens automatically — loading stays true
-    } catch (err) {
-      setError('Google sign-in failed. Please try again.');
-      setLoading(false);
-    }
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+      if (error) { setError(error.message); setLoading(false); }
+    } catch (err) { setError('Google sign-in failed'); setLoading(false); }
   };
 
   const features = [
@@ -1017,291 +967,343 @@ function LoginPage() {
     { icon: '💰', title: t.finance, desc: t.financeDesc },
     { icon: '📊', title: t.reports, desc: t.reportsDesc },
     { icon: '💬', title: t.messaging, desc: t.messagingDesc },
-    { icon: '🙋‍♂️', title: t.volunteers, desc: t.volunteersDesc },
+    { icon: '🙋', title: t.volunteers, desc: t.volunteersDesc },
     { icon: '🌍', title: t.multiLoc, desc: t.multiLocDesc }
   ];
 
-  const inputStyle = { width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', transition: 'border-color 0.2s', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box' };
-  const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' };
+  const inputStyle = {
+    width: '100%', padding: '14px 16px', border: '1.5px solid #e2e8f0', borderRadius: '12px',
+    fontSize: '15px', transition: 'all 0.2s ease', outline: 'none', backgroundColor: '#f8fafc',
+    boxSizing: 'border-box', fontFamily: 'inherit'
+  };
+  const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px', letterSpacing: '0.01em' };
+  const btnPrimary = {
+    width: '100%', padding: '14px', background: '#4f46e5', color: 'white', border: 'none',
+    borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer',
+    transition: 'all 0.2s ease', fontFamily: 'inherit'
+  };
 
   return (
-    <div className="login-container" style={{ minHeight: '100vh', display: 'flex' }}>
-      {/* LEFT SIDE - Branding */}
-      <div className="login-branding" style={{ width: '50%', minHeight: '100vh', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '300px', height: '300px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
-        <div style={{ position: 'absolute', bottom: '-150px', left: '-100px', width: '400px', height: '400px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '50%' }} />
+    <div className="cs-login-page" style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#f8fafc' }}>
+      {/* LEFT PANEL — Branding */}
+      <div className="cs-login-branding" style={{
+        width: '48%', minHeight: '100vh', background: 'linear-gradient(160deg, #312e81 0%, #4f46e5 40%, #6366f1 70%, #818cf8 100%)',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '56px 48px',
+        position: 'relative', overflow: 'hidden'
+      }}>
+        {/* Decorative elements */}
+        <div style={{ position: 'absolute', top: '-120px', right: '-80px', width: '320px', height: '320px', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)', borderRadius: '50%' }} />
+        <div style={{ position: 'absolute', bottom: '-80px', left: '-60px', width: '280px', height: '280px', background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)', borderRadius: '50%' }} />
+        <div style={{ position: 'absolute', top: '50%', right: '10%', width: '200px', height: '200px', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '50%', transform: 'translateY(-50%)' }} />
 
-        <div style={{ marginBottom: '40px', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-           <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '40px', width: 'auto' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          {/* Logo */}
+          <div style={{ marginBottom: '48px' }}>
+            <img src="/churchsmart-logo.svg" alt="ChurchSmart" style={{ height: '38px', width: 'auto', filter: 'brightness(10)' }} />
           </div>
-          <p style={{ margin: 0, fontSize: '18px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', maxWidth: '420px' }}>{t.tagline}</p>
-        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', position: 'relative', zIndex: 1 }}>
-          {features.map((feature, i) => (
-            <div key={i} style={{ padding: '18px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '14px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span style={{ fontSize: '24px' }}>{feature.icon}</span>
-              <h3 style={{ margin: '10px 0 6px 0', fontSize: '14px', fontWeight: '600', color: 'white' }}>{feature.title}</h3>
-              <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>{feature.desc}</p>
-            </div>
-          ))}
-        </div>
+          {/* Headline */}
+          <h1 style={{ margin: '0 0 16px 0', fontSize: '36px', fontWeight: '800', color: 'white', lineHeight: '1.2', letterSpacing: '-0.02em' }}>
+            {t.tagline}
+          </h1>
+          <p style={{ margin: '0 0 48px 0', fontSize: '16px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', maxWidth: '400px' }}>
+            {t.subtitle}
+          </p>
 
-        <div style={{ display: 'flex', gap: '32px', marginTop: '40px', position: 'relative', zIndex: 1 }}>
-          <div><p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: 'white' }}>500+</p><p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>{t.churches}</p></div>
-          <div><p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: 'white' }}>50K+</p><p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>{t.membersManaged}</p></div>
-          <div><p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: 'white' }}>10+</p><p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>{t.countries}</p></div>
+          {/* Feature pills */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '48px' }}>
+            {features.map((f, i) => (
+              <div key={i} style={{
+                padding: '14px 16px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '14px',
+                border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)',
+                transition: 'all 0.3s ease'
+              }}>
+                <span style={{ fontSize: '20px', display: 'block', marginBottom: '8px' }}>{f.icon}</span>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: 'white' }}>{f.title}</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.55)', lineHeight: '1.4' }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Stats row */}
+          <div style={{ display: 'flex', gap: '40px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            {[{ num: '500+', label: t.churches }, { num: '50K+', label: t.membersManaged }, { num: '10+', label: t.countries }].map((s, i) => (
+              <div key={i}>
+                <p style={{ margin: 0, fontSize: '26px', fontWeight: '800', color: 'white', letterSpacing: '-0.02em' }}>{s.num}</p>
+                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: '500' }}>{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ marginTop: '40px', fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>{t.footer}</p>
         </div>
-        <p style={{ marginTop: '40px', fontSize: '12px', color: 'rgba(255,255,255,0.5)', position: 'relative', zIndex: 1 }}>{t.footer}</p>
       </div>
 
-      {/* RIGHT SIDE - Form */}
-      <div className="login-form-side" style={{ width: '50%', minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', position: 'relative' }}>
-        {/* Language Toggle */}
-        <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '4px', backgroundColor: '#e5e7eb', borderRadius: '8px', padding: '2px' }}>
-          <button onClick={() => setLang('en')} style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', backgroundColor: lang === 'en' ? 'white' : 'transparent', color: lang === 'en' ? '#4f46e5' : '#6b7280', fontWeight: lang === 'en' ? '600' : '400', fontSize: '12px', cursor: 'pointer' }}>🇬🇧 EN</button>
-          <button onClick={() => setLang('fr')} style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', backgroundColor: lang === 'fr' ? 'white' : 'transparent', color: lang === 'fr' ? '#4f46e5' : '#6b7280', fontWeight: lang === 'fr' ? '600' : '400', fontSize: '12px', cursor: 'pointer' }}>🇫🇷 FR</button>
+      {/* RIGHT PANEL — Form */}
+      <div className="cs-login-form-panel" style={{
+        width: '52%', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '40px', position: 'relative', backgroundColor: '#ffffff'
+      }}>
+        {/* Language toggle */}
+        <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', gap: '2px', backgroundColor: '#f1f5f9', borderRadius: '10px', padding: '3px' }}>
+          <button onClick={() => setLang('en')} style={{
+            padding: '7px 14px', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
+            backgroundColor: lang === 'en' ? 'white' : 'transparent', color: lang === 'en' ? '#4f46e5' : '#94a3b8',
+            boxShadow: lang === 'en' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s'
+          }}>EN</button>
+          <button onClick={() => setLang('fr')} style={{
+            padding: '7px 14px', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
+            backgroundColor: lang === 'fr' ? 'white' : 'transparent', color: lang === 'fr' ? '#4f46e5' : '#94a3b8',
+            boxShadow: lang === 'fr' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s'
+          }}>FR</button>
         </div>
 
-        <div className="login-form-box" style={{ width: '100%', maxWidth: '420px' }}>
-          <div style={{ marginBottom: '28px' }}>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: '26px', fontWeight: 'bold', color: '#1f2937' }}>
+        {/* Visit main site link */}
+        <div style={{ position: 'absolute', top: '24px', left: '24px' }}>
+          <a href="https://churchsmartnow.com" target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'none', fontWeight: '500', transition: 'color 0.2s' }}
+            onMouseEnter={(e) => e.target.style.color = '#4f46e5'}
+            onMouseLeave={(e) => e.target.style.color = '#94a3b8'}>
+            {t.visitSite} ↗
+          </a>
+        </div>
+
+        <div style={{ width: '100%', maxWidth: '400px' }}>
+          {/* Header */}
+          <div style={{ marginBottom: '32px' }}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '28px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
               {isLogin ? t.welcome : t.createAccount}
             </h2>
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '15px' }}>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '15px', lineHeight: '1.5' }}>
               {isLogin ? t.signInDesc : t.getStarted}
             </p>
           </div>
 
-          {/* Tab Toggle */}
-          <div style={{ display: 'flex', marginBottom: '24px', backgroundColor: '#e5e7eb', borderRadius: '12px', padding: '4px' }}>
+          {/* Tab toggle */}
+          <div style={{ display: 'flex', marginBottom: '28px', backgroundColor: '#f1f5f9', borderRadius: '14px', padding: '4px' }}>
             <button onClick={() => { setIsLogin(true); setError(''); setSuccess(''); setStep(1); }}
-              style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: isLogin ? 'white' : 'transparent', color: isLogin ? '#4f46e5' : '#6b7280', fontWeight: isLogin ? '600' : '400', fontSize: '14px', cursor: 'pointer', boxShadow: isLogin ? '0 2px 8px rgba(0,0,0,0.08)' : 'none' }}
-            >{t.signIn}</button>
+              style={{
+                flex: 1, padding: '11px', border: 'none', borderRadius: '11px', fontSize: '14px', fontWeight: '600',
+                cursor: 'pointer', transition: 'all 0.25s ease', fontFamily: 'inherit',
+                backgroundColor: isLogin ? 'white' : 'transparent', color: isLogin ? '#4f46e5' : '#94a3b8',
+                boxShadow: isLogin ? '0 1px 4px rgba(0,0,0,0.06)' : 'none'
+              }}>{t.signIn}</button>
             <button onClick={() => { setIsLogin(false); setError(''); setSuccess(''); setStep(1); }}
-              style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: !isLogin ? 'white' : 'transparent', color: !isLogin ? '#4f46e5' : '#6b7280', fontWeight: !isLogin ? '600' : '400', fontSize: '14px', cursor: 'pointer', boxShadow: !isLogin ? '0 2px 8px rgba(0,0,0,0.08)' : 'none' }}
-            >{t.register}</button>
+              style={{
+                flex: 1, padding: '11px', border: 'none', borderRadius: '11px', fontSize: '14px', fontWeight: '600',
+                cursor: 'pointer', transition: 'all 0.25s ease', fontFamily: 'inherit',
+                backgroundColor: !isLogin ? 'white' : 'transparent', color: !isLogin ? '#4f46e5' : '#94a3b8',
+                boxShadow: !isLogin ? '0 1px 4px rgba(0,0,0,0.06)' : 'none'
+              }}>{t.register}</button>
           </div>
 
-          {/* Registration Step Indicator */}
+          {/* Step indicator for register */}
           {!isLogin && (
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#4f46e5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>1</span>
-                <span style={{ fontSize: '13px', color: step === 1 ? '#4f46e5' : '#6b7280', fontWeight: step === 1 ? '600' : '400' }}>{t.step1}</span>
+                <span style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: '#4f46e5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700' }}>1</span>
+                <span style={{ fontSize: '13px', color: step === 1 ? '#4f46e5' : '#94a3b8', fontWeight: step === 1 ? '600' : '400' }}>{t.step1}</span>
               </div>
-              <div style={{ flex: 1, height: '2px', backgroundColor: step >= 2 ? '#4f46e5' : '#e5e7eb' }} />
+              <div style={{ flex: 1, height: '2px', backgroundColor: step >= 2 ? '#4f46e5' : '#e2e8f0', borderRadius: '1px', transition: 'background-color 0.3s' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: step >= 2 ? '#4f46e5' : '#e5e7eb', color: step >= 2 ? 'white' : '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>2</span>
-                <span style={{ fontSize: '13px', color: step === 2 ? '#4f46e5' : '#6b7280', fontWeight: step === 2 ? '600' : '400' }}>{t.step2}</span>
+                <span style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: step >= 2 ? '#4f46e5' : '#e2e8f0', color: step >= 2 ? 'white' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', transition: 'all 0.3s' }}>2</span>
+                <span style={{ fontSize: '13px', color: step === 2 ? '#4f46e5' : '#94a3b8', fontWeight: step === 2 ? '600' : '400' }}>{t.step2}</span>
               </div>
             </div>
           )}
 
-          {error && <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', marginBottom: '16px', color: '#dc2626', fontSize: '14px' }}>❌ {error}</div>}
-          {success && <div style={{ padding: '12px 16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', marginBottom: '16px', color: '#166534', fontSize: '14px' }}>✅ {success}</div>}
+          {/* Alerts */}
+          {error && <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', marginBottom: '16px', color: '#dc2626', fontSize: '14px', lineHeight: '1.5' }}>{error}</div>}
+          {success && <div style={{ padding: '12px 16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', marginBottom: '16px', color: '#15803d', fontSize: '14px', lineHeight: '1.5' }}>{success}</div>}
 
-          {/* FORGOT PASSWORD PANEL */}
+          {/* RESET PASSWORD */}
           {showResetForm ? (
             <div>
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', fontWeight: 'bold', color: '#1f2937' }}>🔐 {t.newPasswordTitle}</h3>
-                <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>{t.newPasswordDesc}</p>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>{t.newPasswordTitle}</h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>{t.newPasswordDesc}</p>
               </div>
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>{t.newPassword}</label>
                 <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" style={inputStyle}
-                  onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
               </div>
-              <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: '20px' }}>
                 <label style={labelStyle}>{t.confirmNewPassword}</label>
                 <input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder="••••••••" style={inputStyle}
-                  onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
               </div>
-              <button
-                onClick={async () => {
-                  setError(''); setSuccess('');
-                  if (!newPassword || newPassword.length < 8) { setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 8 caractères' : 'Password must be at least 8 characters'); return; }
-                  if (!/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) { setError(lang === 'fr' ? 'Le mot de passe doit contenir une majuscule et un chiffre' : 'Password must include an uppercase letter and a number'); return; }
-                  if (newPassword !== confirmNewPassword) { setError(lang === 'fr' ? 'Les mots de passe ne correspondent pas' : 'Passwords do not match'); return; }
-                  setLoading(true);
-                  const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
-                  if (updateErr) {
-                    setError(updateErr.message);
-                  } else {
-                    setSuccess(t.passwordUpdated);
-                    setShowResetForm(false);
-                    if (setPasswordRecovery) setPasswordRecovery(false);
-                    // Re-login automatically — Supabase session is still valid after updateUser
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session?.user?.email) {
-                      // Session exists — will be picked up by onAuthStateChange
-                      window.location.href = '/';
-                    }
-                  }
-                  setLoading(false);
-                }}
-                disabled={loading}
-                style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
-                {loading ? '⏳...' : t.updatePassword}
+              <button onClick={async () => {
+                setError(''); setSuccess('');
+                if (!newPassword || newPassword.length < 8) { setError(lang === 'fr' ? 'Min. 8 caractères' : 'Min. 8 characters'); return; }
+                if (!/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) { setError(lang === 'fr' ? 'Majuscule + chiffre requis' : 'Must include uppercase + number'); return; }
+                if (newPassword !== confirmNewPassword) { setError(lang === 'fr' ? 'Mots de passe différents' : 'Passwords do not match'); return; }
+                setLoading(true);
+                const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
+                if (updateErr) { setError(updateErr.message); }
+                else {
+                  setSuccess(t.passwordUpdated); setShowResetForm(false);
+                  if (setPasswordRecovery) setPasswordRecovery(false);
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (session?.user?.email) { window.location.href = '/'; }
+                }
+                setLoading(false);
+              }} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                {loading ? '⏳ ...' : t.updatePassword}
               </button>
             </div>
           ) : showForgotPassword ? (
             <div>
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', fontWeight: 'bold', color: '#1f2937' }}>🔑 {t.forgotTitle}</h3>
-                <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>{t.forgotDesc}</p>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>{t.forgotTitle}</h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>{t.forgotDesc}</p>
               </div>
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>{t.email}</label>
                 <input type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="you@church.com" style={inputStyle}
-                  onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                  onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
               </div>
-              <button
-                onClick={async () => {
-                  setLoading(true); setError(''); setSuccess('');
-                  const result = await forgotPassword(resetEmail);
-                  if (result.success) {
-                    setSuccess(t.resetSent);
-                  } else {
-                    setError(result.error);
-                  }
-                  setLoading(false);
-                }}
-                disabled={loading}
-                style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginBottom: '12px' }}>
-                {loading ? '⏳...' : t.sendResetLink}
+              <button onClick={async () => {
+                setLoading(true); setError(''); setSuccess('');
+                const result = await forgotPassword(resetEmail);
+                if (result.success) { setSuccess(t.resetSent); } else { setError(result.error); }
+                setLoading(false);
+              }} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer', marginBottom: '12px' }}>
+                {loading ? '⏳ ...' : t.sendResetLink}
               </button>
-              <button
-                onClick={() => { setShowForgotPassword(false); setError(''); setSuccess(''); }}
-                style={{ width: '100%', padding: '12px', backgroundColor: 'transparent', color: '#6366f1', border: 'none', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+              <button onClick={() => { setShowForgotPassword(false); setError(''); setSuccess(''); }}
+                style={{ width: '100%', padding: '12px', backgroundColor: 'transparent', color: '#4f46e5', border: 'none', fontSize: '14px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' }}>
                 {t.backToLogin}
               </button>
             </div>
           ) : (
           <>
           <form onSubmit={handleSubmit}>
-            {/* LOGIN FORM */}
+            {/* LOGIN FIELDS */}
             {isLogin && (
               <>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>{t.email}</label>
                   <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@church.com" style={inputStyle}
-                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                    onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
                 </div>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>{t.password}</label>
                   <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" style={inputStyle}
-                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                    onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b7280', cursor: 'pointer' }}>
-                    <input type="checkbox" style={{ width: '16px', height: '16px', accentColor: '#6366f1' }} /> {t.rememberMe}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>
+                    <input type="checkbox" style={{ width: '16px', height: '16px', accentColor: '#4f46e5', borderRadius: '4px' }} /> {t.rememberMe}
                   </label>
-                  <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotPassword(true); setError(''); setSuccess(''); setResetEmail(form.email); }} style={{ fontSize: '13px', color: '#6366f1', textDecoration: 'none', fontWeight: '500' }}>{t.forgotPassword}</a>
+                  <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotPassword(true); setError(''); setSuccess(''); setResetEmail(form.email); }}
+                    style={{ fontSize: '13px', color: '#4f46e5', textDecoration: 'none', fontWeight: '500' }}>{t.forgotPassword}</a>
                 </div>
               </>
             )}
 
-            {/* REGISTER STEP 1 - User Info */}
+            {/* REGISTER STEP 1 */}
             {!isLogin && step === 1 && (
               <>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>{t.fullName} *</label>
                   <input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Pastor John Doe" style={inputStyle}
-                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                    onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
                 </div>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>{t.email} *</label>
                   <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@church.com" style={inputStyle}
-                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                    onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
                 </div>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>{t.phone}</label>
                   <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+237 6XX XXX XXX" style={inputStyle}
-                    onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                    onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                    onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                   <div>
                     <label style={labelStyle}>{t.password} *</label>
                     <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••" style={inputStyle}
-                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                      onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                      onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
                   </div>
                   <div>
                     <label style={labelStyle}>{t.confirmPassword} *</label>
                     <input type="password" value={form.confirm_password} onChange={(e) => setForm({ ...form, confirm_password: e.target.value })} placeholder="••••••" style={inputStyle}
-                      onFocus={(e) => e.target.style.borderColor = '#6366f1'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} />
+                      onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                      onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }} />
                   </div>
                 </div>
               </>
             )}
 
-            {/* REGISTER STEP 2 - OTP Verification */}
+            {/* REGISTER STEP 2 — OTP */}
             {!isLogin && step === 2 && (
               <>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>📧</div>
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}>{t.otpTitle}</h3>
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>{t.otpDesc} <strong>{otpEmail}</strong></p>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '16px', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 16px' }}>✉️</div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>{t.otpTitle}</h3>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>{t.otpDesc} <strong style={{ color: '#0f172a' }}>{otpEmail}</strong></p>
                 </div>
                 <div style={{ marginBottom: '20px' }}>
-                  <input
-                    type="text" value={otpCode} maxLength={8}
+                  <input type="text" value={otpCode} maxLength={8}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
                     placeholder={t.otpPlaceholder}
-                    style={{ width: '100%', padding: '16px', border: '2px solid #e5e7eb', borderRadius: '12px', fontSize: '28px', textAlign: 'center', letterSpacing: '12px', fontWeight: '700', outline: 'none', boxSizing: 'border-box' }}
-                    onFocus={(e) => e.target.style.borderColor = '#6366f1'}
-                    onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-                    autoFocus
-                  />
+                    style={{ width: '100%', padding: '16px', border: '1.5px solid #e2e8f0', borderRadius: '14px', fontSize: '28px', textAlign: 'center', letterSpacing: '10px', fontWeight: '700', outline: 'none', boxSizing: 'border-box', backgroundColor: '#f8fafc', fontFamily: 'monospace' }}
+                    onFocus={(e) => { e.target.style.borderColor = '#818cf8'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(129,140,248,0.1)'; }}
+                    onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none'; }}
+                    autoFocus />
                 </div>
                 <p style={{ textAlign: 'center', margin: '0 0 16px 0' }}>
                   <button type="button" onClick={handleResendOTP} disabled={loading}
-                    style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: '13px', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline' }}>
+                    style={{ background: 'none', border: 'none', color: '#4f46e5', fontSize: '13px', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
                     {t.resendCode}
                   </button>
                 </p>
               </>
             )}
 
-            {/* Buttons */}
+            {/* Submit */}
             <div style={{ display: 'flex', gap: '12px' }}>
               {!isLogin && step === 2 && (
                 <button type="button" onClick={() => setStep(step - 1)}
-                  style={{ flex: 1, padding: '14px', backgroundColor: 'white', color: '#6b7280', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
+                  style={{ flex: '0 0 auto', padding: '14px 20px', backgroundColor: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
                   {t.back}
                 </button>
               )}
               <button type="submit" disabled={loading}
-                style={{ flex: 1, padding: '14px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)' }}>
-                {loading ? `⏳ ${isLogin ? t.signingIn : step === 2 ? t.verifying : t.creating}` : isLogin ? t.signInBtn : step === 1 ? t.finishBtn : t.verifyCode}
+                style={{ ...btnPrimary, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                {loading ? (isLogin ? t.signingIn : step === 2 ? t.verifying : t.creating) : isLogin ? t.signInBtn : step === 1 ? t.finishBtn : t.verifyCode}
               </button>
             </div>
           </form>
 
-          {/* Google Sign-In — only show on login tab */}
+          {/* Google Sign-In */}
           {isLogin && (
-            <div style={{ marginTop: '20px' }}>
+            <div style={{ marginTop: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
-                <span style={{ fontSize: '13px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{t.orContinueWith}</span>
-                <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
+                <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+                <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '500' }}>{t.orContinueWith}</span>
+                <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
               </div>
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={loading}
+              <button onClick={handleGoogleSignIn} disabled={loading}
                 style={{
-                  width: '100%', padding: '12px 16px', backgroundColor: 'white',
-                  border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px',
-                  fontWeight: '500', color: '#374151', cursor: loading ? 'not-allowed' : 'pointer',
+                  width: '100%', padding: '13px 16px', backgroundColor: 'white', border: '1.5px solid #e2e8f0',
+                  borderRadius: '12px', fontSize: '14px', fontWeight: '600', color: '#334155', cursor: loading ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                  transition: 'all 0.2s', opacity: loading ? 0.7 : 1
+                  transition: 'all 0.2s', opacity: loading ? 0.7 : 1, fontFamily: 'inherit'
                 }}
-                onMouseEnter={(e) => { e.target.style.backgroundColor = '#f9fafb'; e.target.style.borderColor = '#d1d5db'; }}
-                onMouseLeave={(e) => { e.target.style.backgroundColor = 'white'; e.target.style.borderColor = '#e5e7eb'; }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24">
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
+                <svg width="18" height="18" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -1314,8 +1316,9 @@ function LoginPage() {
           </>
           )}
 
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <p style={{ fontSize: '12px', color: '#9ca3af' }}>🔒 {t.secure}</p>
+          {/* Security badge */}
+          <div style={{ marginTop: '28px', textAlign: 'center' }}>
+            <p style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>🔒 {t.secure}</p>
           </div>
 
           {/* Testimonial */}
@@ -1329,9 +1332,9 @@ function LoginPage() {
 
 function TestimonialRotator({ lang }) {
   const quotes = [
-    { en: '"ChurchSmart changed how we manage our church."', fr: '"ChurchSmart a transformé la gestion de notre église."', author: 'Pastor, Douala' },
-    { en: '"Finally, a tool built for African churches."', fr: '"Enfin, un outil conçu pour les églises africaines."', author: 'Church Admin, Yaoundé' },
-    { en: '"Our giving tracking has never been easier."', fr: '"Le suivi des offrandes n\'a jamais été aussi facile."', author: 'Finance Team, Abuja' },
+    { en: '“ChurchSmart changed how we manage our church.”', fr: '«ChurchSmart a transformé la gestion de notre église.»', author: 'Pastor, Douala' },
+    { en: '“Finally, a tool built for African churches.”', fr: '«Enfin, un outil conçu pour les églises africaines.»', author: 'Church Admin, Yaoundé' },
+    { en: '“Our giving tracking has never been easier.”', fr: '«Le suivi des offrandes n’a jamais été aussi facile.»', author: 'Finance Team, Abuja' },
   ];
   const [idx, setIdx] = useState(0);
   const [fade, setFade] = useState(true);
@@ -1344,9 +1347,9 @@ function TestimonialRotator({ lang }) {
   }, []);
   const q = quotes[idx];
   return (
-    <div style={{ marginTop: '24px', textAlign: 'center', opacity: fade ? 1 : 0, transition: 'opacity 0.3s', minHeight: '60px' }}>
-      <p style={{ margin: '0 0 4px', fontSize: '13px', fontStyle: 'italic', color: '#6b7280' }}>{lang === 'fr' ? q.fr : q.en}</p>
-      <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>— {q.author}</p>
+    <div style={{ marginTop: '28px', textAlign: 'center', opacity: fade ? 1 : 0, transition: 'opacity 0.3s ease', minHeight: '56px' }}>
+      <p style={{ margin: '0 0 6px', fontSize: '13px', fontStyle: 'italic', color: '#64748b', lineHeight: '1.5' }}>{lang === 'fr' ? q.fr : q.en}</p>
+      <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>— {q.author}</p>
     </div>
   );
 }

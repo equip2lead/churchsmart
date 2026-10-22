@@ -191,62 +191,38 @@ textarea {
 }
 
 /* ==========================================
-   LANDING PAGE
+   LOGIN PAGE
    ========================================== */
 
-/* Tablet (max 1024px) */
-@media (max-width: 1024px) {
-  .cs-landing-features-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
+/* Tablet — stack to single column */
+@media (max-width: 900px) {
+  .cs-login-page {
+    flex-direction: column !important;
   }
-  .cs-landing-pricing-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    max-width: 700px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
+  .cs-login-branding {
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 40px 24px 32px !important;
   }
-  .cs-landing-footer-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 32px !important;
+  .cs-login-branding h1 {
+    font-size: 26px !important;
+  }
+  .cs-login-form-panel {
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 32px 24px 40px !important;
   }
 }
 
-/* Mobile (max 768px) */
-@media (max-width: 768px) {
-  .cs-landing-nav-links {
-    display: none !important;
+/* Mobile — compact branding */
+@media (max-width: 640px) {
+  .cs-login-branding {
+    padding: 32px 20px 24px !important;
   }
-  .cs-landing-signin-btn {
-    display: none !important;
+  .cs-login-branding h1 {
+    font-size: 22px !important;
   }
-  .cs-landing-features-grid {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
-  }
-  .cs-landing-pricing-grid {
-    grid-template-columns: 1fr !important;
-    max-width: 400px !important;
-  }
-  .cs-landing-hero-btns {
-    flex-direction: column !important;
-    align-items: center !important;
-  }
-  .cs-landing-hero-btns > * {
-    width: 100% !important;
-    max-width: 320px !important;
-    text-align: center !important;
-    justify-content: center !important;
-  }
-  .cs-landing-stats {
-    gap: 32px !important;
-  }
-  .cs-landing-footer-grid {
-    grid-template-columns: 1fr !important;
-    gap: 24px !important;
-  }
-  .cs-landing-auth-modal {
-    padding: 24px !important;
-    border-radius: 16px !important;
-    max-height: 95vh !important;
+  .cs-login-form-panel {
+    padding: 24px 20px 32px !important;
   }
 }
