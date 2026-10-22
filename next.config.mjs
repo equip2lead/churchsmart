@@ -2,6 +2,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    optimizePackageImports: ['@sentry/nextjs', '@supabase/supabase-js'],
+  },
   async headers() {
     return [{
       source: '/(.*)',

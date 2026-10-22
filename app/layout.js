@@ -1,15 +1,4 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata = {
   title: "ChurchSmart — Church Management Platform",
@@ -39,7 +28,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body>
         {/* Branded splash screen — visible before JS bundle loads */}
         <div id="splash-screen" style={{
           position: 'fixed', inset: 0, zIndex: 99999,
@@ -62,7 +51,7 @@ export default function RootLayout({ children }) {
           }} />
         </div>
         <script dangerouslySetInnerHTML={{ __html:
-          `requestAnimationFrame(function(){var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.style.opacity='0';setTimeout(function(){s.remove()},300)},300)}})`
+          `window.__dismissSplash=function(){var s=document.getElementById('splash-screen');if(s){s.style.opacity='0';setTimeout(function(){s.remove()},300)}};setTimeout(window.__dismissSplash,8000)`
         }} />
         {children}
       </body>
