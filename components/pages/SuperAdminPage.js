@@ -60,12 +60,24 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
   // Authed fetch against /api/super-admin/*. Returns { ok, data }.
   const api = useCallback(async (path, options = {}) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    let token = '';
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      token = session?.access_token || '';
+    } catch (err) {
+      // Fallback: read token directly from localStorage when getSession() fails
+      // (can happen during Supabase auth initialization race conditions)
+      console.warn('SuperAdmin: getSession() failed, falling back to localStorage', err?.message);
+      try {
+        const stored = localStorage.getItem('sb-ntngwrtbbgetobinwvxd-auth-token');
+        if (stored) { token = JSON.parse(stored)?.access_token || ''; }
+      } catch (_) { /* ignore parse errors */ }
+    }
     const response = await fetch(`/api/super-admin/${path}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token || ''}`,
+        'Authorization': `Bearer ${token}`,
         ...(options.headers || {})
       }
     });
@@ -77,10 +89,15 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { ok, data } = await api('me');
-      if (cancelled) return;
-      if (ok) { setMe(data); setAuthState('allowed'); }
-      else { setAuthState('denied'); }
+      try {
+        const { ok, data } = await api('me');
+        if (cancelled) return;
+        if (ok) { setMe(data); setAuthState('allowed'); }
+        else { setAuthState('denied'); }
+      } catch (err) {
+        console.error('SuperAdmin: access check failed', err);
+        if (!cancelled) setAuthState('denied');
+      }
     })();
     return () => { cancelled = true; };
   }, [api]);
