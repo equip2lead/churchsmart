@@ -94,11 +94,33 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
     return { ok: response.ok, status: response.status, data };
   }, []);
 
+  // ── Restore / refresh Supabase session from localStorage ──
+  // supabase.auth.getSession() can hang with a never-resolving promise during
+  // client initialization. setSession() bypasses that: it takes the stored
+  // tokens, refreshes an expired access_token via the refresh_token, and
+  // updates localStorage with the fresh pair. This must run BEFORE the access
+  // check so the api() callback reads a valid token.
+  const restoreSession = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      const ref = SUPABASE_URL ? SUPABASE_URL.split('//')[1]?.split('.')[0] : null;
+      const authKey = ref ? `sb-${ref}-auth-token` : Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+      const stored = authKey ? localStorage.getItem(authKey) : null;
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.access_token && parsed?.refresh_token) {
+          await supabase.auth.setSession({ access_token: parsed.access_token, refresh_token: parsed.refresh_token });
+        }
+      }
+    } catch (_) { /* ignore session restore errors */ }
+  }, []);
+
   // ── Access check ──
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        await restoreSession();
         const { ok, data } = await api('me');
         if (cancelled) return;
         if (ok) { setMe(data); setAuthState('allowed'); }
@@ -109,30 +131,12 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [api]);
+  }, [api, restoreSession]);
 
   // ── Platform data ──
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Prime the Supabase client session from localStorage before any query.
-      // supabase.auth.getSession() can hang (never-resolving promise) during
-      // Supabase client initialization, which blocks every supabaseQuery call
-      // because the client internally calls getSession() for auth headers.
-      if (supabase) {
-        try {
-          const ref = SUPABASE_URL ? SUPABASE_URL.split('//')[1]?.split('.')[0] : null;
-          const authKey = ref ? `sb-${ref}-auth-token` : Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-          const stored = authKey ? localStorage.getItem(authKey) : null;
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed?.access_token && parsed?.refresh_token) {
-              await supabase.auth.setSession({ access_token: parsed.access_token, refresh_token: parsed.refresh_token });
-            }
-          }
-        } catch (_) { /* ignore session restore errors */ }
-      }
-
       const [churchRows, memberRows, subRows, logRows, momoRows] = await Promise.all([
         supabaseQuery('churches', { select: 'id,name,email,plan,is_suspended,created_at,city,country', order: 'created_at.desc' }),
         // church_id only: enough to count members per church without pulling
