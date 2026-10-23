@@ -95,11 +95,9 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
   }, []);
 
   // ── Restore / refresh Supabase session from localStorage ──
-  // supabase.auth.getSession() can hang with a never-resolving promise during
-  // client initialization. setSession() bypasses that: it takes the stored
-  // tokens, refreshes an expired access_token via the refresh_token, and
-  // updates localStorage with the fresh pair. This must run BEFORE the access
-  // check so the api() callback reads a valid token.
+  // supabase.auth.setSession() can also hang when the internal auth lock is
+  // held by the stuck getSession() initialization. We race it with a 3-second
+  // timeout so it never blocks the access check indefinitely.
   const restoreSession = useCallback(async () => {
     if (!supabase) return;
     try {
@@ -109,10 +107,15 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed?.access_token && parsed?.refresh_token) {
-          await supabase.auth.setSession({ access_token: parsed.access_token, refresh_token: parsed.refresh_token });
+          await Promise.race([
+            supabase.auth.setSession({ access_token: parsed.access_token, refresh_token: parsed.refresh_token }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('setSession timeout')), 3000))
+          ]);
         }
       }
-    } catch (_) { /* ignore session restore errors */ }
+    } catch (err) {
+      console.warn('SuperAdmin: restoreSession skipped:', err?.message);
+    }
   }, []);
 
   // ── Access check ──
@@ -134,35 +137,35 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
   }, [api, restoreSession]);
 
   // ── Platform data ──
+  // All data is fetched through Next.js API routes. Direct supabaseQuery()
+  // calls hang because the Supabase client's internal auth initialization
+  // holds a lock on getSession() which never resolves.
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [churchRows, memberRows, subRows, logRows, momoRows] = await Promise.all([
-        supabaseQuery('churches', { select: 'id,name,email,plan,is_suspended,created_at,city,country', order: 'created_at.desc' }),
-        // church_id only: enough to count members per church without pulling
-        // every member record on the platform.
-        supabaseQuery('members', { select: 'church_id' }),
-        supabaseQuery('subscriptions', { select: 'church_id,plan,status,current_period_end' }),
-        supabaseQuery('admin_audit_log', { order: 'created_at.desc', limit: 200 }),
-        supabaseQuery('mobile_payments', { order: 'created_at.desc', limit: 300 })
+      // Fetch raw platform data through server-side API route (bypasses
+      // client-side Supabase auth entirely).
+      const [platformData, platformStats, team] = await Promise.all([
+        api('platform-data'),
+        api('dashboard-stats'),
+        api('sub-admins')
       ]);
 
-      setChurches(churchRows || []);
-      setSubscriptions(subRows || []);
-      setAuditLog(logRows || []);
-      setMobilePayments(momoRows || []);
+      if (platformData.ok) {
+        setChurches(platformData.data.churches || []);
+        setSubscriptions(platformData.data.subscriptions || []);
+        setAuditLog(platformData.data.auditLog || []);
+        setMobilePayments(platformData.data.mobilePayments || []);
 
-      const counts = {};
-      for (const row of (memberRows || [])) {
-        if (!row.church_id) continue;
-        counts[row.church_id] = (counts[row.church_id] || 0) + 1;
+        const counts = {};
+        for (const row of (platformData.data.members || [])) {
+          if (!row.church_id) continue;
+          counts[row.church_id] = (counts[row.church_id] || 0) + 1;
+        }
+        setMemberCounts(counts);
       }
-      setMemberCounts(counts);
 
-      const platformStats = await api('dashboard-stats');
       if (platformStats.ok) setStats(platformStats.data);
-
-      const team = await api('sub-admins');
       if (team.ok) setSubAdmins(team.data.subAdmins || []);
 
       if (can('view_payment_settings')) {
