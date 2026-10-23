@@ -1,7 +1,7 @@
 "use client";
 // ChurchSmart shared UI components — extracted from app/page.js
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, uploadPhoto, sendMessage, getAuthHeaders, SUPABASE_URL, SUPABASE_KEY, WHATSAPP_MAX_CHARS, EDGE_FUNCTION_URL } from '../lib/cs-shared';
+import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, uploadPhoto, SUPABASE_URL, SUPABASE_KEY, WHATSAPP_MAX_CHARS } from '../lib/cs-shared';
 import { useLanguage, useToast, useAuth, usePermissions, ROLE_ACCESS } from '../lib/cs-contexts';
 import { canAccessFeature, canAccess, getPlanLimits } from '../lib/featureGating';
 import Papa from 'papaparse';
@@ -553,26 +553,39 @@ function SMSModal({ isOpen, onClose, recipient, onSend }) {
     custom: customMessage
   };
 
-  const handleSend = async (type = 'sms') => {
+  const handleSend = async () => {
     setSending(true);
     setResult(null);
-    
+
     const message = messageType === 'custom' ? customMessage : messageTemplates[messageType];
-    const response = await sendMessage(recipient.phone || recipient.whatsapp, message, type);
-    
-    setResult(response);
-    setSending(false);
-    
-    if (response.success) {
-      // Update follow-up status
-      if (recipient.id) {
-        await supabaseUpdate('visitors', recipient.id, { followup_status: 'IN_PROGRESS' });
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          churchId: recipient.church_id,
+          recipients: [{ phone: recipient.phone || recipient.whatsapp, name: recipient.full_name || recipient.first_name }],
+          message,
+          purpose: 'visitor_followup'
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.sent > 0) {
+        setResult({ success: true });
+        if (recipient.id) {
+          await supabaseUpdate('visitors', recipient.id, { followup_status: 'IN_PROGRESS' });
+        }
+        setTimeout(() => {
+          onClose();
+          if (onSend) onSend();
+        }, 2000);
+      } else {
+        setResult({ success: false, error: data.error || data.failures?.[0]?.error || 'Failed to send' });
       }
-      setTimeout(() => {
-        onClose();
-        if (onSend) onSend();
-      }, 2000);
+    } catch (error) {
+      setResult({ success: false, error: error.message });
     }
+    setSending(false);
   };
 
   return (
@@ -629,10 +642,7 @@ function SMSModal({ isOpen, onClose, recipient, onSend }) {
 
       <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
         <Button variant="secondary" onClick={onClose}>{t('cancel')}</Button>
-        <Button variant="sms" onClick={() => handleSend('sms')} disabled={sending}>
-          {sending ? '⏳...' : '📱 SMS'}
-        </Button>
-        <Button variant="whatsapp" onClick={() => handleSend('whatsapp')} disabled={sending}>
+        <Button variant="whatsapp" onClick={() => handleSend()} disabled={sending}>
           {sending ? '⏳...' : '💬 WhatsApp'}
         </Button>
       </div>

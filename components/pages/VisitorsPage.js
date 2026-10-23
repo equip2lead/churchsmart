@@ -1,7 +1,7 @@
 "use client";
 // VisitorsPage — extracted from app/page.js for code splitting
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, sendMessage, WHATSAPP_MAX_CHARS } from '../../lib/cs-shared';
+import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, WHATSAPP_MAX_CHARS } from '../../lib/cs-shared';
 import { useLanguage, useToast, useAuth, usePermissions } from '../../lib/cs-contexts';
 import { canAccessFeature, canAccess, getPlanLimits } from '../../lib/featureGating';
 import { Modal, FormInput, Button, DataTable, PageHeader, SearchBar, LoadingSpinner, ConfirmDialog, StatusBadge, SMSModal, exportToCSV, StatCard } from '../cs-ui';
@@ -261,13 +261,27 @@ function VisitorsPage() {
 
   const sendAutoFollowUp = async (visitor, dayType) => {
     const message = t(`day${dayType}Message`);
-    const result = await sendMessage(visitor.phone, message, 'sms');
-    if (result.success) {
-      await supabaseUpdate('visitors', visitor.id, { followup_status: 'IN_PROGRESS' });
-      fetchVisitors();
-      toast.info(`✅ Day ${dayType} message sent to ${visitor.full_name}!`);
-    } else {
-      toast.info(`❌ Failed to send message: ${result.error}`);
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          churchId: visitor.church_id || CHURCH_ID,
+          recipients: [{ phone: visitor.phone, name: visitor.full_name }],
+          message,
+          purpose: `visitor_followup_day${dayType}`
+        })
+      });
+      const result = await res.json();
+      if (res.ok && result.sent > 0) {
+        await supabaseUpdate('visitors', visitor.id, { followup_status: 'IN_PROGRESS' });
+        fetchVisitors();
+        toast.info(`✅ Day ${dayType} message sent to ${visitor.full_name}!`);
+      } else {
+        toast.info(`❌ Failed to send message: ${result.error || result.failures?.[0]?.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      toast.info(`❌ Failed to send message: ${error.message}`);
     }
   };
 

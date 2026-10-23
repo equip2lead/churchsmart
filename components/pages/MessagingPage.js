@@ -1,7 +1,7 @@
 "use client";
 // MessagingPage — extracted from app/page.js for code splitting
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sendMessage, getAuthHeaders, SUPABASE_URL, SUPABASE_KEY, WHATSAPP_MAX_CHARS, EDGE_FUNCTION_URL } from '../../lib/cs-shared';
+import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, SUPABASE_URL, SUPABASE_KEY, WHATSAPP_MAX_CHARS } from '../../lib/cs-shared';
 import { useLanguage, useToast, useAuth, usePermissions } from '../../lib/cs-contexts';
 import { canAccessFeature, canAccess, getPlanLimits, getEmailLimit } from '../../lib/featureGating';
 import { Modal, FormInput, Button, PageHeader, SearchBar, LoadingSpinner, exportToCSV, DataTable, StatusBadge, ConfirmDialog, StatCard } from '../cs-ui';

@@ -1,7 +1,7 @@
 "use client";
 // SettingsPage — extracted from app/page.js for code splitting
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, uploadPhoto, getAuthHeaders, sendMessage, SUPABASE_URL, SUPABASE_KEY, SUPABASE_ANON_KEY, EDGE_FUNCTION_URL, WHATSAPP_MAX_CHARS, WHATSAPP_SETUP_GUIDE_URL, maskTokenTail, timeAgoShort, momoDeadline, momoExpired, MOMO_POLL_MS } from '../../lib/cs-shared';
+import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, uploadPhoto, SUPABASE_URL, SUPABASE_KEY, SUPABASE_ANON_KEY, WHATSAPP_MAX_CHARS, WHATSAPP_SETUP_GUIDE_URL, maskTokenTail, timeAgoShort, momoDeadline, momoExpired, MOMO_POLL_MS } from '../../lib/cs-shared';
 import { useLanguage, useToast, useAuth, usePermissions, ROLE_ACCESS } from '../../lib/cs-contexts';
 import { canAccessFeature, canAccess, getPlanLimits, getEmailLimit, getRequiredPlan, getPlanOrder, comparePlans, PLAN_PRICING, STRIPE_PRICE_IDS, isPlaceholderPriceId } from '../../lib/featureGating';
 import { SUPER_ADMIN_EMAILS, ADMIN_ROLES, roleLabel, pawapayBaseUrl, isHardcodedSuperAdmin } from '../../lib/superAdmin';
@@ -1986,7 +1986,6 @@ function SettingsPage({ plan, onNavigate }) {
                   >
                     <option value="wamatas">Wamatas</option>
                     <option value="meta_cloud" disabled>{`Meta Cloud API (${t('comingSoon')})`}</option>
-                    <option value="twilio" disabled>{`Twilio (${t('comingSoon')})`}</option>
                     <option value="360dialog" disabled>{`360dialog (${t('comingSoon')})`}</option>
                   </select>
                 </div>

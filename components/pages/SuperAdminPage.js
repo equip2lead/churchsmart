@@ -1,7 +1,7 @@
 "use client";
 // SuperAdminPage — extracted from app/page.js for code splitting
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, getAuthHeaders, SUPABASE_URL, SUPABASE_KEY, SUPABASE_ANON_KEY, sanitizeInput, sanitizeObject, timeAgoShort, maskTokenTail } from '../../lib/cs-shared';
+import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, SUPABASE_URL, SUPABASE_KEY, SUPABASE_ANON_KEY, sanitizeInput, sanitizeObject, timeAgoShort, maskTokenTail } from '../../lib/cs-shared';
 import { useLanguage, useToast, useAuth, usePermissions } from '../../lib/cs-contexts';
 import { SUPER_ADMIN_EMAILS, ADMIN_ROLES, roleLabel, isHardcodedSuperAdmin, pawapayBaseUrl } from '../../lib/superAdmin';
 import { PLAN_PRICING, STRIPE_PRICE_IDS, isPlaceholderPriceId, getPlanOrder, comparePlans, canAccessFeature, canAccess, getPlanLimits } from '../../lib/featureGating';
