@@ -60,18 +60,27 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
   // Authed fetch against /api/super-admin/*. Returns { ok, data }.
   const api = useCallback(async (path, options = {}) => {
+    // Read auth token: try getSession() with a timeout, fall back to localStorage.
+    // supabase.auth.getSession() can hang indefinitely during Supabase client
+    // initialization race conditions (never-resolving promise), so we race it
+    // against a 3-second timeout and read localStorage as the primary fallback.
     let token = '';
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      token = session?.access_token || '';
-    } catch (err) {
-      // Fallback: read token directly from localStorage when getSession() fails
-      // (can happen during Supabase auth initialization race conditions)
-      console.warn('SuperAdmin: getSession() failed, falling back to localStorage', err?.message);
+      const ref = SUPABASE_URL ? SUPABASE_URL.split('//')[1]?.split('.')[0] : null;
+      const authKey = ref ? `sb-${ref}-auth-token` : Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+      const stored = authKey ? localStorage.getItem(authKey) : null;
+      if (stored) { token = JSON.parse(stored)?.access_token || ''; }
+    } catch (_) { /* ignore parse errors */ }
+    if (!token && supabase) {
       try {
-        const stored = localStorage.getItem('sb-ntngwrtbbgetobinwvxd-auth-token');
-        if (stored) { token = JSON.parse(stored)?.access_token || ''; }
-      } catch (_) { /* ignore parse errors */ }
+        const result = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 3000))
+        ]);
+        token = result?.data?.session?.access_token || '';
+      } catch (err) {
+        console.warn('SuperAdmin: getSession() failed:', err?.message);
+      }
     }
     const response = await fetch(`/api/super-admin/${path}`, {
       ...options,
