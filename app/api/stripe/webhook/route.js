@@ -13,13 +13,9 @@ function getSupabase() {
   );
 }
 
-// Plan → WhatsApp monthly allowance mapping
-const PLAN_WHATSAPP_ALLOWANCE = {
-  free: 0,
-  starter: 0,
-  growth: 100,
-  pro: 500
-};
+// WhatsApp messaging is gated by the 'messaging_whatsapp' feature (Growth+).
+// Message volume limits are managed by the third-party WhatsApp provider,
+// not by ChurchSmart — so there is no credit/quota system here.
 
 // Stripe Price ID → Plan ID mapping.
 // Built from the shared price table (monthly + annual per tier) plus the
@@ -136,8 +132,6 @@ async function handleCheckoutCompleted(supabase, session) {
     .update({ plan: planId, subscription_plan: planId, stripe_customer_id: customerId })
     .eq('id', churchId);
 
-  // Initialize/update message credits for new plan
-  await updateCreditsForPlan(supabase, churchId, planId);
 }
 
 
@@ -173,8 +167,6 @@ async function handleSubscriptionUpdated(supabase, subscription) {
     .update({ plan: planId, subscription_plan: planId })
     .eq('id', churchId);
 
-  // Update credits if plan changed
-  await updateCreditsForPlan(supabase, churchId, planId);
 }
 
 
@@ -260,40 +252,8 @@ async function handlePaymentFailed(supabase, invoice) {
 }
 
 
-// ──────────────────────────────────────────
-// HELPER: Update credits when plan changes
-// ──────────────────────────────────────────
-async function updateCreditsForPlan(supabase, churchId, planId) {
-  const allowance = PLAN_WHATSAPP_ALLOWANCE[planId] || 0;
-
-  // Check if record exists
-  const { data: existing } = await supabase
-    .from('message_credits')
-    .select('id, bonus_credits')
-    .eq('church_id', churchId)
-    .single();
-
-  if (existing) {
-    await supabase
-      .from('message_credits')
-      .update({
-        monthly_whatsapp_allowance: allowance,
-        whatsapp_credits: allowance + (existing.bonus_credits || 0),
-        whatsapp_used_this_month: 0,
-        last_reset_date: new Date().toISOString().split('T')[0]
-      })
-      .eq('church_id', churchId);
-  } else {
-    await supabase
-      .from('message_credits')
-      .insert({
-        church_id: churchId,
-        monthly_whatsapp_allowance: allowance,
-        whatsapp_credits: allowance,
-        whatsapp_used_this_month: 0
-      });
-  }
-}
+// WhatsApp credit/quota management removed — message limits are now handled
+// by the third-party WhatsApp provider chosen by the church admin.
 
 
 // ──────────────────────────────────────────

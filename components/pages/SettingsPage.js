@@ -16,7 +16,7 @@ function getBillingPlanLimits(planId) {
     members: limits.maxMembers,
     admins: limits.maxAdmins,
     locations: limits.maxLocations,
-    whatsapp: limits.maxWhatsapp,
+    whatsapp: canAccessFeature(planId, 'messaging_whatsapp'),
     email: limits.maxEmailsPerMonth,
     sms: canAccessFeature(planId, 'sms'),
     reports: canAccessFeature(planId, 'reports_advanced') ? 'advanced' : 'basic',
@@ -115,10 +115,7 @@ function BillingSection({ churchId }) {
     };
   });
 
-  const creditPacks = [
-    { id: 'whatsapp_100', label: '100 WhatsApp Messages', price: 5, credits: 100, stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_WHATSAPP_100 },
-    { id: 'whatsapp_500', label: '500 WhatsApp Messages', price: 20, credits: 500, stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_WHATSAPP_500 }
-  ];
+  // WhatsApp credit packs removed — message limits managed by provider.
 
   // Trial tracking (30 days)
   const [trialExpired, setTrialExpired] = useState(false);
@@ -306,30 +303,8 @@ function BillingSection({ churchId }) {
     }, MOMO_POLL_MS);
   };
 
-  const handleBuyCredits = async (pack) => {
-    if (!pack.stripePriceId) {
-      toast.warning('Credit packs are not configured yet.');
-      return;
-    }
-    setBuyingCredits(true);
-    try {
-      const response = await fetch('/api/stripe/buy-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          churchId,
-          priceId: pack.stripePriceId,
-          credits: pack.credits,
-          customerEmail: JSON.parse(localStorage.getItem('churchsmart_user'))?.email
-        })
-      });
-      const data = await response.json();
-      if (data.url) window.location.href = data.url;
-      else toast.error(data.error || 'Failed to create checkout');
-    } catch (err) {
-      toast.error('Failed to purchase credits.');
-    }
-    setBuyingCredits(false);
+  // handleBuyCredits removed — WhatsApp message limits managed by provider.
+  const handleBuyCredits = () => {
   };
 
   const handleManageBilling = async () => {
@@ -355,9 +330,7 @@ function BillingSection({ churchId }) {
   const activePlanId = String(churchPlanRow?.plan || subscription?.plan || 'free').toLowerCase();
   const currentPlan = plans.find(p => p.id === activePlanId) || plans[0];
   const planLimits = getBillingPlanLimits(currentPlan.id);
-  const whatsappUsed = credits?.whatsapp_used_this_month || 0;
-  const whatsappTotal = (credits?.monthly_whatsapp_allowance || 0) + (credits?.bonus_credits || 0);
-  const whatsappPercent = whatsappTotal > 0 ? Math.min(100, Math.round((whatsappUsed / whatsappTotal) * 100)) : 0;
+  // WhatsApp message limits are now managed by the third-party provider.
 
   if (loading) return <LoadingSpinner />;
 
@@ -650,42 +623,16 @@ function BillingSection({ churchId }) {
         )}
       </Modal>
 
-      {/* WhatsApp Credits Meter */}
-      {planLimits.whatsapp > 0 && credits && (
+      {/* WhatsApp Feature Status */}
+      {planLimits.whatsapp && (
         <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💬 WhatsApp Credits</h3>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>{whatsappUsed} / {whatsappTotal} used this month</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💬 WhatsApp Messaging</h3>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: '#10b981', backgroundColor: '#d1fae5', padding: '4px 12px', borderRadius: '50px' }}>✓ Enabled</span>
           </div>
-          <div style={{ backgroundColor: '#f3f4f6', borderRadius: '8px', height: '12px', overflow: 'hidden', marginBottom: '12px' }}>
-            <div style={{
-              height: '100%', borderRadius: '8px', transition: 'width 0.3s',
-              width: `${whatsappPercent}%`,
-              backgroundColor: whatsappPercent >= 100 ? '#ef4444' : whatsappPercent >= 80 ? '#f59e0b' : '#10b981'
-            }} />
-          </div>
-          {whatsappPercent >= 100 && (
-            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#ef4444', fontWeight: '600' }}>
-              ⚠️ WhatsApp credits exhausted. Buy more or wait for monthly reset.
-            </p>
-          )}
-          {whatsappPercent >= 80 && whatsappPercent < 100 && (
-            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#f59e0b', fontWeight: '600' }}>
-              ⚠️ Running low on WhatsApp credits.
-            </p>
-          )}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {creditPacks.map(pack => (
-              <button
-                key={pack.id}
-                onClick={() => handleBuyCredits(pack)}
-                disabled={buyingCredits}
-                style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#4b5563' }}
-              >
-                {buyingCredits ? '⏳' : `Buy ${pack.credits} credits — $${pack.price}`}
-              </button>
-            ))}
-          </div>
+          <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' }}>
+            WhatsApp messaging is available on your plan. Message limits are managed by your WhatsApp provider. Configure your provider in the WhatsApp settings tab.
+          </p>
         </div>
       )}
 
@@ -1421,8 +1368,7 @@ function SettingsPage({ plan, onNavigate }) {
     try {
       const payload = {
         provider: 'wamatas',
-        phone_number_id: instanceId,
-        daily_limit: getPlanLimits(plan).maxWhatsapp
+        phone_number_id: instanceId
       };
       if (accessToken) payload.api_token = accessToken;
 
