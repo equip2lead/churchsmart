@@ -1879,7 +1879,7 @@ function SettingsPage({ plan, onNavigate }) {
               <div className="cs-tab-row" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {[
                   { id: 'config', label: `\u2699\ufe0f ${t('whatsappSettings')}` },
-                  { id: 'guide', label: `\U0001f4d8 ${t('setupGuide')}` }
+                  { id: 'guide', label: `📘 ${t('setupGuide')}` }
                 ].map(st => (
                   <button
                     key={st.id}
@@ -2039,7 +2039,7 @@ function SettingsPage({ plan, onNavigate }) {
                   <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
                       <div>
-                        <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>\U0001f4d8 {t('whatsapp_setup_guide')}</h3>
+                        <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📘 {t('whatsapp_setup_guide')}</h3>
                         <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{t('connectWhatsApp')}</p>
                       </div>
                       <a
@@ -2048,7 +2048,7 @@ function SettingsPage({ plan, onNavigate }) {
                         rel="noopener noreferrer"
                         style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px', border: '1px solid #c7d2fe', backgroundColor: '#eef2ff', color: '#4338ca', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}
                       >
-                        \U0001f4c4 {t('download_guide')}
+                        📄 {t('download_guide')}
                       </a>
                     </div>
                   </div>
@@ -2091,7 +2091,7 @@ function SettingsPage({ plan, onNavigate }) {
                   {/* Troubleshooting */}
                   <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
                     <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
-                      <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>\U0001f6e0\ufe0f {t('troubleshooting_title')}</h3>
+                      <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>\ud83d\udee0\ufe0f {t('troubleshooting_title')}</h3>
                     </div>
                     <div className="cs-table-wrap">
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2104,7 +2104,7 @@ function SettingsPage({ plan, onNavigate }) {
                         <tbody>
                           {(Array.isArray(t('troubleshooting_rows')) ? t('troubleshooting_rows') : []).map((row, i) => (
                             <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
-                              <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: '#991b1b', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{row.code}</td>
+                              <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: '#991b1b' }}>{row.code}</td>
                               <td style={{ padding: '12px 16px', fontSize: '14px', lineHeight: '1.6', color: '#374151' }}>{row.fix}</td>
                             </tr>
                           ))}
@@ -2115,7 +2115,7 @@ function SettingsPage({ plan, onNavigate }) {
 
                   {/* Need help */}
                   <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>\U0001f4a1 {t('need_help_title')}</h3>
+                    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>💡 {t('need_help_title')}</h3>
                     <div style={{ display: 'grid', gap: '12px' }}>
                       {(Array.isArray(t('need_help_rows')) ? t('need_help_rows') : []).map((row, i) => (
                         <div key={i} style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }}>
