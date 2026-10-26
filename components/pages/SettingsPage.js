@@ -887,6 +887,8 @@ function SettingsPage({ plan, onNavigate }) {
   // True when the church has roles whose names aren't in the default seed set.
   // Drives whether the Assign-Role modal shows the Custom Role dropdown explicitly
   // or auto-picks the default role matching the chosen Account Type.
+  const DEFAULT_ROLE_NAMES = ['Admin', 'Staff', 'Volunteer'];
+  const BASE_ROLE_TO_NAME = { ADMIN: 'Admin', STAFF: 'Staff', VOLUNTEER: 'Volunteer' };
   const hasCustomRoles = roles.some(r => !DEFAULT_ROLE_NAMES.includes(r.name));
 
   // Filter + sort role assignments for display. Revoked rows hidden (no toggle in v1).
