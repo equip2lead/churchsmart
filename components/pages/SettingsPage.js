@@ -1,7 +1,7 @@
 "use client";
 // SettingsPage — extracted from app/page.js for code splitting
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, uploadPhoto, SUPABASE_URL, SUPABASE_KEY, SUPABASE_ANON_KEY, WHATSAPP_MAX_CHARS, WHATSAPP_SETUP_GUIDE_URL, maskTokenTail, timeAgoShort, momoDeadline, momoExpired, MOMO_POLL_MS } from '../../lib/cs-shared';
+import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, uploadPhoto, invalidateCache, SUPABASE_URL, SUPABASE_KEY, SUPABASE_ANON_KEY, WHATSAPP_MAX_CHARS, WHATSAPP_SETUP_GUIDE_URL, maskTokenTail, timeAgoShort, momoDeadline, momoExpired, MOMO_POLL_MS } from '../../lib/cs-shared';
 import { useLanguage, useToast, useAuth, usePermissions, ROLE_ACCESS } from '../../lib/cs-contexts';
 import { canAccessFeature, canAccess, getPlanLimits, getEmailLimit, getRequiredPlan, getPlanOrder, comparePlans, PLAN_PRICING, STRIPE_PRICE_IDS, isPlaceholderPriceId } from '../../lib/featureGating';
 import { SUPER_ADMIN_EMAILS, ADMIN_ROLES, roleLabel, pawapayBaseUrl, isHardcodedSuperAdmin } from '../../lib/superAdmin';
@@ -709,9 +709,9 @@ function BillingSection({ churchId }) {
                   <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#9ca3af' }}>
                     {plan.price === 0 ? '30-day trial' : (billingPeriod === 'annual' && plan.priceAnnual ? `per month, ${t('billedAnnually')}` : 'per month')}
                   </p>
-                  {billingPeriod === 'annual' && plan.annualTotal && (
+                  {billingPeriod === 'annual' && plan.annualTotal > 0 && (
                     <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#10b981', fontWeight: '600' }}>
-                      ${plan.annualTotal}/{t('perYearSave')} ${plan.annualSavings})
+                      ${plan.annualTotal}/{t('perYearSave')} ${(plan.price * 12 - plan.annualTotal)})
                     </p>
                   )}
                 </div>
@@ -895,6 +895,7 @@ function SettingsPage({ plan, onNavigate }) {
   // NOTE: revoking an 'active' assignment only flips status on user_role_assignments;
   // it does NOT deactivate the user's church_users row. v1.1 should reconcile this —
   // see the design doc.
+  const ASSIGNMENT_STATUS_PRIORITY = { pending: 0, active: 1, expired: 2 };
   const visibleAssignments = roleAssignments
     .filter(a => a.status !== 'revoked')
     .slice()
