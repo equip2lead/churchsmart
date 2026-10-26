@@ -1381,7 +1381,13 @@ function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth > 768 : true);
   const [churchLogo, setChurchLogo] = useState('');
   const [churchName, setChurchName] = useState('');
-  const [churchPlan, setChurchPlan] = useState('free');
+  const [churchPlan, setChurchPlan] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('churchsmart_plan');
+      if (cached && ['free', 'starter', 'growth', 'pro'].includes(cached)) return cached;
+    }
+    return 'free';
+  });
   const [trialExpiredBanner, setTrialExpiredBanner] = useState(false);
   const [showChurchSetupModal, setShowChurchSetupModal] = useState(false);
   const openChurchSetup = () => setShowChurchSetupModal(true);
@@ -1410,7 +1416,9 @@ function Dashboard() {
       // churches.plan is the single source of truth, backfilled from the
       // legacy columns and kept current by the Stripe webhook. The
       // subscriptions row is still read above for billing-cycle display.
-      setChurchPlan((ch?.plan || 'free').toLowerCase());
+      const resolvedPlan = (ch?.plan || 'free').toLowerCase();
+      setChurchPlan(resolvedPlan);
+      try { localStorage.setItem('churchsmart_plan', resolvedPlan); } catch (e) {}
     };
     fetchBranding();
   }, [CHURCH_ID]);
