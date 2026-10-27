@@ -45,6 +45,19 @@ export async function GET(request) {
   }
 
   for (const church of churches) {
+    // ── Check automation settings for this church ──
+    const { data: autoSettings } = await supabase
+      .from('automation_settings')
+      .select('automation_type, is_enabled')
+      .eq('church_id', church.id);
+
+    const automationMap = {};
+    (autoSettings || []).forEach(s => { automationMap[s.automation_type] = s.is_enabled; });
+
+    // Default to enabled if no setting exists
+    const birthdayEmailEnabled = automationMap['BIRTHDAY_EMAIL'] !== false;
+    const birthdayWhatsappEnabled = automationMap['BIRTHDAY_WHATSAPP'] !== false;
+
     // Find members whose birthday is today (match month and day, ignore year)
     const { data: members } = await supabase
       .from('members')
@@ -61,16 +74,35 @@ export async function GET(request) {
 
     if (birthdayMembers.length === 0) continue;
 
+    // ── Fetch custom birthday template (once per church) ──
+    const { data: birthdayTemplate } = await supabase
+      .from('message_templates')
+      .select('body')
+      .eq('church_id', church.id)
+      .eq('category', 'BIRTHDAY')
+      .eq('is_active', true)
+      .limit(1)
+      .single();
+
     // Send birthday emails to members who have email addresses
-    for (const member of birthdayMembers) {
-      if (!member.email) continue;
-      const result = await sendBirthdayEmail(
-        member.email,
-        member.first_name,
-        church.name
-      );
-      if (result.success) memberEmails++;
-      else errors.push(`${member.first_name} ${member.last_name}: ${result.error}`);
+    if (birthdayEmailEnabled) {
+      for (const member of birthdayMembers) {
+        if (!member.email) continue;
+        let customEmailMessage;
+        if (birthdayTemplate?.body) {
+          customEmailMessage = birthdayTemplate.body
+            .replace(/\{name\}/gi, member.first_name)
+            .replace(/\{churchName\}/gi, church.name);
+        }
+        const result = await sendBirthdayEmail(
+          member.email,
+          member.first_name,
+          church.name,
+          customEmailMessage
+        );
+        if (result.success) memberEmails++;
+        else errors.push(`${member.first_name} ${member.last_name}: ${result.error}`);
+      }
     }
 
     // ── WhatsApp birthday wishes ──
@@ -78,7 +110,7 @@ export async function GET(request) {
     // still gets a WhatsApp greeting, and vice versa. Credentials are the
     // church's own Wamatas instance, so a church that has not connected one is
     // skipped without affecting its emails.
-    {
+    if (birthdayWhatsappEnabled) {
       const configResult = await loadWhatsAppConfig(supabase, church.id);
       if (!configResult.error) {
         const { config, instanceId, accessToken, dailyLimit } = configResult;
@@ -107,9 +139,16 @@ export async function GET(request) {
             continue;
           }
 
-          const message = isEnglish
-            ? `\u{1F382} Happy Birthday, ${member.first_name}! ${church.name} wishes you a blessed birthday. May God continue to bless you abundantly!`
-            : `\u{1F382} Joyeux anniversaire ${member.first_name} ! ${church.name} vous souhaite un anniversaire b\u00e9ni. Que Dieu continue de vous b\u00e9nir abondamment !`;
+          let message;
+          if (birthdayTemplate?.body) {
+            message = birthdayTemplate.body
+              .replace(/\{name\}/gi, member.first_name)
+              .replace(/\{churchName\}/gi, church.name);
+          } else {
+            message = isEnglish
+              ? `\u{1F382} Happy Birthday, ${member.first_name}! ${church.name} wishes you a blessed birthday. May God continue to bless you abundantly!`
+              : `\u{1F382} Joyeux anniversaire ${member.first_name} ! ${church.name} vous souhaite un anniversaire béni. Que Dieu continue de vous bénir abondamment !`;
+          }
 
           const result = await sendWamatasText({ to: member.phone, message, instanceId, accessToken });
 

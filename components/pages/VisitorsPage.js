@@ -260,8 +260,39 @@ function VisitorsPage() {
   };
 
   const sendAutoFollowUp = async (visitor, dayType) => {
-    const message = t(`day${dayType}Message`);
     try {
+      // Try custom template first
+      const templates = await supabaseQuery('message_templates', {
+        filters: [
+          { column: 'church_id', operator: 'eq', value: CHURCH_ID },
+          { column: 'category', operator: 'eq', value: 'VISITOR' },
+          { column: 'is_active', operator: 'eq', value: true }
+        ]
+      });
+
+      // Find template matching this day type
+      const template = (templates || []).find(tmpl =>
+        tmpl.name?.toLowerCase().includes(`day_${dayType}`) ||
+        tmpl.name?.toLowerCase().includes(`day${dayType}`)
+      );
+
+      // Get church name for variable replacement
+      const churchData = await supabaseQuery('churches', {
+        select: 'name',
+        filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }],
+        single: true
+      });
+      const churchName = churchData?.name || '';
+
+      let message;
+      if (template?.body) {
+        message = template.body
+          .replace(/\{name\}/gi, visitor.full_name || '')
+          .replace(/\{churchName\}/gi, churchName);
+      } else {
+        message = t(`day${dayType}Message`).replace(/\{churchName\}/gi, churchName);
+      }
+
       const res = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
