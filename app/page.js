@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import dynamic from 'next/dynamic';
-import { supabase, supabaseQuery, sanitizeInput, sanitizeObject, isValidEmail, SUPABASE_URL, SUPABASE_KEY } from '../lib/cs-shared';
+import { supabase, supabaseQuery, sanitizeInput, sanitizeObject, isValidEmail, safeGetSession, SUPABASE_URL, SUPABASE_KEY } from '../lib/cs-shared';
 import { LanguageProvider, useLanguage, AuthProvider, useAuth, PermissionsProvider, usePermissions, ToastProvider, useToast } from '../lib/cs-contexts';
 import { PermissionGate, AccessDenied, LoadingSpinner } from '../components/cs-ui';
 import { canAccessFeature, getRequiredPlan } from '../lib/featureGating';
 import { isHardcodedSuperAdmin } from '../lib/superAdmin';
 import UpgradePrompt from '../components/UpgradePrompt';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 // LoginPage is defined at the bottom of this file
 
 // ==========================================
@@ -649,7 +650,7 @@ function GoogleChurchSetup({ user, onClose }) {
     };
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await safeGetSession();
       if (!session?.access_token) {
         toast.error(t.sessionExpired);
         return;
@@ -943,7 +944,7 @@ function LoginPage() {
         try {
           const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({ email: otpEmail, token: otpCode, type: 'signup' });
           if (verifyError) { setError(t.invalidCode); setLoading(false); return; }
-          if (verifyData?.session) { await supabase.auth.setSession(verifyData.session); }
+          if (verifyData?.session) { await Promise.race([supabase.auth.setSession(verifyData.session), new Promise((_, rej) => setTimeout(() => rej('timeout'), 3000))]).catch(() => {}); }
           window.location.reload(); return;
         } catch (err) { setError(err.message || 'Verification failed'); }
         setLoading(false);
@@ -1152,7 +1153,7 @@ function LoginPage() {
                 else {
                   setSuccess(t.passwordUpdated); setShowResetForm(false);
                   if (setPasswordRecovery) setPasswordRecovery(false);
-                  const { data: { session } } = await supabase.auth.getSession();
+                  const { data: { session } } = await safeGetSession();
                   if (session?.user?.email) { window.location.href = '/'; }
                 }
                 setLoading(false);
@@ -1578,8 +1579,8 @@ function Dashboard() {
           {/* The platform owner has no church, so the church app is replaced
               wholesale rather than each tab falling through to a setup prompt. */}
           {platformOnly ? (
-            <SuperAdminPage tab={superTab} onTabChange={setSuperTab} onNavigate={setActiveTab} />
-          ) : (<>
+            <ErrorBoundary key="superadmin"><SuperAdminPage tab={superTab} onTabChange={setSuperTab} onNavigate={setActiveTab} /></ErrorBoundary>
+          ) : (<ErrorBoundary key={activeTab}>
           {activeTab === 'dashboard' && (CHURCH_ID ? <DashboardPage onNavigate={setActiveTab} /> : <DashboardWelcomeCard userName={user?.name} onOpenSetup={openChurchSetup} />)}
           {activeTab === 'members' && (CHURCH_ID ? <PermissionGate permission="members" fallback={<AccessDenied onNavigate={setActiveTab} />}><MembersPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="members" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'visitors' && (CHURCH_ID ? (canAccessFeature(churchPlan, 'visitors') ? <PermissionGate permission="visitors" fallback={<AccessDenied onNavigate={setActiveTab} />}><VisitorsPage /></PermissionGate> : <UpgradePrompt feature="visitors" featureLabel={t('visitors')} onNavigate={setActiveTab} />) : <ChurchSetupRequired pageKey="visitors" onOpenSetup={openChurchSetup} />)}
@@ -1595,7 +1596,7 @@ function Dashboard() {
           {activeTab === 'settings' && (CHURCH_ID ? <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><SettingsPage plan={churchPlan} onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="settings" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'whatsappLog' && (CHURCH_ID ? <PermissionGate permission="settings" fallback={<AccessDenied onNavigate={setActiveTab} />}><WhatsAppLogPage onNavigate={setActiveTab} /></PermissionGate> : <ChurchSetupRequired pageKey="settings" onOpenSetup={openChurchSetup} />)}
           {activeTab === 'superadmin' && <SuperAdminPage onNavigate={setActiveTab} />}
-          </>)}
+          </ErrorBoundary>)}
         </main>
       </div>
       {showChurchSetupModal && user && !platformOnly && (

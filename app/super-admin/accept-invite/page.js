@@ -42,7 +42,7 @@ export default function AcceptInvitePage() {
     let cancelled = false;
     (async () => {
       const params = new URLSearchParams(window.location.search);
-      const result = supabase ? await supabase.auth.getSession() : null;
+      const result = supabase ? await Promise.race([supabase.auth.getSession(), new Promise((_, rej) => setTimeout(() => rej('timeout'), 3000))]).catch(() => null) : null;
       if (cancelled) return;
       setToken(params.get('token') || '');
       setSession(result?.data?.session || null);
