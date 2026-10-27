@@ -923,8 +923,14 @@ function LoginPage() {
           });
           if (authError) {
             setError(authError.message?.includes('already registered')
-              ? (lang === 'fr' ? 'Email déjà utilisé. Connectez-vous.' : 'Email already registered. Please sign in.')
+              ? (lang === 'fr' ? 'Email déjà utilisé. Connectez-vous.' : 'This email is already registered. Please sign in instead.')
               : authError.message);
+            setLoading(false); return;
+          }
+          // Supabase may return a user with empty identities[] for an existing
+          // confirmed email instead of an error. Detect and show a clear message.
+          if (authData?.user?.identities?.length === 0) {
+            setError(lang === 'fr' ? 'Email déjà utilisé. Connectez-vous.' : 'This email is already registered. Please sign in instead.');
             setLoading(false); return;
           }
           setOtpEmail(form.email.trim().toLowerCase());

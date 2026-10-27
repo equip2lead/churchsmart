@@ -141,6 +141,43 @@ function BillingSection({ churchId }) {
     if (churchId) loadBilling();
   }, [churchId]);
 
+  // After returning from Stripe checkout, the webhook may take a few seconds
+  // to process the payment and update the DB. Refetch billing data after a
+  // short delay so the plan and subscription display correctly instead of dashes.
+  useEffect(() => {
+    if (!churchId) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      // Clear the URL param so a manual refresh doesn't retrigger
+      window.history.replaceState({}, '', window.location.pathname);
+      // Give the webhook 3 seconds to process, then refetch
+      const timer = setTimeout(() => {
+        invalidateCache('churches');
+        invalidateCache('subscriptions');
+        loadBilling();
+        // Also update the cached plan in localStorage
+        supabaseQuery('churches', { select: 'plan', filters: [{ column: 'id', operator: 'eq', value: churchId }], single: true })
+          .then(ch => {
+            if (ch?.plan) {
+              try { localStorage.setItem('churchsmart_plan', ch.plan.toLowerCase()); } catch (e) {}
+            }
+          });
+        toast.info('🎉 Payment successful! Your plan has been upgraded.');
+      }, 3000);
+      // Also do a second refetch at 8 seconds in case the webhook was slow
+      const timer2 = setTimeout(() => {
+        invalidateCache('churches');
+        invalidateCache('subscriptions');
+        loadBilling();
+      }, 8000);
+      return () => { clearTimeout(timer); clearTimeout(timer2); };
+    }
+    if (params.get('canceled') === 'true') {
+      window.history.replaceState({}, '', window.location.pathname);
+      toast.info('Checkout was canceled. No changes were made.');
+    }
+  }, [churchId]);
+
   const loadBilling = async () => {
     setLoading(true);
     try {
@@ -2599,8 +2636,8 @@ function SettingsPage({ plan, onNavigate }) {
                   { q: 'How do I track expenses?', a: 'Go to Giving > Expenses tab (requires Starter plan). Add expenses with category, amount, and vendor details.' },
                   { q: 'How do I generate a giving statement?', a: 'Open a member\'s profile and click "Giving Statement". This exports their donation history as a CSV.' },
                 ]},
-                { title: 'Communication', desc: 'Send SMS, WhatsApp, and email messages to your congregation. Segment by groups, location, or membership status.', items: [
-                  { q: 'Which messaging channels are available?', a: 'Email is available on Starter+, WhatsApp on Growth+, and SMS on Pro. Go to Messaging to compose and send.' },
+                { title: 'Communication', desc: 'Send email and WhatsApp messages to your congregation. Segment by groups, location, or membership status.', items: [
+                  { q: 'Which messaging channels are available?', a: 'Email is available on Starter+, WhatsApp on Growth+. Go to Messaging to compose and send.' },
                   { q: 'How do I send birthday messages?', a: 'Go to Settings > Automation and enable automatic birthday messages. Set your preferred channel and message template.' },
                 ]},
                 { title: 'Settings & Administration', desc: 'Manage your church profile, locations, user roles, billing, and data exports.', items: [
