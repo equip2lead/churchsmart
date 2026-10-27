@@ -5,6 +5,12 @@ function getStripe() {
 }
 
 export async function POST(request) {
+  // Verify caller identity
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const stripe = getStripe();
 
   try {

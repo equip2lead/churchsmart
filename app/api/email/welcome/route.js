@@ -3,6 +3,12 @@
 import { sendWelcomeEmail } from '../../../../lib/notifications';
 
 export async function POST(request) {
+  // Verify caller identity — prevent unauthenticated spam
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { email, churchName, adminName } = await request.json();
     if (!email) {
