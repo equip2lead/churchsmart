@@ -6,6 +6,7 @@ import { useLanguage, useToast, useAuth, usePermissions } from '../../lib/cs-con
 import { canAccessFeature, canAccess, getPlanLimits } from '../../lib/featureGating';
 import { Modal, FormInput, Button, DataTable, PageHeader, SearchBar, LoadingSpinner, ConfirmDialog, StatusBadge, SMSModal, exportToCSV, StatCard } from '../cs-ui';
 import UpgradePrompt from '../UpgradePrompt';
+import { seedDefaultTemplates } from '../../lib/messageDefaults';
 
 function VisitorsPage() {
   const { t } = useLanguage();
@@ -290,6 +291,10 @@ function VisitorsPage() {
           .replace(/\{name\}/gi, visitor.full_name || '')
           .replace(/\{churchName\}/gi, churchName);
       } else {
+        // No templates at all — seed defaults so they appear in Settings
+        if (!templates || templates.length === 0) {
+          seedDefaultTemplates(supabase, CHURCH_ID).catch(() => {});
+        }
         message = t(`day${dayType}Message`).replace(/\{churchName\}/gi, churchName);
       }
 
