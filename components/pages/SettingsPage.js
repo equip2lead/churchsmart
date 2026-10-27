@@ -1,7 +1,7 @@
 "use client";
 // SettingsPage — extracted from app/page.js for code splitting
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, uploadPhoto, invalidateCache, SUPABASE_URL, SUPABASE_KEY, SUPABASE_ANON_KEY, WHATSAPP_MAX_CHARS, WHATSAPP_SETUP_GUIDE_URL, maskTokenTail, timeAgoShort, momoDeadline, momoExpired, MOMO_POLL_MS } from '../../lib/cs-shared';
+import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, sanitizeInput, sanitizeObject, isValidEmail, uploadPhoto, invalidateCache, safeGetSession, SUPABASE_URL, SUPABASE_KEY, SUPABASE_ANON_KEY, WHATSAPP_MAX_CHARS, WHATSAPP_SETUP_GUIDE_URL, maskTokenTail, timeAgoShort, momoDeadline, momoExpired, MOMO_POLL_MS } from '../../lib/cs-shared';
 import { useLanguage, useToast, useAuth, usePermissions, ROLE_ACCESS } from '../../lib/cs-contexts';
 import { canAccessFeature, canAccess, getPlanLimits, getEmailLimit, getRequiredPlan, getPlanOrder, comparePlans, PLAN_PRICING, STRIPE_PRICE_IDS, isPlaceholderPriceId } from '../../lib/featureGating';
 import { SUPER_ADMIN_EMAILS, ADMIN_ROLES, roleLabel, pawapayBaseUrl, isHardcodedSuperAdmin } from '../../lib/superAdmin';
@@ -276,7 +276,7 @@ function BillingSection({ churchId }) {
     setMomoBusy(true);
     setMomoError('');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await safeGetSession();
       const response = await fetch('/api/pawapay/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
@@ -316,7 +316,7 @@ function BillingSection({ churchId }) {
         return;
       }
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await safeGetSession();
         const response = await fetch(`/api/pawapay/status/${encodeURIComponent(depositId)}`, {
           headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
         });
@@ -1223,7 +1223,7 @@ function SettingsPage({ plan, onNavigate }) {
 
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await safeGetSession();
       const accessToken = session?.access_token;
       if (!accessToken) {
         toast.error(t('inviteSessionExpiredToast'));
@@ -1449,7 +1449,7 @@ function SettingsPage({ plan, onNavigate }) {
     setTestingWhatsapp(true);
     setTestResult(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await safeGetSession();
       const response = await fetch('/api/whatsapp/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },

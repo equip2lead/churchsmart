@@ -1,7 +1,7 @@
 "use client";
 // MessagingPage — extracted from app/page.js for code splitting
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, SUPABASE_URL, SUPABASE_KEY, WHATSAPP_MAX_CHARS } from '../../lib/cs-shared';
+import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, safeGetSession, SUPABASE_URL, SUPABASE_KEY, WHATSAPP_MAX_CHARS } from '../../lib/cs-shared';
 import { useLanguage, useToast, useAuth, usePermissions } from '../../lib/cs-contexts';
 import { canAccessFeature, canAccess, getPlanLimits, getEmailLimit } from '../../lib/featureGating';
 import { Modal, FormInput, Button, PageHeader, SearchBar, LoadingSpinner, exportToCSV, DataTable, StatusBadge, ConfirmDialog, StatCard } from '../cs-ui';
@@ -204,7 +204,7 @@ function MessagingPage({ plan, onNavigate }) {
     setSending(true);
     setWaResult(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await safeGetSession();
       const response = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
@@ -271,7 +271,7 @@ function MessagingPage({ plan, onNavigate }) {
 
       setSending(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await safeGetSession();
         const response = await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },

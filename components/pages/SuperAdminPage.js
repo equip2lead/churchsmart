@@ -377,7 +377,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
   const exportReport = async () => {
     setExporting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await Promise.race([supabase.auth.getSession(), new Promise((_, rej) => setTimeout(() => rej('timeout'), 3000))]).catch(() => ({ data: { session: null } }));
       const response = await fetch('/api/super-admin/export-report', {
         headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
       });
