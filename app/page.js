@@ -1527,8 +1527,11 @@ function Dashboard() {
           ))}
         </nav>
 
-        {/* Logout */}
+        {/* Help Center + Logout */}
         <div style={{ padding: '12px', borderTop: '1px solid #e5e7eb' }}>
+          <a href="https://churchsmartnow.com/help-documentation.html" target="_blank" rel="noopener noreferrer" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', border: 'none', borderRadius: '10px', cursor: 'pointer', backgroundColor: '#f0f9ff', color: '#0369a1', fontSize: '14px', justifyContent: sidebarOpen ? 'flex-start' : 'center', textDecoration: 'none', marginBottom: '8px' }}>
+            ❓ {sidebarOpen && t('helpCenter')}
+          </a>
           <button onClick={logout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', border: 'none', borderRadius: '10px', cursor: 'pointer', backgroundColor: '#fef2f2', color: '#dc2626', fontSize: '14px', justifyContent: sidebarOpen ? 'flex-start' : 'center' }}>
             🚪 {sidebarOpen && t('signOut')}
           </button>
