@@ -43,6 +43,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
   const [comms, setComms] = useState({ audience: 'all', plans: [], churchIds: [], subject: '', message: '' });
   const [sendingComms, setSendingComms] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const [logFilter, setLogFilter] = useState({ admin: 'all', action: 'all', from: '', to: '' });
   const [mobilePayments, setMobilePayments] = useState([]);
@@ -1200,10 +1201,53 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                 <FormInput label={t('subject')} value={comms.subject} onChange={(e) => setComms({ ...comms, subject: e.target.value })} placeholder={t('sa_subject_placeholder')} />
                 <FormInput label="Message" type="textarea" value={comms.message} onChange={(e) => setComms({ ...comms, message: e.target.value })} placeholder={t('sa_message_placeholder')} />
 
-                <Button onClick={() => setConfirmSend(true)} disabled={sendingComms || !comms.subject.trim() || !comms.message.trim() || commsRecipientCount === 0}>
-                  {sendingComms ? `⏳ ${t('sendingMessages')}` : `📤 ${t('sa_send_to_n').replace('{n}', commsRecipientCount)}`}
-                </Button>
+                <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#9ca3af' }}>
+                  {language === 'fr' ? 'Envoyé depuis' : 'Sent from'}: <strong>contact@churchsmartnow.com</strong>
+                </p>
+
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <Button variant="secondary" onClick={() => setShowPreview(true)} disabled={!comms.subject.trim() || !comms.message.trim()}>
+                    👁️ {language === 'fr' ? 'Aperçu' : 'Preview'}
+                  </Button>
+                  <Button onClick={() => setConfirmSend(true)} disabled={sendingComms || !comms.subject.trim() || !comms.message.trim() || commsRecipientCount === 0}>
+                    {sendingComms ? `⏳ ${t('sendingMessages')}` : `📤 ${t('sa_send_to_n').replace('{n}', commsRecipientCount)}`}
+                  </Button>
+                </div>
               </div>
+
+              {/* Email Preview Modal */}
+              {showPreview && (
+                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowPreview(false)}>
+                  <div style={{ backgroundColor: '#f9fafb', borderRadius: '16px', maxWidth: '640px', width: '100%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, backgroundColor: '#f9fafb', borderRadius: '16px 16px 0 0' }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>📧 {language === 'fr' ? 'Aperçu de l\'email' : 'Email Preview'}</h3>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{language === 'fr' ? 'Voici ce que les destinataires verront' : 'This is what recipients will see'}</p>
+                      </div>
+                      <button onClick={() => setShowPreview(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#9ca3af', padding: '4px' }}>&times;</button>
+                    </div>
+                    <div style={{ padding: '20px' }}>
+                      {/* Simulated email */}
+                      <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <div style={{ backgroundColor: '#4F46E5', padding: '24px 32px', textAlign: 'center' }}>
+                          <span style={{ color: '#ffffff', fontSize: '22px', fontWeight: '700', letterSpacing: '-0.5px' }}>ChurchSmart</span>
+                        </div>
+                        <div style={{ padding: '32px' }}>
+                          <h1 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>{comms.subject || '(No subject)'}</h1>
+                          {(comms.message || '').split(/\n{2,}/).map((block, i) => (
+                            <p key={i} style={{ margin: '0 0 16px 0', fontSize: '15px', lineHeight: '1.6', color: '#374151', whiteSpace: 'pre-wrap' }}>{block}</p>
+                          ))}
+                          <p style={{ margin: '24px 0 0 0', paddingTop: '16px', borderTop: '1px solid #e5e7eb', fontSize: '13px', color: '#9ca3af' }}>ChurchSmart</p>
+                        </div>
+                        <div style={{ padding: '16px 32px 24px', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                          <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>&copy; 2026 ChurchSmart &middot; A product by DigiSmart Africa</p>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#d1d5db' }}>churchsmartnow.com</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* WhatsApp to churches — not built yet. */}
               <div style={{ backgroundColor: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '16px', padding: '20px', opacity: 0.75 }}>
