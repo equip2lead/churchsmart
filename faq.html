@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChurchSmart — Help Center</title>
+<meta name="description" content="Find answers to common questions about ChurchSmart — the smart church management platform for churches.">
+<link rel="icon" href="https://app.churchsmartnow.com/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #4F46E5;
+  --primary-dark: #3730A3;
+  --primary-light: #818CF8;
+  --bg: #F9FAFB;
+  --white: #FFFFFF;
+  --gray-50: #F9FAFB;
+  --gray-100: #F3F4F6;
+  --gray-200: #E5E7EB;
+  --gray-300: #D1D5DB;
+  --gray-400: #9CA3AF;
+  --gray-500: #6B7280;
+  --gray-600: #4B5563;
+  --gray-700: #374151;
+  --gray-800: #1F2937;
+  --gray-900: #111827;
+  --success: #10B981;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--gray-800);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #6D28D9 100%);
+  color: white;
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(79,70,229,0.3);
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: white;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lang-toggle {
+  display: flex;
+  background: rgba(255,255,255,0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.lang-btn {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.lang-btn.active {
+  background: rgba(255,255,255,0.25);
+  color: white;
+}
+
+.btn-app {
+  padding: 8px 20px;
+  background: white;
+  color: var(--primary);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.btn-app:hover { background: var(--gray-100); transform: translateY(-1px); }
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #6D28D9 100%);
+  color: white;
+  text-align: center;
+  padding: 48px 24px 56px;
+}
+
+.hero h1 {
+  font-size: clamp(28px, 5vw, 42px);
+  font-weight: 800;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.hero p {
+  font-size: 18px;
+  opacity: 0.9;
+  max-width: 560px;
+  margin: 0 auto 32px;
+}
+
+/* ── Search ── */
+.search-wrap {
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-400);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 16px 16px 16px 50px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-family: inherit;
+  background: white;
+  color: var(--gray-800);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+
+.search-input::placeholder { color: var(--gray-400); }
+.search-input:focus { box-shadow: 0 8px 30px rgba(0,0,0,0.18), 0 0 0 3px rgba(255,255,255,0.3); }
+
+.search-clear {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--gray-200);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  color: var(--gray-500);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+.search-clear.visible { display: flex; }
+
+/* ── Main content ── */
+.main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* Category nav */
+.cat-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+  justify-content: center;
+}
+
+.cat-chip {
+  padding: 8px 16px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 100px;
+  background: white;
+  color: var(--gray-600);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.cat-chip:hover { border-color: var(--primary-light); color: var(--primary); }
+.cat-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* Category section */
+.category {
+  margin-bottom: 36px;
+}
+
+.cat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--gray-100);
+}
+
+.cat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.cat-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.cat-count {
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--gray-100);
+  color: var(--gray-500);
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-left: auto;
+}
+
+/* Accordion */
+.faq-item {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.faq-item:hover { border-color: var(--gray-300); box-shadow: var(--shadow); }
+.faq-item.open { border-color: var(--primary-light); box-shadow: var(--shadow-md); }
+
+.faq-q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  cursor: pointer;
+  gap: 16px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.faq-q span {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-800);
+  flex: 1;
+}
+
+.faq-arrow {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  flex-shrink: 0;
+  color: var(--gray-500);
+}
+
+.faq-item.open .faq-arrow {
+  background: var(--primary);
+  color: white;
+  transform: rotate(180deg);
+}
+
+.faq-a {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.35s ease;
+}
+
+.faq-a-inner {
+  padding: 0 20px 20px;
+  font-size: 15px;
+  color: var(--gray-600);
+  line-height: 1.7;
+}
+
+.faq-a-inner ul { padding-left: 20px; margin: 8px 0; }
+.faq-a-inner li { margin-bottom: 6px; }
+.faq-a-inner strong { color: var(--gray-700); }
+.faq-a-inner a { color: var(--primary); text-decoration: none; font-weight: 500; }
+.faq-a-inner a:hover { text-decoration: underline; }
+
+/* No results */
+.no-results {
+  text-align: center;
+  padding: 60px 24px;
+  display: none;
+}
+
+.no-results.visible { display: block; }
+
+.no-results-icon { font-size: 48px; margin-bottom: 16px; }
+
+.no-results h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 8px;
+}
+
+.no-results p { color: var(--gray-500); font-size: 15px; }
+
+/* ── CTA Banner ── */
+.cta-banner {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  border-radius: 16px;
+  padding: 40px 32px;
+  text-align: center;
+  color: white;
+  margin-top: 48px;
+}
+
+.cta-banner h3 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.cta-banner p { opacity: 0.9; margin-bottom: 24px; font-size: 16px; }
+
+.cta-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-cta {
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn-cta-primary { background: white; color: var(--primary); }
+.btn-cta-primary:hover { background: var(--gray-100); transform: translateY(-1px); }
+.btn-cta-secondary { background: rgba(255,255,255,0.15); color: white; border: 1.5px solid rgba(255,255,255,0.3); }
+.btn-cta-secondary:hover { background: rgba(255,255,255,0.25); }
+
+/* ── Footer ── */
+.footer {
+  background: var(--gray-900);
+  color: var(--gray-400);
+  padding: 32px 24px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.footer a { color: var(--gray-300); text-decoration: none; }
+.footer a:hover { color: white; }
+.footer-links { display: flex; gap: 24px; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .header-top { padding: 12px 16px; }
+  .logo-text { font-size: 17px; }
+  .btn-app { padding: 6px 14px; font-size: 13px; }
+  .hero { padding: 32px 16px 40px; }
+  .hero p { font-size: 16px; }
+  .search-input { padding: 14px 14px 14px 46px; font-size: 15px; }
+  .main { padding: 24px 16px 60px; }
+  .cat-nav { gap: 6px; }
+  .cat-chip { padding: 6px 12px; font-size: 12px; }
+  .faq-q { padding: 16px; }
+  .faq-q span { font-size: 14px; }
+  .faq-a-inner { padding: 0 16px 16px; font-size: 14px; }
+  .cta-banner { padding: 32px 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-top">
+    <a href="https://www.churchsmartnow.com" class="logo">
+      <svg width="36" height="36" viewBox="2 2 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="52" height="52" rx="14" fill="rgba(255,255,255,0.2)"/>
+        <path d="M36 20.5C33.8 18.9 31 18 28 18C21.9 18 17 22.9 17 29C17 35.1 21.9 40 28 40C31 40 33.8 39.1 36 37.5" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M39 24C41.8 24 44 26.2 44 29C44 31.8 41.8 34 39 34H33.5C31 34 29 32 29 29C29 26 31 24 33.5 24H39Z" fill="#F59E0B"/>
+      </svg>
+      <div class="logo-text">Church<span style="color:#C4B5FD;">Smart</span></div>
+    </a>
+    <div class="header-actions">
+      <div class="lang-toggle">
+        <button class="lang-btn active" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('fr')">FR</button>
+      </div>
+      <a href="https://app.churchsmartnow.com" class="btn-app" data-i18n="header_signin">Sign In</a>
+    </div>
+  </div>
+</header>
+
+<!-- Hero + Search -->
+<section class="hero">
+  <h1 data-i18n="hero_title">Help Center</h1>
+  <p data-i18n="hero_subtitle">Find answers to your questions about ChurchSmart</p>
+  <div class="search-wrap">
+    <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" class="search-input" id="searchInput" data-i18n-placeholder="search_placeholder" placeholder="Search for answers...">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()">&times;</button>
+  </div>
+</section>
+
+<!-- Main -->
+<main class="main">
+  <!-- Category filter chips -->
+  <div class="cat-nav" id="catNav"></div>
+
+  <!-- FAQ content rendered by JS -->
+  <div id="faqContent"></div>
+
+  <!-- No results -->
+  <div class="no-results" id="noResults">
+    <div class="no-results-icon">🔍</div>
+    <h3 data-i18n="no_results_title">No results found</h3>
+    <p data-i18n="no_results_text">Try different keywords or browse the categories above</p>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-banner" id="ctaBanner">
+    <h3 data-i18n="cta_title">Still have questions?</h3>
+    <p data-i18n="cta_subtitle">Our team is here to help you get the most out of ChurchSmart</p>
+    <div class="cta-row">
+      <a href="mailto:hello@churchsmartnow.com" class="btn-cta btn-cta-primary" data-i18n="cta_email">Email Support</a>
+      <a href="https://wa.me/237674991704" class="btn-cta btn-cta-secondary" data-i18n="cta_whatsapp">WhatsApp Us</a>
+    </div>
+  </div>
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-links">
+    <a href="https://www.churchsmartnow.com" data-i18n="footer_home">Home</a>
+    <a href="https://app.churchsmartnow.com" data-i18n="footer_app">Open App</a>
+    <a href="mailto:hello@churchsmartnow.com" data-i18n="footer_contact">Contact</a>
+  </div>
+  <p>&copy; 2026 ChurchSmart. A product by DigiSmart Africa. <span data-i18n="footer_rights">All rights reserved.</span></p>
+</footer>
+
+<script>
+// ─── Translations ───
+const T = {
+  en: {
+    header_signin: "Sign In",
+    hero_title: "Help Center",
+    hero_subtitle: "Find answers to your questions about ChurchSmart",
+    search_placeholder: "Search for answers...",
+    no_results_title: "No results found",
+    no_results_text: "Try different keywords or browse the categories above",
+    cta_title: "Still have questions?",
+    cta_subtitle: "Our team is here to help you get the most out of ChurchSmart",
+    cta_email: "Email Support",
+    cta_whatsapp: "WhatsApp Us",
+    footer_home: "Home",
+    footer_app: "Open App",
+    footer_contact: "Contact",
+    footer_rights: "All rights reserved.",
+    cat_all: "All",
+  },
+  fr: {
+    header_signin: "Connexion",
+    hero_title: "Centre d'aide",
+    hero_subtitle: "Trouvez des réponses à vos questions sur ChurchSmart",
+    search_placeholder: "Rechercher des réponses...",
+    no_results_title: "Aucun résultat",
+    no_results_text: "Essayez d'autres mots-clés ou parcourez les catégories ci-dessus",
+    cta_title: "Vous avez encore des questions ?",
+    cta_subtitle: "Notre équipe est là pour vous aider à tirer le meilleur parti de ChurchSmart",
+    cta_email: "Email Support",
+    cta_whatsapp: "WhatsApp",
+    footer_home: "Accueil",
+    footer_app: "Ouvrir l'App",
+    footer_contact: "Contact",
+    footer_rights: "Tous droits réservés.",
+    cat_all: "Tout",
+  }
+};
+
+// ─── FAQ Data ───
+const CATEGORIES = [
+  { id: "getting-started", icon: "🚀", color: "#EEF2FF", en: "Getting Started", fr: "Premiers pas" },
+  { id: "pricing",         icon: "💰", color: "#FEF3C7", en: "Pricing & Plans", fr: "Tarifs & Forfaits" },
+  { id: "payments",        icon: "💳", color: "#D1FAE5", en: "Payments",        fr: "Paiements" },
+  { id: "features",        icon: "✨", color: "#FCE7F3", en: "Features",        fr: "Fonctionnalités" },
+  { id: "whatsapp",        icon: "💬", color: "#DBEAFE", en: "WhatsApp",        fr: "WhatsApp" },
+  { id: "security",        icon: "🔒", color: "#EDE9FE", en: "Security & Privacy", fr: "Sécurité & Confidentialité" },
+  { id: "troubleshooting", icon: "🛠️", color: "#FEE2E2", en: "Troubleshooting", fr: "Dépannage" },
+  { id: "support",         icon: "🤝", color: "#CCFBF1", en: "Contact & Support", fr: "Contact & Support" },
+];
+
+const FAQ = [
+  // ── Getting Started ──
+  { cat: "getting-started",
+    en: { q: "How do I sign up for ChurchSmart?", a: "Visit <a href='https://app.churchsmartnow.com'>app.churchsmartnow.com</a> and click <strong>Sign Up</strong>. Enter your email, create a password, and provide your church name. You'll be set up with a free account instantly — no credit card required." },
+    fr: { q: "Comment créer un compte ChurchSmart ?", a: "Rendez-vous sur <a href='https://app.churchsmartnow.com'>app.churchsmartnow.com</a> et cliquez sur <strong>S'inscrire</strong>. Entrez votre email, créez un mot de passe et indiquez le nom de votre église. Votre compte gratuit sera créé instantanément — aucune carte bancaire requise." }
+  },
+  { cat: "getting-started",
+    en: { q: "What are the first steps after signing up?", a: "After signing up:<ul><li><strong>Add your church details</strong> — logo, address, service times</li><li><strong>Add members</strong> — manually or import a CSV file</li><li><strong>Invite your team</strong> — add administrators and assign roles</li><li><strong>Set up groups</strong> — create small groups, departments, or ministries</li><li><strong>Explore features</strong> — try attendance tracking, visitor follow-up, and messaging</li></ul>" },
+    fr: { q: "Quelles sont les premières étapes après l'inscription ?", a: "Après l'inscription :<ul><li><strong>Complétez les infos de votre église</strong> — logo, adresse, horaires des cultes</li><li><strong>Ajoutez des membres</strong> — manuellement ou par import CSV</li><li><strong>Invitez votre équipe</strong> — ajoutez des administrateurs et assignez des rôles</li><li><strong>Créez des groupes</strong> — cellules, départements ou ministères</li><li><strong>Explorez les fonctionnalités</strong> — suivi de présence, suivi des visiteurs, messagerie</li></ul>" }
+  },
+  { cat: "getting-started",
+    en: { q: "How do I add members to my church?", a: "Go to the <strong>Members</strong> tab and click <strong>Add Member</strong>. Fill in their details (name, email, phone, birthday). You can also import members in bulk using a CSV file — just click the import button and follow the template." },
+    fr: { q: "Comment ajouter des membres à mon église ?", a: "Allez dans l'onglet <strong>Membres</strong> et cliquez sur <strong>Ajouter un membre</strong>. Renseignez leurs informations (nom, email, téléphone, date de naissance). Vous pouvez aussi importer des membres en masse via un fichier CSV — cliquez sur le bouton d'import et suivez le modèle." }
+  },
+  { cat: "getting-started",
+    en: { q: "How do I invite team members or administrators?", a: "Go to <strong>Settings → Team</strong> and click <strong>Invite</strong>. Enter their email address and select a role (Admin, Leader, or Member). They'll receive an email invitation to join your church on ChurchSmart." },
+    fr: { q: "Comment inviter des membres d'équipe ou des administrateurs ?", a: "Allez dans <strong>Paramètres → Équipe</strong> et cliquez sur <strong>Inviter</strong>. Entrez leur adresse email et sélectionnez un rôle (Admin, Responsable ou Membre). Ils recevront une invitation par email pour rejoindre votre église sur ChurchSmart." }
+  },
+  { cat: "getting-started",
+    en: { q: "Is ChurchSmart available in French?", a: "Yes! ChurchSmart is fully bilingual — English and French. You can switch languages at any time from the app settings. All interface text, automated messages, and email templates are available in both languages." },
+    fr: { q: "ChurchSmart est-il disponible en français ?", a: "Oui ! ChurchSmart est entièrement bilingue — français et anglais. Vous pouvez changer de langue à tout moment depuis les paramètres de l'application. Tout le texte de l'interface, les messages automatisés et les modèles d'email sont disponibles dans les deux langues." }
+  },
+
+  // ── Pricing & Plans ──
+  { cat: "pricing",
+    en: { q: "What plans are available?", a: "ChurchSmart offers four plans:<ul><li><strong>Free ($0/month)</strong> — Up to 50 members, 1 admin, 1 location. Perfect for getting started.</li><li><strong>Starter ($5/month or 3,000 XAF)</strong> — Up to 200 members, 2 admins, 100 emails/month.</li><li><strong>Growth ($15/month or 9,000 XAF)</strong> — Unlimited members, 5 admins, 3 locations, 500 emails/month, WhatsApp messaging.</li><li><strong>Pro ($29/month or 18,000 XAF)</strong> — Everything unlimited, priority support.</li></ul>" },
+    fr: { q: "Quels forfaits sont disponibles ?", a: "ChurchSmart propose quatre forfaits :<ul><li><strong>Gratuit (0 $/mois)</strong> — Jusqu'à 50 membres, 1 admin, 1 site. Parfait pour débuter.</li><li><strong>Starter (5 $/mois ou 3 000 XAF)</strong> — Jusqu'à 200 membres, 2 admins, 100 emails/mois.</li><li><strong>Growth (15 $/mois ou 9 000 XAF)</strong> — Membres illimités, 5 admins, 3 sites, 500 emails/mois, messagerie WhatsApp.</li><li><strong>Pro (29 $/mois ou 18 000 XAF)</strong> — Tout illimité, support prioritaire.</li></ul>" }
+  },
+  { cat: "pricing",
+    en: { q: "Is there a free plan?", a: "Yes! The <strong>Free plan</strong> lets you manage up to 50 members with 1 admin and 1 location. It includes core features like member management, visitor tracking, attendance, groups, and events. No credit card needed, no time limit." },
+    fr: { q: "Y a-t-il un forfait gratuit ?", a: "Oui ! Le <strong>forfait Gratuit</strong> vous permet de gérer jusqu'à 50 membres avec 1 admin et 1 site. Il inclut les fonctionnalités essentielles : gestion des membres, suivi des visiteurs, présence, groupes et événements. Pas de carte bancaire requise, pas de limite de temps." }
+  },
+  { cat: "pricing",
+    en: { q: "Do you offer annual pricing?", a: "Yes! Save up to <strong>17%</strong> by choosing annual billing. Annual plans are available for Starter, Growth, and Pro. You can switch between monthly and annual billing from the <strong>Settings → Billing</strong> section." },
+    fr: { q: "Proposez-vous une tarification annuelle ?", a: "Oui ! Économisez jusqu'à <strong>17 %</strong> en choisissant la facturation annuelle. Les forfaits annuels sont disponibles pour Starter, Growth et Pro. Vous pouvez passer du paiement mensuel à annuel depuis <strong>Paramètres → Facturation</strong>." }
+  },
+  { cat: "pricing",
+    en: { q: "How do I upgrade my plan?", a: "Go to <strong>Settings → Billing</strong> and select the plan you'd like. You can pay with a credit card (Stripe) or Mobile Money. The upgrade takes effect immediately." },
+    fr: { q: "Comment changer de forfait ?", a: "Allez dans <strong>Paramètres → Facturation</strong> et sélectionnez le forfait souhaité. Vous pouvez payer par carte bancaire (Stripe) ou Mobile Money (pour les églises en Afrique). La mise à jour prend effet immédiatement." }
+  },
+
+  // ── Payments ──
+  { cat: "payments",
+    en: { q: "What payment methods do you accept?", a: "We accept two payment methods:<ul><li><strong>Credit/Debit Card</strong> — Visa, Mastercard, and more via Stripe (secure international payments)</li><li><strong>Mobile Money</strong> — MTN MoMo, Orange Money, and other mobile payment providers via PawaPay</li></ul>Choose whichever is most convenient for your church." },
+    fr: { q: "Quels modes de paiement acceptez-vous ?", a: "Nous acceptons deux modes de paiement :<ul><li><strong>Carte bancaire</strong> — Visa, Mastercard et plus via Stripe (paiements internationaux sécurisés)</li><li><strong>Mobile Money</strong> — MTN MoMo, Orange Money et autres opérateurs via PawaPay</li></ul>Choisissez celui qui convient le mieux à votre église." }
+  },
+  { cat: "payments",
+    en: { q: "How does Mobile Money payment work?", a: "When you choose to pay with Mobile Money, you'll receive a payment prompt on your phone. Confirm the payment using your Mobile Money PIN. The transaction is processed instantly through <strong>PawaPay</strong>, our trusted payment partner. Prices are shown in both USD and XAF." },
+    fr: { q: "Comment fonctionne le paiement Mobile Money ?", a: "Lorsque vous choisissez de payer par Mobile Money, vous recevrez une demande de paiement sur votre téléphone. Confirmez le paiement avec votre code PIN Mobile Money. La transaction est traitée instantanément via <strong>PawaPay</strong>, notre partenaire de paiement de confiance pour l'Afrique. Les prix sont affichés en USD et en XAF." }
+  },
+  { cat: "payments",
+    en: { q: "Can I cancel my subscription?", a: "Yes, you can cancel anytime from <strong>Settings → Billing</strong>. Your paid features will remain active until the end of your current billing period. After that, your account will revert to the Free plan — your data is never deleted." },
+    fr: { q: "Puis-je annuler mon abonnement ?", a: "Oui, vous pouvez annuler à tout moment depuis <strong>Paramètres → Facturation</strong>. Vos fonctionnalités payantes resteront actives jusqu'à la fin de votre période de facturation. Ensuite, votre compte passera au forfait Gratuit — vos données ne sont jamais supprimées." }
+  },
+  { cat: "payments",
+    en: { q: "Are payments secure?", a: "Absolutely. Card payments are processed by <strong>Stripe</strong>, a globally trusted payment processor used by millions of businesses. Mobile Money payments go through <strong>PawaPay</strong>, a licensed payment provider. We never store your payment details on our servers." },
+    fr: { q: "Les paiements sont-ils sécurisés ?", a: "Absolument. Les paiements par carte sont traités par <strong>Stripe</strong>, un processeur de paiement de confiance mondial utilisé par des millions d'entreprises. Les paiements Mobile Money passent par <strong>PawaPay</strong>, un prestataire de paiement agréé. Nous ne stockons jamais vos informations de paiement sur nos serveurs." }
+  },
+
+  // ── Features ──
+  { cat: "features",
+    en: { q: "What features does ChurchSmart include?", a: "ChurchSmart includes a comprehensive set of church management tools:<ul><li><strong>Members</strong> — Complete member database with profiles, families, and custom fields</li><li><strong>Visitors</strong> — Track first-time visitors with automated follow-up messages</li><li><strong>Groups</strong> — Manage small groups, departments, and ministries</li><li><strong>Events</strong> — Create and manage church events and calendars</li><li><strong>Attendance</strong> — Track service and event attendance with reports</li><li><strong>Finance</strong> — Record tithes, offerings, and generate financial reports</li><li><strong>Messaging</strong> — Send emails and WhatsApp messages to members</li><li><strong>Reports</strong> — Analytics dashboards for growth, attendance trends, and more</li></ul>" },
+    fr: { q: "Quelles fonctionnalités ChurchSmart inclut-il ?", a: "ChurchSmart comprend un ensemble complet d'outils de gestion d'église :<ul><li><strong>Membres</strong> — Base de données complète avec profils, familles et champs personnalisés</li><li><strong>Visiteurs</strong> — Suivi des nouveaux visiteurs avec messages de suivi automatisés</li><li><strong>Groupes</strong> — Gérez les cellules, départements et ministères</li><li><strong>Événements</strong> — Créez et gérez les événements et calendriers</li><li><strong>Présence</strong> — Suivi de la présence aux cultes et événements avec rapports</li><li><strong>Finances</strong> — Enregistrez les dîmes, offrandes et générez des rapports financiers</li><li><strong>Messagerie</strong> — Envoyez des emails et messages WhatsApp aux membres</li><li><strong>Rapports</strong> — Tableaux de bord analytiques pour la croissance, les tendances de présence et plus</li></ul>" }
+  },
+  { cat: "features",
+    en: { q: "Can I track visitor follow-ups automatically?", a: "Yes! ChurchSmart automatically sends follow-up messages to first-time visitors. The system sends messages at <strong>Day 1, Day 3, and Day 7</strong> after their visit. Messages can be sent via email or WhatsApp (Growth+ plans). You can customize the message templates in <strong>Settings → Automation</strong>." },
+    fr: { q: "Puis-je suivre les visiteurs automatiquement ?", a: "Oui ! ChurchSmart envoie automatiquement des messages de suivi aux nouveaux visiteurs. Le système envoie des messages au <strong>Jour 1, Jour 3 et Jour 7</strong> après leur visite. Les messages peuvent être envoyés par email ou WhatsApp (forfaits Growth+). Vous pouvez personnaliser les modèles de messages dans <strong>Paramètres → Automatisation</strong>." }
+  },
+  { cat: "features",
+    en: { q: "Can I customize message templates?", a: "Yes! Go to <strong>Settings → Automation</strong> to customize your message templates. ChurchSmart provides 5 default templates (visitor follow-ups, birthday wishes, and welcome messages). You can edit any template and use variables like <strong>{name}</strong> and <strong>{churchName}</strong> for personalization." },
+    fr: { q: "Puis-je personnaliser les modèles de messages ?", a: "Oui ! Allez dans <strong>Paramètres → Automatisation</strong> pour personnaliser vos modèles de messages. ChurchSmart fournit 5 modèles par défaut (suivi des visiteurs, vœux d'anniversaire et messages de bienvenue). Vous pouvez modifier tout modèle et utiliser des variables comme <strong>{name}</strong> et <strong>{churchName}</strong> pour la personnalisation." }
+  },
+  { cat: "features",
+    en: { q: "Does ChurchSmart support multiple locations?", a: "Yes! Multi-location support is available on the <strong>Growth plan</strong> (up to 3 locations) and <strong>Pro plan</strong> (unlimited locations). Each location can have its own attendance records, events, and groups while sharing a single member database." },
+    fr: { q: "ChurchSmart prend-il en charge plusieurs sites ?", a: "Oui ! Le support multi-sites est disponible sur le <strong>forfait Growth</strong> (jusqu'à 3 sites) et le <strong>forfait Pro</strong> (sites illimités). Chaque site peut avoir ses propres registres de présence, événements et groupes tout en partageant une base de données de membres unique." }
+  },
+
+  // ── WhatsApp ──
+  { cat: "whatsapp",
+    en: { q: "Which plans include WhatsApp messaging?", a: "WhatsApp messaging is available on the <strong>Growth ($15/month)</strong> and <strong>Pro ($29/month)</strong> plans. Once enabled, you can send WhatsApp messages to your members for visitor follow-ups, birthday wishes, announcements, and more." },
+    fr: { q: "Quels forfaits incluent la messagerie WhatsApp ?", a: "La messagerie WhatsApp est disponible sur les forfaits <strong>Growth (15 $/mois)</strong> et <strong>Pro (29 $/mois)</strong>. Une fois activée, vous pouvez envoyer des messages WhatsApp à vos membres pour le suivi des visiteurs, les vœux d'anniversaire, les annonces et plus encore." }
+  },
+  { cat: "whatsapp",
+    en: { q: "How do I set up WhatsApp messaging?", a: "Once you're on a Growth or Pro plan:<ol><li>Go to <strong>Settings → WhatsApp Configuration</strong></li><li>Enter your <strong>Wamatas</strong> instance ID and access token (our WhatsApp provider)</li><li>Test the connection with the <strong>Send Test</strong> button</li><li>Enable WhatsApp for visitor follow-ups and birthday wishes in <strong>Settings → Automation</strong></li></ol>Need a Wamatas account? Contact our support team and we'll help you get set up." },
+    fr: { q: "Comment configurer la messagerie WhatsApp ?", a: "Une fois sur un forfait Growth ou Pro :<ol><li>Allez dans <strong>Paramètres → Configuration WhatsApp</strong></li><li>Entrez votre identifiant d'instance et jeton d'accès <strong>Wamatas</strong> (notre fournisseur WhatsApp)</li><li>Testez la connexion avec le bouton <strong>Envoyer un test</strong></li><li>Activez WhatsApp pour le suivi des visiteurs et les vœux d'anniversaire dans <strong>Paramètres → Automatisation</strong></li></ol>Besoin d'un compte Wamatas ? Contactez notre équipe de support et nous vous aiderons à vous configurer." }
+  },
+  { cat: "whatsapp",
+    en: { q: "How many WhatsApp messages can I send?", a: "The number of WhatsApp messages you can send depends on your <strong>Wamatas</strong> provider plan. ChurchSmart unlocks the WhatsApp feature on Growth and Pro plans, and your WhatsApp provider manages the volume and pricing. This gives you flexibility to choose a messaging plan that fits your church's size." },
+    fr: { q: "Combien de messages WhatsApp puis-je envoyer ?", a: "Le nombre de messages WhatsApp que vous pouvez envoyer dépend de votre forfait <strong>Wamatas</strong>. ChurchSmart débloque la fonctionnalité WhatsApp sur les forfaits Growth et Pro, et votre fournisseur WhatsApp gère le volume et la tarification. Cela vous donne la flexibilité de choisir un plan de messagerie adapté à la taille de votre église." }
+  },
+
+  // ── Security & Privacy ──
+  { cat: "security",
+    en: { q: "Is my church's data secure?", a: "Yes. ChurchSmart takes data security seriously:<ul><li><strong>Encrypted data</strong> — All data is encrypted in transit (HTTPS/TLS) and at rest</li><li><strong>Secure hosting</strong> — Hosted on Vercel and Supabase with enterprise-grade security</li><li><strong>Row-level security</strong> — Each church can only access its own data</li><li><strong>Secure authentication</strong> — Powered by Supabase Auth with email verification</li><li><strong>Payment security</strong> — Payments handled by PCI-compliant processors (Stripe, PawaPay)</li></ul>" },
+    fr: { q: "Les données de mon église sont-elles sécurisées ?", a: "Oui. ChurchSmart prend la sécurité des données au sérieux :<ul><li><strong>Données chiffrées</strong> — Toutes les données sont chiffrées en transit (HTTPS/TLS) et au repos</li><li><strong>Hébergement sécurisé</strong> — Hébergé sur Vercel et Supabase avec une sécurité de niveau entreprise</li><li><strong>Sécurité au niveau des lignes</strong> — Chaque église ne peut accéder qu'à ses propres données</li><li><strong>Authentification sécurisée</strong> — Propulsée par Supabase Auth avec vérification par email</li><li><strong>Sécurité des paiements</strong> — Paiements gérés par des processeurs conformes PCI (Stripe, PawaPay)</li></ul>" }
+  },
+  { cat: "security",
+    en: { q: "Who can see my church's data?", a: "Only authorized users in your church can see your data. ChurchSmart uses <strong>role-based access control</strong>:<ul><li><strong>Admins</strong> — Full access to all features and settings</li><li><strong>Leaders</strong> — Access to members, groups, and events they manage</li><li><strong>Members</strong> — Limited access to their own profile and group info</li></ul>No other church on the platform can see your data, and our team only accesses it for technical support when needed." },
+    fr: { q: "Qui peut voir les données de mon église ?", a: "Seuls les utilisateurs autorisés de votre église peuvent voir vos données. ChurchSmart utilise un <strong>contrôle d'accès basé sur les rôles</strong> :<ul><li><strong>Admins</strong> — Accès complet à toutes les fonctionnalités et paramètres</li><li><strong>Responsables</strong> — Accès aux membres, groupes et événements qu'ils gèrent</li><li><strong>Membres</strong> — Accès limité à leur propre profil et infos de groupe</li></ul>Aucune autre église sur la plateforme ne peut voir vos données, et notre équipe n'y accède que pour le support technique si nécessaire." }
+  },
+
+  // ── Troubleshooting ──
+  { cat: "troubleshooting",
+    en: { q: "I forgot my password. How do I reset it?", a: "On the login page at <a href='https://app.churchsmartnow.com'>app.churchsmartnow.com</a>, click <strong>Forgot Password</strong>. Enter your email address and you'll receive a password reset link. Check your spam folder if you don't see the email within a few minutes." },
+    fr: { q: "J'ai oublié mon mot de passe. Comment le réinitialiser ?", a: "Sur la page de connexion à <a href='https://app.churchsmartnow.com'>app.churchsmartnow.com</a>, cliquez sur <strong>Mot de passe oublié</strong>. Entrez votre adresse email et vous recevrez un lien de réinitialisation. Vérifiez votre dossier spam si vous ne voyez pas l'email dans les minutes qui suivent." }
+  },
+  { cat: "troubleshooting",
+    en: { q: "The app is not loading or showing an error", a: "Try these steps:<ul><li><strong>Refresh the page</strong> — Press the refresh button or pull down on mobile</li><li><strong>Clear your browser cache</strong> — Old cached data can cause issues</li><li><strong>Try a different browser</strong> — Chrome or Safari work best</li><li><strong>Check your internet connection</strong> — Make sure you have a stable connection</li></ul>If the problem persists, contact our support team with a screenshot of the error." },
+    fr: { q: "L'application ne se charge pas ou affiche une erreur", a: "Essayez ces étapes :<ul><li><strong>Actualisez la page</strong> — Appuyez sur le bouton d'actualisation ou tirez vers le bas sur mobile</li><li><strong>Videz le cache de votre navigateur</strong> — Les anciennes données en cache peuvent causer des problèmes</li><li><strong>Essayez un autre navigateur</strong> — Chrome ou Safari fonctionnent le mieux</li><li><strong>Vérifiez votre connexion internet</strong> — Assurez-vous d'avoir une connexion stable</li></ul>Si le problème persiste, contactez notre équipe de support avec une capture d'écran de l'erreur." }
+  },
+  { cat: "troubleshooting",
+    en: { q: "Some features appear locked. Why?", a: "Features are locked based on your current plan. For example, WhatsApp messaging requires the Growth or Pro plan. To unlock features, upgrade your plan from <strong>Settings → Billing</strong>. If you recently upgraded and features are still locked, try logging out and logging back in to refresh your session." },
+    fr: { q: "Certaines fonctionnalités semblent verrouillées. Pourquoi ?", a: "Les fonctionnalités sont verrouillées selon votre forfait actuel. Par exemple, la messagerie WhatsApp nécessite le forfait Growth ou Pro. Pour débloquer des fonctionnalités, passez à un forfait supérieur depuis <strong>Paramètres → Facturation</strong>. Si vous avez récemment mis à jour et que les fonctionnalités sont toujours verrouillées, essayez de vous déconnecter puis de vous reconnecter pour actualiser votre session." }
+  },
+  { cat: "troubleshooting",
+    en: { q: "I can't receive emails from ChurchSmart", a: "If you're not receiving emails:<ul><li>Check your <strong>spam/junk folder</strong></li><li>Add <strong>noreply@churchsmartnow.com</strong> to your contacts</li><li>Make sure your email address is correct in your profile</li><li>If using a church domain email, ask your IT admin to whitelist our sending domain</li></ul>" },
+    fr: { q: "Je ne reçois pas les emails de ChurchSmart", a: "Si vous ne recevez pas les emails :<ul><li>Vérifiez votre <strong>dossier spam/indésirables</strong></li><li>Ajoutez <strong>noreply@churchsmartnow.com</strong> à vos contacts</li><li>Assurez-vous que votre adresse email est correcte dans votre profil</li><li>Si vous utilisez un email de domaine d'église, demandez à votre administrateur IT d'autoriser notre domaine d'envoi</li></ul>" }
+  },
+
+  // ── Contact & Support ──
+  { cat: "support",
+    en: { q: "How can I contact support?", a: "You can reach our support team in several ways:<ul><li><strong>Email</strong> — <a href='mailto:hello@churchsmartnow.com'>hello@churchsmartnow.com</a></li><li><strong>WhatsApp</strong> — Message us for quick responses</li></ul>We typically respond within 24 hours during business days." },
+    fr: { q: "Comment contacter le support ?", a: "Vous pouvez joindre notre équipe de support de plusieurs façons :<ul><li><strong>Email</strong> — <a href='mailto:hello@churchsmartnow.com'>hello@churchsmartnow.com</a></li><li><strong>WhatsApp</strong> — Envoyez-nous un message pour des réponses rapides</li></ul>Nous répondons généralement sous 24 heures les jours ouvrables." }
+  },
+  { cat: "support",
+    en: { q: "Do you offer training sessions?", a: "Yes! We offer training sessions to help your church get the most out of ChurchSmart. Training covers:<ul><li>Initial setup and configuration</li><li>Member management best practices</li><li>Using automation and messaging features</li><li>Financial tracking and reporting</li></ul>Contact us at <a href='mailto:hello@churchsmartnow.com'>hello@churchsmartnow.com</a> to schedule a session for your team." },
+    fr: { q: "Proposez-vous des sessions de formation ?", a: "Oui ! Nous proposons des sessions de formation pour aider votre église à tirer le meilleur parti de ChurchSmart. La formation couvre :<ul><li>Configuration et paramétrage initial</li><li>Bonnes pratiques de gestion des membres</li><li>Utilisation des fonctionnalités d'automatisation et de messagerie</li><li>Suivi financier et rapports</li></ul>Contactez-nous à <a href='mailto:hello@churchsmartnow.com'>hello@churchsmartnow.com</a> pour planifier une session pour votre équipe." }
+  },
+  { cat: "support",
+    en: { q: "Can I suggest a feature?", a: "Absolutely! We love hearing from our users. Send your feature requests and suggestions to <a href='mailto:hello@churchsmartnow.com'>hello@churchsmartnow.com</a>. Many of our current features were built based on feedback from churches like yours. We review every suggestion and prioritize based on community needs." },
+    fr: { q: "Puis-je suggérer une fonctionnalité ?", a: "Absolument ! Nous aimons entendre nos utilisateurs. Envoyez vos demandes de fonctionnalités et suggestions à <a href='mailto:hello@churchsmartnow.com'>hello@churchsmartnow.com</a>. Beaucoup de nos fonctionnalités actuelles ont été créées grâce aux retours d'églises comme la vôtre. Nous examinons chaque suggestion et priorisons selon les besoins de la communauté." }
+  },
+  { cat: "support",
+    en: { q: "Is there a community or forum for ChurchSmart users?", a: "We're building a community of church leaders using ChurchSmart! In the meantime, you can connect with other users during our training sessions, and share feedback or ideas directly with our team. Follow us for updates on community features coming soon." },
+    fr: { q: "Y a-t-il une communauté ou un forum pour les utilisateurs ChurchSmart ?", a: "Nous construisons une communauté de responsables d'église utilisant ChurchSmart ! En attendant, vous pouvez vous connecter avec d'autres utilisateurs lors de nos sessions de formation et partager vos retours ou idées directement avec notre équipe. Suivez-nous pour des mises à jour sur les fonctionnalités communautaires à venir." }
+  },
+];
+
+// ─── State ───
+let currentLang = 'en';
+let activeCategory = 'all';
+let searchQuery = '';
+
+// ─── Language ───
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent.trim().toLowerCase() === lang));
+  document.documentElement.lang = lang;
+
+  // Translate static strings
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (T[lang][key]) el.textContent = T[lang][key];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (T[lang][key]) el.placeholder = T[lang][key];
+  });
+
+  renderChips();
+  renderFAQ();
+}
+
+// ─── Render category chips ───
+function renderChips() {
+  const nav = document.getElementById('catNav');
+  const allLabel = T[currentLang].cat_all;
+  let html = `<button class="cat-chip ${activeCategory === 'all' ? 'active' : ''}" onclick="filterCat('all')">${allLabel}</button>`;
+  CATEGORIES.forEach(c => {
+    html += `<button class="cat-chip ${activeCategory === c.id ? 'active' : ''}" onclick="filterCat('${c.id}')">${c.icon} ${c[currentLang]}</button>`;
+  });
+  nav.innerHTML = html;
+}
+
+function filterCat(catId) {
+  activeCategory = catId;
+  renderChips();
+  renderFAQ();
+}
+
+// ─── Render FAQ ───
+function renderFAQ() {
+  const container = document.getElementById('faqContent');
+  const noResults = document.getElementById('noResults');
+  const ctaBanner = document.getElementById('ctaBanner');
+  const query = searchQuery.toLowerCase().trim();
+
+  // Filter items
+  let filtered = FAQ;
+  if (activeCategory !== 'all') {
+    filtered = filtered.filter(f => f.cat === activeCategory);
+  }
+  if (query) {
+    filtered = filtered.filter(f => {
+      const item = f[currentLang];
+      const text = (item.q + ' ' + item.a).toLowerCase();
+      return query.split(/\s+/).every(word => text.includes(word));
+    });
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = '';
+    noResults.classList.add('visible');
+    ctaBanner.style.display = 'none';
+    return;
+  }
+
+  noResults.classList.remove('visible');
+  ctaBanner.style.display = '';
+
+  // Group by category
+  const grouped = {};
+  filtered.forEach(f => {
+    if (!grouped[f.cat]) grouped[f.cat] = [];
+    grouped[f.cat].push(f);
+  });
+
+  let html = '';
+  const catOrder = CATEGORIES.map(c => c.id);
+  catOrder.forEach(catId => {
+    if (!grouped[catId]) return;
+    const cat = CATEGORIES.find(c => c.id === catId);
+    const items = grouped[catId];
+
+    html += `<div class="category">`;
+    html += `<div class="cat-header">`;
+    html += `<div class="cat-icon" style="background:${cat.color}">${cat.icon}</div>`;
+    html += `<h2>${cat[currentLang]}</h2>`;
+    html += `<span class="cat-count">${items.length}</span>`;
+    html += `</div>`;
+
+    items.forEach((f, i) => {
+      const item = f[currentLang];
+      const uid = catId + '-' + i;
+      html += `<div class="faq-item" id="faq-${uid}">`;
+      html += `<div class="faq-q" onclick="toggleFaq('${uid}')">`;
+      html += `<span>${highlight(item.q, query)}</span>`;
+      html += `<div class="faq-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>`;
+      html += `</div>`;
+      html += `<div class="faq-a"><div class="faq-a-inner">${item.a}</div></div>`;
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
+
+  // If searching, auto-open first result
+  if (query && filtered.length > 0) {
+    const firstCat = catOrder.find(c => grouped[c]);
+    if (firstCat) toggleFaq(firstCat + '-0');
+  }
+}
+
+function highlight(text, query) {
+  if (!query) return text;
+  const words = query.split(/\s+/).filter(Boolean);
+  let result = text;
+  words.forEach(word => {
+    const regex = new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    result = result.replace(regex, '<mark style="background:#FEF08A;padding:1px 2px;border-radius:2px">$1</mark>');
+  });
+  return result;
+}
+
+function toggleFaq(uid) {
+  const el = document.getElementById('faq-' + uid);
+  if (!el) return;
+  const isOpen = el.classList.contains('open');
+
+  // Close all
+  document.querySelectorAll('.faq-item.open').forEach(item => {
+    item.classList.remove('open');
+    item.querySelector('.faq-a').style.maxHeight = '0';
+  });
+
+  // Open clicked (if it wasn't open)
+  if (!isOpen) {
+    el.classList.add('open');
+    const answer = el.querySelector('.faq-a');
+    answer.style.maxHeight = answer.scrollHeight + 'px';
+    // Smooth scroll into view on mobile
+    setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  }
+}
+
+// ─── Search ───
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+
+searchInput.addEventListener('input', function() {
+  searchQuery = this.value;
+  searchClear.classList.toggle('visible', searchQuery.length > 0);
+  renderFAQ();
+});
+
+function clearSearch() {
+  searchInput.value = '';
+  searchQuery = '';
+  searchClear.classList.remove('visible');
+  renderFAQ();
+  searchInput.focus();
+}
+
+// ─── Init ───
+renderChips();
+renderFAQ();
+</script>
+</body>
+</html>
