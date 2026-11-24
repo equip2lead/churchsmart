@@ -9,7 +9,7 @@ import Papa from 'papaparse';
 import UpgradePrompt from '../UpgradePrompt';
 
 function MembersPage({ plan, onNavigate }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
@@ -133,7 +133,7 @@ function MembersPage({ plan, onNavigate }) {
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', phone: '', date_of_birth: '',
     gender: 'MALE', address: '', city: '', membership_status: 'ACTIVE', membership_date: '',
-    location_id: '', notes: ''
+    location_id: '', notes: '', language_preference: 'FRENCH'
   });
 
   useEffect(() => { fetchData(); }, []);
@@ -194,7 +194,8 @@ function MembersPage({ plan, onNavigate }) {
         email: member.email || '', phone: member.phone || '', date_of_birth: member.date_of_birth || '',
         gender: member.gender || 'MALE', address: member.address || '', city: member.city || '',
         membership_status: member.membership_status || 'ACTIVE', membership_date: member.membership_date || '',
-        location_id: member.location_id || '', notes: member.notes || '', photo_url: member.photo_url || ''
+        location_id: member.location_id || '', notes: member.notes || '', photo_url: member.photo_url || '',
+        language_preference: member.language_preference || 'FRENCH'
       });
     } else {
       resetForm();
@@ -645,9 +646,10 @@ function MembersPage({ plan, onNavigate }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <FormInput label="Date of Birth" type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
-          <FormInput label="Gender" type="select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} options={[{ value: 'MALE', label: '👨 Male' }, { value: 'FEMALE', label: '👩 Female' }]} />
+          <FormInput label={language === 'fr' ? 'Genre' : 'Gender'} type="select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} options={[{ value: 'MALE', label: language === 'fr' ? '👨 Homme' : '👨 Male' }, { value: 'FEMALE', label: language === 'fr' ? '👩 Femme' : '👩 Female' }]} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormInput label={language === 'fr' ? 'Langue préférée' : 'Preferred Language'} type="select" value={form.language_preference} onChange={(e) => setForm({ ...form, language_preference: e.target.value })} options={[{ value: 'FRENCH', label: language === 'fr' ? 'Français' : 'French' }, { value: 'ENGLISH', label: language === 'fr' ? 'Anglais' : 'English' }]} />
           <FormInput label="📍 Location *" type="select" value={form.location_id} onChange={(e) => setForm({ ...form, location_id: e.target.value })} options={[{ value: '', label: 'Select location...' }, ...locations.map(l => ({ value: l.id, label: l.is_main_campus ? `🏛️ ${l.name} (Main)` : `🏢 ${l.name}` }))]} />
           <FormInput label="Status" type="select" value={form.membership_status} onChange={(e) => setForm({ ...form, membership_status: e.target.value })} options={[{ value: 'ACTIVE', label: '✅ Active' }, { value: 'INACTIVE', label: '⏸️ Inactive' }]} />
         </div>

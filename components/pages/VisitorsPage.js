@@ -9,7 +9,7 @@ import UpgradePrompt from '../UpgradePrompt';
 import { seedDefaultTemplates } from '../../lib/messageDefaults';
 
 function VisitorsPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
@@ -474,8 +474,12 @@ function VisitorsPage() {
             <FormInput label={t('visitorTownCity')} value={form.town_city} onChange={(e) => setForm({ ...form, town_city: e.target.value })} placeholder="Yaoundé" />
             <FormInput label={t('visitorQuartier')} value={form.quartier} onChange={(e) => setForm({ ...form, quartier: e.target.value })} placeholder="Bastos" />
           </div>
-          <FormInput label={t('gender')} type="select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}
-            options={[{ value: '', label: '— Select —' }, { value: 'MALE', label: t('male') }, { value: 'FEMALE', label: t('female') }]} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <FormInput label={t('gender')} type="select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              options={[{ value: '', label: '— Select —' }, { value: 'MALE', label: t('male') }, { value: 'FEMALE', label: t('female') }]} />
+            <FormInput label={language === 'fr' ? 'Langue préférée' : 'Preferred Language'} type="select" value={form.language_preference} onChange={(e) => setForm({ ...form, language_preference: e.target.value })}
+              options={[{ value: 'FRENCH', label: language === 'fr' ? 'Français' : 'French' }, { value: 'ENGLISH', label: language === 'fr' ? 'Anglais' : 'English' }]} />
+          </div>
         </div>
 
         {/* BEST TIME — optional, both dropdowns share the same 4 enum values */}

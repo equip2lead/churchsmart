@@ -11,6 +11,7 @@ import {
   delay,
   SEND_SPACING_MS
 } from '../../../../lib/whatsapp';
+import { getTemplateByLanguage } from '../../../../lib/messageDefaults';
 
 function getSupabase() {
   return createClient(
@@ -61,7 +62,7 @@ export async function GET(request) {
     // Find members whose birthday is today (match month and day, ignore year)
     const { data: members } = await supabase
       .from('members')
-      .select('id, first_name, last_name, email, phone, date_of_birth')
+      .select('id, first_name, last_name, email, phone, date_of_birth, language_preference')
       .eq('church_id', church.id)
       .not('date_of_birth', 'is', null);
 
@@ -74,23 +75,23 @@ export async function GET(request) {
 
     if (birthdayMembers.length === 0) continue;
 
-    // ── Fetch custom birthday template (once per church) ──
-    const { data: birthdayTemplate } = await supabase
+    // ── Fetch custom birthday templates for this church (both languages) ──
+    const { data: customTemplates } = await supabase
       .from('message_templates')
-      .select('body')
+      .select('body, category, language, is_active')
       .eq('church_id', church.id)
       .eq('category', 'BIRTHDAY')
-      .eq('is_active', true)
-      .limit(1)
-      .single();
+      .eq('is_active', true);
 
     // Send birthday emails to members who have email addresses
     if (birthdayEmailEnabled) {
       for (const member of birthdayMembers) {
         if (!member.email) continue;
+        const memberLang = member.language_preference || 'FRENCH';
+        const template = getTemplateByLanguage('BIRTHDAY', memberLang, customTemplates || []);
         let customEmailMessage;
-        if (birthdayTemplate?.body) {
-          customEmailMessage = birthdayTemplate.body
+        if (template?.body) {
+          customEmailMessage = template.body
             .replace(/\{name\}/gi, member.first_name)
             .replace(/\{churchName\}/gi, church.name);
         }
@@ -117,9 +118,6 @@ export async function GET(request) {
         let sentToday = configResult.sentToday;
         let churchWhatsappSent = 0;
 
-        // French is the default greeting; English churches get the English one.
-        const isEnglish = String(church.default_language || '').toLowerCase().startsWith('en');
-
         const withPhone = birthdayMembers.filter(m => m.phone);
         for (let i = 0; i < withPhone.length; i++) {
           const member = withPhone[i];
@@ -139,13 +137,16 @@ export async function GET(request) {
             continue;
           }
 
+          // Use the member's own language preference for the greeting
+          const memberLang = member.language_preference || 'FRENCH';
+          const template = getTemplateByLanguage('BIRTHDAY', memberLang, customTemplates || []);
           let message;
-          if (birthdayTemplate?.body) {
-            message = birthdayTemplate.body
+          if (template?.body) {
+            message = template.body
               .replace(/\{name\}/gi, member.first_name)
               .replace(/\{churchName\}/gi, church.name);
           } else {
-            message = isEnglish
+            message = memberLang === 'ENGLISH'
               ? `\u{1F382} Happy Birthday, ${member.first_name}! ${church.name} wishes you a blessed birthday. May God continue to bless you abundantly!`
               : `\u{1F382} Joyeux anniversaire ${member.first_name} ! ${church.name} vous souhaite un anniversaire béni. Que Dieu continue de vous bénir abondamment !`;
           }

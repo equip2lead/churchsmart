@@ -595,8 +595,24 @@ function SettingsPage({ plan, onNavigate }) {
         entity_name: automationType || null,
         details: { enabled }
       });
-      fetchData();
+    } else {
+      // No row exists yet — create one
+      const result = await supabaseInsert('automation_settings', {
+        church_id: CHURCH_ID,
+        automation_type: automationType,
+        is_enabled: enabled,
+        settings: {}
+      });
+      const newRow = Array.isArray(result) ? result[0] : result;
+      logActivity({
+        action: 'automation_created',
+        entity_type: 'automation',
+        entity_id: newRow?.id || null,
+        entity_name: automationType || null,
+        details: { enabled }
+      });
     }
+    fetchData();
   };
 
   // ============ TEMPLATE HANDLERS ============
@@ -1479,60 +1495,75 @@ function SettingsPage({ plan, onNavigate }) {
           {/* ============ AUTOMATION ============ */}
           {activeSection === 'automation' && (
             <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Info banner about language-based messaging */}
+              <div style={{ backgroundColor: '#eff6ff', borderRadius: '12px', padding: '16px 20px', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <span style={{ fontSize: '20px', flexShrink: 0 }}>🌐</span>
+                <div>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#1e40af' }}>
+                    {language === 'fr' ? 'Messages bilingues activés' : 'Bilingual messaging enabled'}
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#3b82f6' }}>
+                    {language === 'fr'
+                      ? 'Les messages automatiques sont envoyés dans la langue préférée de chaque membre/visiteur (définie dans leur fiche).'
+                      : 'Automated messages are sent in each member/visitor\'s preferred language (set in their profile).'}
+                  </p>
+                </div>
+              </div>
+
               {/* Birthday Settings */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🎂 Birthday Settings</h3>
-                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Automatically send birthday wishes to members</p>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🎂 {language === 'fr' ? 'Anniversaires' : 'Birthday Settings'}</h3>
+                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>{language === 'fr' ? 'Envoyer automatiquement des vœux d\'anniversaire aux membres' : 'Automatically send birthday wishes to members'}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: getAutomationSetting('BIRTHDAY_SMS')?.is_enabled ? '#f0fdf4' : '#f9fafb', borderRadius: '10px', cursor: 'pointer', border: getAutomationSetting('BIRTHDAY_SMS')?.is_enabled ? '1px solid #bbf7d0' : '1px solid transparent', transition: 'all 0.15s' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontSize: '24px' }}>📱</span>
                       <div>
-                        <p style={{ margin: 0, fontWeight: '500' }}>Send SMS notifications</p>
-                        <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Send birthday SMS to members on their birthday</p>
+                        <p style={{ margin: 0, fontWeight: '500' }}>{language === 'fr' ? 'Notifications SMS' : 'Send SMS notifications'}</p>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{language === 'fr' ? 'Envoyer un SMS d\'anniversaire aux membres' : 'Send birthday SMS to members on their birthday'}</p>
                       </div>
                     </div>
-                    <input type="checkbox" checked={getAutomationSetting('BIRTHDAY_SMS')?.is_enabled || false} onChange={(e) => toggleAutomation('BIRTHDAY_SMS', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                    <input type="checkbox" checked={getAutomationSetting('BIRTHDAY_SMS')?.is_enabled || false} onChange={(e) => toggleAutomation('BIRTHDAY_SMS', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#6366f1' }} />
                   </label>
-                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: getAutomationSetting('BIRTHDAY_WHATSAPP')?.is_enabled ? '#f0fdf4' : '#f9fafb', borderRadius: '10px', cursor: 'pointer', border: getAutomationSetting('BIRTHDAY_WHATSAPP')?.is_enabled ? '1px solid #bbf7d0' : '1px solid transparent', transition: 'all 0.15s' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontSize: '24px' }}>💬</span>
                       <div>
-                        <p style={{ margin: 0, fontWeight: '500' }}>Send WhatsApp notifications</p>
-                        <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Send birthday WhatsApp to members</p>
+                        <p style={{ margin: 0, fontWeight: '500' }}>{language === 'fr' ? 'Notifications WhatsApp' : 'Send WhatsApp notifications'}</p>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{language === 'fr' ? 'Envoyer un WhatsApp d\'anniversaire aux membres' : 'Send birthday WhatsApp to members'}</p>
                       </div>
                     </div>
-                    <input type="checkbox" checked={getAutomationSetting('BIRTHDAY_WHATSAPP')?.is_enabled || false} onChange={(e) => toggleAutomation('BIRTHDAY_WHATSAPP', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                    <input type="checkbox" checked={getAutomationSetting('BIRTHDAY_WHATSAPP')?.is_enabled || false} onChange={(e) => toggleAutomation('BIRTHDAY_WHATSAPP', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#6366f1' }} />
                   </label>
                 </div>
               </div>
 
               {/* Visitor Follow-up */}
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🚶 Visitor Follow-up Sequence</h3>
-                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Automatically send follow-up messages to first-time visitors</p>
-                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled ? '#f0fdf4' : '#f9fafb', borderRadius: '10px', marginBottom: '16px', border: getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled ? '1px solid #bbf7d0' : '1px solid transparent' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🚶 {language === 'fr' ? 'Séquence de suivi visiteurs' : 'Visitor Follow-up Sequence'}</h3>
+                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>{language === 'fr' ? 'Envoyer automatiquement des messages de suivi aux nouveaux visiteurs' : 'Automatically send follow-up messages to first-time visitors'}</p>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled ? '#f0fdf4' : '#f9fafb', borderRadius: '10px', marginBottom: '16px', cursor: 'pointer', border: getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled ? '1px solid #bbf7d0' : '1px solid transparent', transition: 'all 0.15s' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ fontSize: '24px' }}>🤖</span>
                     <div>
-                      <p style={{ margin: 0, fontWeight: '500' }}>Enable Visitor Follow-up Sequence</p>
-                      <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Automatically send Day 1, Day 3, and Day 7 messages</p>
+                      <p style={{ margin: 0, fontWeight: '500' }}>{language === 'fr' ? 'Activer la séquence de suivi' : 'Enable Visitor Follow-up Sequence'}</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{language === 'fr' ? 'Envoyer automatiquement les messages Jour 1, Jour 3 et Jour 7' : 'Automatically send Day 1, Day 3, and Day 7 messages'}</p>
                     </div>
                   </div>
-                  <input type="checkbox" checked={getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled || false} onChange={(e) => toggleAutomation('VISITOR_FOLLOWUP', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                  <input type="checkbox" checked={getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled || false} onChange={(e) => toggleAutomation('VISITOR_FOLLOWUP', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#6366f1' }} />
                 </label>
                 <div style={{ paddingLeft: '20px', borderLeft: '3px solid #e5e7eb' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                     <span style={{ width: '28px', height: '28px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>1</span>
-                    <div><p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>Day 1: Welcome Message</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Send a welcome message thanking visitors for attending</p></div>
+                    <div><p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{language === 'fr' ? 'Jour 1 : Message de bienvenue' : 'Day 1: Welcome Message'}</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{language === 'fr' ? 'Envoyer un message de remerciement aux visiteurs' : 'Send a welcome message thanking visitors for attending'}</p></div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                     <span style={{ width: '28px', height: '28px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>3</span>
-                    <div><p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>Day 3: Group Invite & Midweek Reminder</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Invite visitors to join a group and remind them of midweek service</p></div>
+                    <div><p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{language === 'fr' ? 'Jour 3 : Invitation groupe & rappel' : 'Day 3: Group Invite & Midweek Reminder'}</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{language === 'fr' ? 'Inviter les visiteurs à rejoindre un groupe et rappeler le culte de semaine' : 'Invite visitors to join a group and remind them of midweek service'}</p></div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ width: '28px', height: '28px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600' }}>7</span>
-                    <div><p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>Day 7: Membership & Pastor Invitation</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Invite visitors to meet the pastor and learn about membership</p></div>
+                    <div><p style={{ margin: 0, fontWeight: '500', fontSize: '14px' }}>{language === 'fr' ? 'Jour 7 : Adhésion & invitation pastorale' : 'Day 7: Membership & Pastor Invitation'}</p><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{language === 'fr' ? 'Inviter les visiteurs à rencontrer le pasteur et découvrir l\'adhésion' : 'Invite visitors to meet the pastor and learn about membership'}</p></div>
                   </div>
                 </div>
               </div>
@@ -1541,10 +1572,10 @@ function SettingsPage({ plan, onNavigate }) {
               <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <div>
-                    <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📝 Message Templates</h3>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Customize your automated messages</p>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📝 {language === 'fr' ? 'Modèles de messages' : 'Message Templates'}</h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{language === 'fr' ? 'Personnaliser vos messages automatiques' : 'Customize your automated messages'}</p>
                   </div>
-                  <Button onClick={() => openTemplateModal()}>➕ Add Template</Button>
+                  <Button onClick={() => openTemplateModal()}>➕ {language === 'fr' ? 'Ajouter' : 'Add Template'}</Button>
                 </div>
                 <div style={{ display: 'grid', gap: '12px' }}>
                   {messageTemplates.map((template, i) => (
