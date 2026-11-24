@@ -1559,17 +1559,18 @@ function Dashboard() {
         </div>
 
         {/* Menu Items */}
-        <nav style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
-          {menuItems.map(item => (
-            <button key={item.id} data-tab={item.id} title={item.locked ? item.lockedHint : undefined} onClick={() => { if (platformOnly) setSuperTab(item.id); else setActiveTab(item.id); if (window.innerWidth <= 768) setSidebarOpen(false); }}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: sidebarOpen ? '10px 16px' : '10px', margin: '2px 0', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', backgroundColor: (platformOnly ? superTab : activeTab) === item.id ? '#eef2ff' : 'transparent', color: (platformOnly ? superTab : activeTab) === item.id ? '#6366f1' : (item.locked ? '#9ca3af' : '#4b5563'), fontWeight: (platformOnly ? superTab : activeTab) === item.id ? '600' : '400', justifyContent: sidebarOpen ? 'flex-start' : 'center', transition: 'all 0.2s' }}>
-              <span style={{ fontSize: '18px' }}>{item.icon}</span>
-              {sidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>}
-              {/* Locked by plan. The item stays clickable; the page shows the
-                  upgrade prompt naming the plan that unlocks it. */}
-              {item.locked && <span style={{ fontSize: '12px', opacity: 0.75 }} aria-label={item.lockedHint}>🔒</span>}
-            </button>
-          ))}
+        <nav style={{ flex: 1, padding: '8px', overflowY: 'auto' }}>
+          {menuItems.map(item => {
+            const isActive = (platformOnly ? superTab : activeTab) === item.id;
+            return (
+              <button key={item.id} data-tab={item.id} title={item.locked ? item.lockedHint : undefined} onClick={() => { if (platformOnly) setSuperTab(item.id); else setActiveTab(item.id); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: sidebarOpen ? '10px 16px' : '10px', margin: '1px 0', border: 'none', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', position: 'relative', backgroundColor: isActive ? '#eef2ff' : 'transparent', color: isActive ? '#4f46e5' : (item.locked ? '#9ca3af' : '#4b5563'), fontWeight: isActive ? '600' : '400', justifyContent: sidebarOpen ? 'flex-start' : 'center', transition: 'all 0.15s', borderLeft: isActive ? '3px solid #6366f1' : '3px solid transparent', paddingLeft: sidebarOpen ? '13px' : '7px' }}>
+                <span style={{ fontSize: '18px', opacity: isActive ? 1 : 0.75 }}>{item.icon}</span>
+                {sidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>}
+                {item.locked && <span style={{ fontSize: '12px', opacity: 0.75 }} aria-label={item.lockedHint}>🔒</span>}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Help Center + Logout */}

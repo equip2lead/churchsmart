@@ -378,7 +378,9 @@ function DashboardPage({ onNavigate }) {
               label={t('attendance')}
               value={metrics.lastAttendance ?? 0}
               sublabel={metrics.attendanceRate != null
-                ? `${Math.round(metrics.attendanceRate)}% ${t('of_members')}`
+                ? (metrics.attendanceRate > 100
+                  ? `${metrics.lastAttendance}/${metrics.members} ${t('of_members')}`
+                  : `${Math.round(metrics.attendanceRate)}% ${t('of_members')}`)
                 : t('last_service')}
               trend={metrics.attendanceTrend}
               trendLabel={t('last_service')}
@@ -456,12 +458,15 @@ function DashboardPage({ onNavigate }) {
               {recentActivity.length === 0 ? (
                 <p style={{ margin: 0, padding: '32px 0', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{t('no_recent_activity')}</p>
               ) : (
-                <div style={{ display: 'grid', gap: '2px' }}>
+                <div style={{ display: 'grid', gap: '0' }}>
                   {recentActivity.map((log, i) => {
                     const meta = activityMeta(log);
                     return (
-                      <div key={log.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid #f5f5fa' }}>
-                        <span style={{ flexShrink: 0, width: '30px', height: '30px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', background: `linear-gradient(135deg, ${meta.color}10, ${meta.color}18)` }}>
+                      <div key={log.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 8px', borderTop: i === 0 ? 'none' : '1px solid #f5f5fa', borderRadius: '8px', transition: 'background-color 0.15s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fafbff'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <span style={{ flexShrink: 0, width: '34px', height: '34px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', background: `linear-gradient(135deg, ${meta.color}15, ${meta.color}28)`, boxShadow: `0 1px 4px ${meta.color}12` }}>
                           {meta.icon}
                         </span>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -520,20 +525,20 @@ function DashboardPage({ onNavigate }) {
                 <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '700', color: '#111827' }}>⚡ {t('quickActions')}</h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {[
-                    { icon: '👥', label: t('addMember'), tab: 'members' },
-                    { icon: '📅', label: t('record_attendance'), tab: 'attendance' },
-                    ...(isFinanceVisible ? [{ icon: '💰', label: t('record_offering'), tab: 'giving' }] : []),
-                    { icon: '💬', label: t('send_message'), tab: 'messaging' }
+                    { icon: '👥', label: t('addMember'), tab: 'members', color: '#6366f1' },
+                    { icon: '📅', label: t('record_attendance'), tab: 'attendance', color: '#0ea5e9' },
+                    ...(isFinanceVisible ? [{ icon: '💰', label: t('record_offering'), tab: 'giving', color: '#10b981' }] : []),
+                    { icon: '💬', label: t('send_message'), tab: 'messaging', color: '#8b5cf6' }
                   ].map(action => (
                     <button
                       key={action.tab}
                       type="button"
                       onClick={() => onNavigate && onNavigate(action.tab)}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c7d2fe'; e.currentTarget.style.backgroundColor = '#fafbff'; e.currentTarget.style.color = '#4f46e5'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = '#374151'; }}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: 'white', color: '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c7d2fe'; e.currentTarget.style.backgroundColor = '#fafbff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#f0f0f5'; e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 14px', borderRadius: '10px', border: '1px solid #f0f0f5', backgroundColor: 'white', color: '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
                     >
-                      <span>{action.icon}</span>{action.label}
+                      <span style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', background: `linear-gradient(135deg, ${action.color}15, ${action.color}25)` }}>{action.icon}</span>{action.label}
                     </button>
                   ))}
                 </div>

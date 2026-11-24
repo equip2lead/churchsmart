@@ -822,24 +822,28 @@ function DashStatCard({ icon, label, value, display, sublabel, trend, trendLabel
       className="cs-dash-card"
       onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'; }}
-      style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', transition: 'all 0.2s ease', cursor: 'default' }}
+      style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', transition: 'all 0.2s ease', cursor: 'default' }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-        <span style={{ width: '40px', height: '40px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', background: `linear-gradient(135deg, ${color}12, ${color}20)` }}>
-          {icon}
-        </span>
-        {trend != null && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '9999px', fontSize: '11px', fontWeight: '600', backgroundColor: up ? '#dcfce7' : '#fef2f2', color: up ? '#166534' : '#991b1b' }}>
-            {up ? '↑' : '↓'} {Math.abs(Math.round(trend))}%
+      {/* Colored accent stripe */}
+      <div style={{ height: '3px', background: `linear-gradient(90deg, ${color}, ${color}99)` }} />
+      <div style={{ padding: '18px 20px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <span style={{ width: '44px', height: '44px', borderRadius: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', background: `linear-gradient(135deg, ${color}18, ${color}30)`, boxShadow: `0 2px 8px ${color}15` }}>
+            {icon}
           </span>
+          {trend != null && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '9999px', fontSize: '11px', fontWeight: '600', backgroundColor: up ? '#dcfce7' : '#fef2f2', color: up ? '#166534' : '#991b1b' }}>
+              {up ? '↑' : '↓'} {Math.abs(Math.round(trend))}%
+            </span>
+          )}
+        </div>
+        <p style={{ margin: '14px 0 0 0', fontSize: '28px', fontWeight: '800', color: '#111827', lineHeight: '1.15', wordBreak: 'break-word', letterSpacing: '-0.02em' }}>{shown}</p>
+        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>{label}</p>
+        {sublabel && <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>{sublabel}</p>}
+        {trend != null && trendLabel && (
+          <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{trendLabel}</p>
         )}
       </div>
-      <p style={{ margin: '14px 0 0 0', fontSize: '26px', fontWeight: '800', color: '#111827', lineHeight: '1.15', wordBreak: 'break-word', letterSpacing: '-0.02em' }}>{shown}</p>
-      <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>{label}</p>
-      {sublabel && <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>{sublabel}</p>}
-      {trend != null && trendLabel && (
-        <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{trendLabel}</p>
-      )}
     </div>
   );
 }
@@ -914,13 +918,18 @@ function DashLineChart({ points, formatValue = (v) => String(Math.round(v)), col
 
   return (
     <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} role="img">
+      <defs>
+        <linearGradient id={`area-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.20" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
       <ChartGrid max={max} formatValue={formatValue} />
 
-      {/* Soft fill under the line */}
+      {/* Gradient fill under the line */}
       <polygon
         points={`${coords.map(c => `${c.x},${c.y}`).join(' ')} ${coords[coords.length - 1].x},${PAD.top + innerH} ${coords[0].x},${PAD.top + innerH}`}
-        fill={color}
-        opacity="0.08"
+        fill={`url(#area-${color.replace('#','')})`}
       />
       <polyline
         points={coords.map(c => `${c.x},${c.y}`).join(' ')}
@@ -973,6 +982,12 @@ function DashBarChart({ bars, formatValue = (v) => String(Math.round(v)), color 
 
   return (
     <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} role="img">
+      <defs>
+        <linearGradient id={`bar-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="1" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.65" />
+        </linearGradient>
+      </defs>
       <ChartGrid max={max} formatValue={formatValue} />
 
       {bars.map((b, i) => {
@@ -982,9 +997,9 @@ function DashBarChart({ bars, formatValue = (v) => String(Math.round(v)), color 
         return (
           <g key={i}>
             <rect
-              x={x} y={y} width={barW} height={Math.max(h, b.value > 0 ? 2 : 0)} rx="5"
-              fill={color}
-              opacity={hover == null || hover === i ? 1 : 0.45}
+              x={x} y={y} width={barW} height={Math.max(h, b.value > 0 ? 2 : 0)} rx="6"
+              fill={`url(#bar-${color.replace('#','')})`}
+              opacity={hover == null || hover === i ? 1 : 0.4}
             />
             <text x={x + barW / 2} y={CHART_H - 8} textAnchor="middle" fontSize="10" fill="#9ca3af">{b.label}</text>
             <rect
