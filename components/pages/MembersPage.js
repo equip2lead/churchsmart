@@ -547,9 +547,9 @@ function MembersPage({ plan, onNavigate }) {
           </div>
 
           {/* QR Code Section */}
-          <div style={{ textAlign: 'center', marginBottom: '20px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ textAlign: 'center', marginBottom: '20px', padding: '20px', backgroundColor: '#fafbff', borderRadius: '12px', border: '1px solid #f0f0f5' }}>
             <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>📱 QR Code — Display on screen during service</p>
-            <div style={{ display: 'inline-block', padding: '12px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'inline-block', padding: '12px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               <img 
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(inviteLink)}&color=4338ca`} 
                 alt="QR Code" 

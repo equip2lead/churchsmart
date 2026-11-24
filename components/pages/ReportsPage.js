@@ -227,7 +227,7 @@ function ReportsPage({ plan, onNavigate }) {
       />
 
       {/* Date Range & Location Selector */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>📅 Date Range:</span>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -318,7 +318,7 @@ function ReportsPage({ plan, onNavigate }) {
               </div>
 
               {/* Quick Stats */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📋 Quick Summary</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
                   <div>
@@ -370,16 +370,16 @@ function ReportsPage({ plan, onNavigate }) {
               </div>
 
               {/* Income by Category */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💵 Income by Category</h3>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>% of Total</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Category</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Amount</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>% of Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -388,7 +388,7 @@ function ReportsPage({ plan, onNavigate }) {
                       if (amount === 0) return null;
                       const percentage = totalIncome > 0 ? ((amount / totalIncome) * 100).toFixed(1) : 0;
                       return (
-                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <tr key={i} style={{ borderTop: '1px solid #f0f0f5' }}>
                           <td style={{ padding: '12px 16px', fontWeight: '500' }}>{cat}</td>
                           <td style={{ padding: '12px 16px', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>{formatCurrency(amount)}</td>
                           <td style={{ padding: '12px 16px', textAlign: 'right', color: '#6b7280' }}>{percentage}%</td>
@@ -400,17 +400,17 @@ function ReportsPage({ plan, onNavigate }) {
               </div>
 
               {/* Recent Transactions */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📜 Recent Transactions</h3>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Type</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Category</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -419,7 +419,7 @@ function ReportsPage({ plan, onNavigate }) {
                       .sort((a, b) => new Date(b.date) - new Date(a.date))
                       .slice(0, 10)
                       .map((item, i) => (
-                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <tr key={i} style={{ borderTop: '1px solid #f0f0f5' }}>
                           <td style={{ padding: '12px 16px', fontSize: '14px' }}>{formatDate(item.date)}</td>
                           <td style={{ padding: '12px 16px' }}>
                             <span style={{ padding: '4px 10px', backgroundColor: item.type === 'Income' ? '#dcfce7' : '#fef2f2', color: item.type === 'Income' ? '#166534' : '#991b1b', borderRadius: '9999px', fontSize: '12px' }}>
@@ -448,24 +448,24 @@ function ReportsPage({ plan, onNavigate }) {
                 <StatCard label="First Time Visitors" value={filteredAttendance.reduce((sum, a) => sum + (a.first_timers || 0), 0)} icon="🆕" color="#8b5cf6" />
               </div>
 
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📊 Attendance Records</h3>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Men</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Women</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Children</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Total</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Offering</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Men</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Women</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Children</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Total</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Offering</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredAttendance.slice(0, 10).map((record, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <tr key={i} style={{ borderTop: '1px solid #f0f0f5' }}>
                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{formatDate(record.service_date)}</td>
                         <td style={{ padding: '12px 16px' }}>{record.men_count || 0}</td>
                         <td style={{ padding: '12px 16px' }}>{record.women_count || 0}</td>
@@ -490,23 +490,23 @@ function ReportsPage({ plan, onNavigate }) {
                 <StatCard label="Groups" value={filteredGroups.length} icon="👨‍👩‍👧‍👦" color="#8b5cf6" />
               </div>
 
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📋 Members List</h3>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Name</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Phone</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Joined</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Name</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Phone</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Location</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Status</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Joined</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredMembers.slice(0, 15).map((member, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <tr key={i} style={{ borderTop: '1px solid #f0f0f5' }}>
                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{member.first_name} {member.last_name}</td>
                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{member.phone || '—'}</td>
                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{getLocationName(member.location_id)}</td>
@@ -529,22 +529,22 @@ function ReportsPage({ plan, onNavigate }) {
                 <StatCard label="Completed" value={filteredSalvations.filter(s => s.followup_status === 'COMPLETED').length} icon="✅" color="#10b981" />
               </div>
 
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>❤️ Salvation Records</h3>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Name</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Phone</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Follow-up Status</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Name</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Phone</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Follow-up Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredSalvations.map((salvation, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <tr key={i} style={{ borderTop: '1px solid #f0f0f5' }}>
                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{salvation.full_name}</td>
                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{formatDate(salvation.salvation_date)}</td>
                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{salvation.phone || '—'}</td>
@@ -566,17 +566,17 @@ function ReportsPage({ plan, onNavigate }) {
                 <StatCard label="Team Leaders" value={filteredVolunteers.filter(v => v.is_team_leader).length} icon="⭐" color="#f59e0b" />
               </div>
 
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🙋‍♂️ Volunteers by Ministry</h3>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Ministry</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Count</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Active</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Leaders</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Ministry</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Count</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Active</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Leaders</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -584,7 +584,7 @@ function ReportsPage({ plan, onNavigate }) {
                       const ministryVolunteers = filteredVolunteers.filter(v => v.ministry === ministry);
                       if (ministryVolunteers.length === 0) return null;
                       return (
-                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <tr key={i} style={{ borderTop: '1px solid #f0f0f5' }}>
                           <td style={{ padding: '12px 16px', fontWeight: '500' }}>{ministry}</td>
                           <td style={{ padding: '12px 16px' }}>{ministryVolunteers.length}</td>
                           <td style={{ padding: '12px 16px', color: '#10b981' }}>{ministryVolunteers.filter(v => v.status === 'ACTIVE').length}</td>

@@ -11,7 +11,7 @@ import UpgradePrompt from '../UpgradePrompt';
 
 // ── Shared style constants ──
 const CARD = { backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', color: '#111827' };
-const LABEL = { display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' };
+const LABEL = { display: 'block', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' };
 const SELECT_BASE = { width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', backgroundColor: 'white', outline: 'none', transition: 'border-color 0.15s' };
 
 // ── Variable insertion helpers ──

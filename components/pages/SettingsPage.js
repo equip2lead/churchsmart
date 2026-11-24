@@ -904,7 +904,7 @@ function SettingsPage({ plan, onNavigate }) {
           {activeSection === 'general' && (
             <div style={{ display: 'grid', gap: '24px' }}>
               {/* Language */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🌍 Language / Langue</h3>
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <button onClick={() => changeLanguage('en')} style={{ padding: '12px 24px', border: language === 'en' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: language === 'en' ? '#eef2ff' : 'white', cursor: 'pointer', fontWeight: language === 'en' ? '600' : '400' }}>🇬🇧 English</button>
@@ -913,11 +913,11 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Church Logo */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🖼️ Church Logo</h3>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
                   {/* Logo Preview */}
-                  <div style={{ width: '120px', height: '120px', borderRadius: '16px', border: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#f9fafb', flexShrink: 0, position: 'relative' }}>
+                  <div style={{ width: '120px', height: '120px', borderRadius: '16px', border: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#fafbff', flexShrink: 0, position: 'relative' }}>
                     {church?.logo_url ? (
                       <img src={church.logo_url} alt="Church Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '8px' }} />
                     ) : (
@@ -1018,7 +1018,7 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Church Info - Editable */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>⛪ Church Information</h3>
                   {!editingChurch ? (
@@ -1110,31 +1110,31 @@ function SettingsPage({ plan, onNavigate }) {
 
           {/* ============ LOCATIONS ============ */}
           {activeSection === 'locations' && (
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📍 Church Locations / Branches</h3>
                   <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{t('manageLocations')}</p>
                 </div>
                 <Button onClick={() => openLocationModal()}>➕ Add Location</Button>
               </div>
-              <div style={{ padding: '16px', backgroundColor: '#f9fafb', display: 'flex', gap: '24px' }}>
+              <div style={{ padding: '16px', backgroundColor: '#fafbff', display: 'flex', gap: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '20px' }}>🏢</span><div><p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{locations.length}</p><p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>Total</p></div></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '20px' }}>✅</span><div><p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{locations.filter(l => l.is_active).length}</p><p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>Active</p></div></div>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ backgroundColor: '#f9fafb' }}>
+                <thead style={{ backgroundColor: '#fafbff' }}>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>City</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Pastor</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
-                    <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Location</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>City</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Pastor</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Status</th>
+                    <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {locations.map((loc, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <tr key={i} style={{ borderTop: '1px solid #f0f0f5' }}>
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <span style={{ fontSize: '20px' }}>{loc.is_main_campus ? '🏛️' : '🏢'}</span>
@@ -1211,7 +1211,7 @@ function SettingsPage({ plan, onNavigate }) {
               )}
 
               {/* ── Credentials ── */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap', marginBottom: '4px' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💬 {t('whatsappSettings')}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -1292,7 +1292,7 @@ function SettingsPage({ plan, onNavigate }) {
 
               {/* ── Test send: only once credentials exist ── */}
               {whatsappAvailable && hasSavedCredentials && (
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>🧪 {t('sendTestMessage')}</h3>
 
                   <div style={{ marginBottom: '16px' }}>
@@ -1337,7 +1337,7 @@ function SettingsPage({ plan, onNavigate }) {
               {whatsappSubTab === 'guide' && (
                 <div style={{ display: 'grid', gap: '16px' }}>
 
-                  <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
                       <div>
                         <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📘 {t('whatsapp_setup_guide')}</h3>
@@ -1360,7 +1360,7 @@ function SettingsPage({ plan, onNavigate }) {
                       const open = openGuideStep === n;
                       const lines = t(`step_${n}_desc`);
                       return (
-                        <div key={n} style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', border: open ? '1px solid #c7d2fe' : '1px solid transparent' }}>
+                        <div key={n} style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden', border: open ? '1px solid #c7d2fe' : '1px solid transparent' }}>
                           <button
                             onClick={() => setOpenGuideStep(open ? null : n)}
                             aria-expanded={open}
@@ -1390,21 +1390,21 @@ function SettingsPage({ plan, onNavigate }) {
                   </div>
 
                   {/* Troubleshooting */}
-                  <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                    <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+                  <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                    <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
                       <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>\ud83d\udee0\ufe0f {t('troubleshooting_title')}</h3>
                     </div>
                     <div className="cs-table-wrap">
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ backgroundColor: '#f9fafb' }}>
+                        <thead style={{ backgroundColor: '#fafbff' }}>
                           <tr>
-                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Problem</th>
-                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Fix</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Problem</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Fix</th>
                           </tr>
                         </thead>
                         <tbody>
                           {(Array.isArray(t('troubleshooting_rows')) ? t('troubleshooting_rows') : []).map((row, i) => (
-                            <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                            <tr key={i} style={{ borderTop: '1px solid #f0f0f5' }}>
                               <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: '#991b1b' }}>{row.code}</td>
                               <td style={{ padding: '12px 16px', fontSize: '14px', lineHeight: '1.6', color: '#374151' }}>{row.fix}</td>
                             </tr>
@@ -1415,11 +1415,11 @@ function SettingsPage({ plan, onNavigate }) {
                   </div>
 
                   {/* Need help */}
-                  <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                     <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>💡 {t('need_help_title')}</h3>
                     <div style={{ display: 'grid', gap: '12px' }}>
                       {(Array.isArray(t('need_help_rows')) ? t('need_help_rows') : []).map((row, i) => (
-                        <div key={i} style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                        <div key={i} style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#fafbff', border: '1px solid #e5e7eb' }}>
                           <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#374151' }}>{row.topic}</p>
                           <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{row.where}</p>
                         </div>
@@ -1433,31 +1433,31 @@ function SettingsPage({ plan, onNavigate }) {
 
           {/* ============ EXPENSE CATEGORIES ============ */}
           {activeSection === 'expenseCategories' && isChurchAdmin && (
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>🏷️ {t('expenseCategories')}</h3>
                   <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{t('manageCategories')}</p>
                 </div>
                 <Button onClick={() => openExpCategoryModal()}>➕ {t('addCategory')}</Button>
               </div>
-              <div style={{ padding: '16px', backgroundColor: '#f9fafb', display: 'flex', gap: '24px' }}>
+              <div style={{ padding: '16px', backgroundColor: '#fafbff', display: 'flex', gap: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '20px' }}>🏷️</span><div><p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{expenseCategories.length}</p><p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>{t('total')}</p></div></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ fontSize: '20px' }}>✅</span><div><p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{expenseCategories.filter(c => c.is_active).length}</p><p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>{t('active')}</p></div></div>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('categoryName')}</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('description')}</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('status')}</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('actions')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('categoryName')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('description')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('status')}</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {expenseCategories.map((cat) => (
-                      <tr key={cat.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <tr key={cat.id} style={{ borderTop: '1px solid #f0f0f5' }}>
                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{cat.name}</td>
                         <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '13px' }}>{cat.description || '—'}</td>
                         <td style={{ padding: '12px 16px' }}>
@@ -1486,7 +1486,7 @@ function SettingsPage({ plan, onNavigate }) {
                   </tbody>
                 </table>
               </div>
-              <p style={{ margin: 0, padding: '12px 20px', borderTop: '1px solid #e5e7eb', fontSize: '12px', color: '#6b7280' }}>
+              <p style={{ margin: 0, padding: '12px 20px', borderTop: '1px solid #f0f0f5', fontSize: '12px', color: '#6b7280' }}>
                 ℹ️ {t('categoryDeleteHint')}
               </p>
             </div>
@@ -1511,7 +1511,7 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Birthday Settings */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🎂 {language === 'fr' ? 'Anniversaires' : 'Birthday Settings'}</h3>
                 <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>{language === 'fr' ? 'Envoyer automatiquement des vœux d\'anniversaire aux membres' : 'Automatically send birthday wishes to members'}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1539,7 +1539,7 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Visitor Follow-up */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>🚶 {language === 'fr' ? 'Séquence de suivi visiteurs' : 'Visitor Follow-up Sequence'}</h3>
                 <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>{language === 'fr' ? 'Envoyer automatiquement des messages de suivi aux nouveaux visiteurs' : 'Automatically send follow-up messages to first-time visitors'}</p>
                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled ? '#f0fdf4' : '#f9fafb', borderRadius: '10px', marginBottom: '16px', cursor: 'pointer', border: getAutomationSetting('VISITOR_FOLLOWUP')?.is_enabled ? '1px solid #bbf7d0' : '1px solid transparent', transition: 'all 0.15s' }}>
@@ -1569,7 +1569,7 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Message Templates */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <div>
                     <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📝 {language === 'fr' ? 'Modèles de messages' : 'Message Templates'}</h3>
@@ -1579,7 +1579,7 @@ function SettingsPage({ plan, onNavigate }) {
                 </div>
                 <div style={{ display: 'grid', gap: '12px' }}>
                   {messageTemplates.map((template, i) => (
-                    <div key={i} style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div key={i} style={{ padding: '16px', backgroundColor: '#fafbff', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                           <p style={{ margin: 0, fontWeight: '500' }}>{template.name}</p>
@@ -1598,18 +1598,18 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Scheduled Reports */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>📊 Scheduled Reports</h3>
                 <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Automatically send reports to specified email addresses</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#fafbff', borderRadius: '10px' }}>
                     <div>
                       <p style={{ margin: 0, fontWeight: '500' }}>Weekly Report (Every Monday)</p>
                       <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Attendance and giving summary</p>
                     </div>
                     <input type="checkbox" checked={getAutomationSetting('WEEKLY_REPORT')?.is_enabled || false} onChange={(e) => toggleAutomation('WEEKLY_REPORT', e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
                   </label>
-                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#fafbff', borderRadius: '10px' }}>
                     <div>
                       <p style={{ margin: 0, fontWeight: '500' }}>Monthly Report (1st of each month)</p>
                       <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Full monthly summary including visitors and salvations</p>
@@ -1638,8 +1638,8 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Roles */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>👥 User Roles</h3>
                     <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Define roles and permissions for users</p>
@@ -1650,7 +1650,7 @@ function SettingsPage({ plan, onNavigate }) {
                   <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#6b7280' }}>System Roles</h4>
                   <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
                     {roles.filter(r => r.is_system_role).map((role, i) => (
-                      <div key={i} style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div key={i} style={{ padding: '16px', backgroundColor: '#fafbff', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <p style={{ margin: '0 0 4px 0', fontWeight: '500' }}>{role.name}</p>
                           <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{role.description}</p>
@@ -1662,7 +1662,7 @@ function SettingsPage({ plan, onNavigate }) {
                   <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#6b7280' }}>Custom Roles</h4>
                   <div style={{ display: 'grid', gap: '12px' }}>
                     {roles.filter(r => !r.is_system_role).map((role, i) => (
-                      <div key={i} style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div key={i} style={{ padding: '16px', backgroundColor: '#fafbff', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <p style={{ margin: '0 0 4px 0', fontWeight: '500' }}>{role.name}</p>
                           <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{role.description || 'No description'}</p>
@@ -1684,8 +1684,8 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Shareable Invite Link */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
                     <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>🔗 {language === 'fr' ? 'Lien d\'invitation partageable' : 'Shareable Invite Link'}</h3>
                     <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
@@ -1763,8 +1763,8 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Role Assignments */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>🎫 Role Assignments</h3>
                     <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Assign roles to users</p>
@@ -1772,11 +1772,11 @@ function SettingsPage({ plan, onNavigate }) {
                   <Button onClick={openAssignRoleModal}>➕ Invite User</Button>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>User</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Role</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>User</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Role</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1801,7 +1801,7 @@ function SettingsPage({ plan, onNavigate }) {
                         dateLabel = dateText ? t('inviteStatusExpiredOnLabel').replace('{date}', dateText) : '';
                       }
                       return (
-                        <tr key={assignment.id || i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <tr key={assignment.id || i} style={{ borderTop: '1px solid #f0f0f5' }}>
                           <td style={{ padding: '12px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <div style={{ width: '36px', height: '36px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600' }}>{assignment.user_name?.[0] || assignment.user_email?.[0]?.toUpperCase()}</div>
@@ -1847,13 +1847,13 @@ function SettingsPage({ plan, onNavigate }) {
             <UpgradePrompt feature="activity_logs" featureLabel={t('activityLogs')} onNavigate={onNavigate} />
           )}
           {activeSection === 'logs' && canAccessFeature(plan, 'activity_logs') && (
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>📜 Activity Logs</h3>
                 <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Track who adds data to the platform or records attendance and finance</p>
               </div>
               {/* Filters */}
-              <div style={{ padding: '16px', backgroundColor: '#f9fafb', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ padding: '16px', backgroundColor: '#fafbff', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <div>
                   <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Action</label>
                   <select value={logFilters.action} onChange={(e) => setLogFilters({ ...logFilters, action: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}>
@@ -1877,12 +1877,12 @@ function SettingsPage({ plan, onNavigate }) {
                 <button onClick={() => setLogFilters({ action: 'all', entity_type: 'all', from_date: '', to_date: '' })} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px', marginTop: '18px' }}>🔄 Reset</button>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ backgroundColor: '#f9fafb' }}>
+                <thead style={{ backgroundColor: '#fafbff' }}>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Action</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Entity</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>User</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Action</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Entity</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>User</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1890,7 +1890,7 @@ function SettingsPage({ plan, onNavigate }) {
                     const userName = log.user_name || log.user_email || 'System';
                     const initials = userName.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
                     return (
-                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <tr key={i} style={{ borderTop: '1px solid #f0f0f5' }}>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{ padding: '4px 10px', backgroundColor: log.action === 'CREATE' ? '#dcfce7' : log.action === 'UPDATE' ? '#fef3c7' : '#fef2f2', color: log.action === 'CREATE' ? '#166534' : log.action === 'UPDATE' ? '#92400e' : '#991b1b', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}>
                             {log.action === 'CREATE' ? '➕' : log.action === 'UPDATE' ? '✏️' : '🗑️'} {log.action}
@@ -1918,7 +1918,7 @@ function SettingsPage({ plan, onNavigate }) {
 
           {/* ============ DATA EXPORT ============ */}
           {activeSection === 'data' && user?.role === 'ADMIN' && (
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
               <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>📦 {t('exportAllData')}</h3>
               <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>{t('exportAllDesc')}</p>
               <button onClick={async () => {
@@ -2003,14 +2003,14 @@ function SettingsPage({ plan, onNavigate }) {
                   { q: 'How do I export all my data?', a: 'Go to Settings > Data Export and click "Export All Data". This downloads CSV files for all your church records. Admin role required.' },
                 ]},
               ].map((section, si) => (
-                <div key={si} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div key={si} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '600' }}>{section.title}</h3>
                   <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#6b7280' }}>{section.desc}</p>
                   <div style={{ display: 'grid', gap: '8px' }}>
                     {section.items.map((item, ii) => (
                       <details key={ii} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
-                        <summary style={{ padding: '12px 16px', cursor: 'pointer', fontWeight: '500', fontSize: '14px', color: '#1f2937', backgroundColor: '#f9fafb' }}>{item.q}</summary>
-                        <p style={{ padding: '12px 16px', margin: 0, fontSize: '14px', color: '#4b5563', lineHeight: '1.6', borderTop: '1px solid #e5e7eb' }}>{item.a}</p>
+                        <summary style={{ padding: '12px 16px', cursor: 'pointer', fontWeight: '500', fontSize: '14px', color: '#1f2937', backgroundColor: '#fafbff' }}>{item.q}</summary>
+                        <p style={{ padding: '12px 16px', margin: 0, fontSize: '14px', color: '#4b5563', lineHeight: '1.6', borderTop: '1px solid #f0f0f5' }}>{item.a}</p>
                       </details>
                     ))}
                   </div>
@@ -2034,7 +2034,7 @@ function SettingsPage({ plan, onNavigate }) {
           {activeSection === 'account' && (
             <div style={{ display: 'grid', gap: '24px' }}>
               {/* Account Info - Editable */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>👤 Your Account</h3>
                   {!editingAccount ? (
@@ -2066,18 +2066,18 @@ function SettingsPage({ plan, onNavigate }) {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Email (read-only)</label>
-                      <input type="email" value={accountForm.email} disabled style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', color: '#9ca3af', boxSizing: 'border-box' }} />
+                      <input type="email" value={accountForm.email} disabled style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: '#fafbff', color: '#9ca3af', boxSizing: 'border-box' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Role (read-only)</label>
-                      <input type="text" value={user?.role || ''} disabled style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', color: '#9ca3af', boxSizing: 'border-box' }} />
+                      <input type="text" value={user?.role || ''} disabled style={{ width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', backgroundColor: '#fafbff', color: '#9ca3af', boxSizing: 'border-box' }} />
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Change Password */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🔐 Change Password</h3>
                   {!showPasswordChange && (
@@ -2105,7 +2105,7 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* Actions */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>🔧 Actions</h3>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                   <Button variant="secondary">📤 Export Data</Button>
@@ -2115,7 +2115,7 @@ function SettingsPage({ plan, onNavigate }) {
               </div>
 
               {/* App Info */}
-              <div style={{ backgroundColor: '#f9fafb', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+              <div style={{ backgroundColor: '#fafbff', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
                 <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>&copy; 2026 ChurchSmart by DigiSmart Africa</p>
               </div>
             </div>
@@ -2156,7 +2156,7 @@ function SettingsPage({ plan, onNavigate }) {
           <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '12px' }}>Permissions</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             {permissionsList.map((perm, i) => (
-              <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: '#f9fafb', borderRadius: '8px', cursor: 'pointer' }}>
+              <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: '#fafbff', borderRadius: '8px', cursor: 'pointer' }}>
                 <input type="checkbox" checked={roleForm.permissions[perm.key] || false} onChange={(e) => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, [perm.key]: e.target.checked } })} />
                 <span style={{ fontSize: '13px' }}>{perm.label}</span>
               </label>

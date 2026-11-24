@@ -573,7 +573,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
               {/* ── ROW 2 · Growth ── */}
               <div className="cs-dash-two">
-                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px' }}>
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>📈 {t('sa_signups_chart')}</h3>
                     <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('sa_last_12_months')}</span>
@@ -586,7 +586,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                   />
                 </div>
 
-                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px' }}>
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>💹 {t('sa_revenue_chart')}</h3>
                     <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('sa_last_12_months')}</span>
@@ -603,7 +603,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
               {/* ── ROW 3 · Plan mix + activity ── */}
               <div className="cs-dash-two">
-                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600' }}>🧩 {t('sa_plan_distribution')}</h3>
                   {(() => {
                     const dist = stats?.churchesByPlan || planCounts;
@@ -633,7 +633,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                   })()}
                 </div>
 
-                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '600' }}>🔔 {t('sa_recent_platform_activity')}</h3>
                   {(stats?.recentActivity || []).length === 0 ? (
                     <p style={{ margin: 0, padding: '28px 0', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>{t('no_recent_activity')}</p>
@@ -668,8 +668,8 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
               {/* ── ROW 4 · Top churches + quick actions ── */}
               <div className="cs-dash-two">
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                  <div style={{ padding: '18px 20px', borderBottom: '1px solid #e5e7eb' }}>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                  <div style={{ padding: '18px 20px', borderBottom: '1px solid #f0f0f5' }}>
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>🏆 {t('sa_top_churches')}</h3>
                   </div>
                   {(stats?.topChurches || []).length === 0 ? (
@@ -677,7 +677,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                   ) : (
                     <div className="cs-table-wrap">
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ backgroundColor: '#f9fafb' }}>
+                        <thead style={{ backgroundColor: '#fafbff' }}>
                           <tr>
                             <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', fontWeight: '600', color: '#6b7280' }}>#</th>
                             <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', fontWeight: '600', color: '#6b7280' }}>{t('name')}</th>
@@ -687,7 +687,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                         </thead>
                         <tbody>
                           {stats.topChurches.map((church, i) => (
-                            <tr key={church.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                            <tr key={church.id} style={{ borderTop: '1px solid #f0f0f5' }}>
                               <td style={{ padding: '10px 16px', fontSize: '12px', color: '#9ca3af', fontWeight: '600' }}>{i + 1}</td>
                               <td style={{ padding: '10px 16px' }}>
                                 <p style={{ margin: 0, fontSize: '13px', fontWeight: '500' }}>{church.name}</p>
@@ -705,7 +705,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                   )}
                 </div>
 
-                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '600' }}>⚡ {t('quickActions')}</h3>
                   <div style={{ display: 'grid', gap: '8px', marginBottom: '20px' }}>
                     {[
@@ -747,7 +747,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
               {/* ── ROW 5 · Geography + engagement ── */}
               <div className="cs-dash-two">
-                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600' }}>🌍 {t('sa_by_country')}</h3>
                   {(() => {
                     const rows = stats?.churchesByCountry || [];
@@ -773,7 +773,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                   })()}
                 </div>
 
-                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600' }}>📊 {t('sa_engagement')}</h3>
                   <div style={{ display: 'grid', gap: '12px' }}>
                     {[
@@ -782,7 +782,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                       { label: t('sa_messages_month'), value: (stats?.engagementMetrics?.messagesThisMonth ?? 0).toLocaleString() },
                       { label: t('sa_donations_month'), value: (stats?.engagementMetrics?.donationsThisMonth ?? 0).toLocaleString() }
                     ].map(metric => (
-                      <div key={metric.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#f9fafb' }}>
+                      <div key={metric.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#fafbff' }}>
                         <span style={{ fontSize: '13px', color: '#6b7280' }}>{metric.label}</span>
                         <strong style={{ fontSize: '18px', color: '#111827' }}>{metric.value}</strong>
                       </div>
@@ -797,11 +797,11 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
           {/* ═══════════ PLATFORM SETTINGS ═══════════ */}
           {activeTab === 'settings' && (
             <div style={{ display: 'grid', gap: '16px' }}>
-              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>🛡️ {t('sa_owners')}</h3>
                 <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>{t('sa_owners_hint')}</p>
                 {SUPER_ADMIN_EMAILS.map(email => (
-                  <div key={email} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', backgroundColor: '#f9fafb', marginBottom: '8px' }}>
+                  <div key={email} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', backgroundColor: '#fafbff', marginBottom: '8px' }}>
                     <InitialsAvatar name={email} size={30} />
                     <span style={{ fontSize: '13px', color: '#374151' }}>{email}</span>
                     {email === me?.email && (
@@ -811,7 +811,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                 ))}
               </div>
 
-              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', fontWeight: '600' }}>💓 {t('sa_platform_health')}</h3>
                 <div style={{ display: 'grid', gap: '10px' }}>
                   {[
@@ -821,7 +821,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                     { label: t('sa_total_churches'), value: String(stats?.totalChurches ?? churches.length) },
                     { label: t('sa_total_members'), value: String(stats?.totalMembers ?? totalMembers) }
                   ].map(row => (
-                    <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '13px', padding: '10px 14px', borderRadius: '10px', backgroundColor: '#f9fafb' }}>
+                    <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '13px', padding: '10px 14px', borderRadius: '10px', backgroundColor: '#fafbff' }}>
                       <span style={{ color: '#6b7280' }}>{row.label}</span>
                       <strong style={{ color: '#111827' }}>{row.value}</strong>
                     </div>
@@ -830,7 +830,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                 <p style={{ margin: '12px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{t('sa_health_note')}</p>
               </div>
 
-              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>📥 {t('sa_export_report')}</h3>
                 <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>{t('sa_export_hint')}</p>
                 <Button onClick={exportReport} disabled={exporting}>{exporting ? '⏳' : `📥 ${t('sa_export_report')}`}</Button>
@@ -840,8 +840,8 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
           {/* ═══════════ CHURCHES ═══════════ */}
           {activeTab === 'churches' && (
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <input type="text" value={churchSearch} onChange={(e) => setChurchSearch(e.target.value)} placeholder={t('sa_search_churches')}
                   style={{ flex: '1 1 220px', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', minHeight: '42px' }} />
                 <select value={churchPlanFilter} onChange={(e) => setChurchPlanFilter(e.target.value)}
@@ -854,13 +854,13 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
               <div className="cs-table-wrap">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('name')}</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('billing')}</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('members')}</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('sa_created')}</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('status')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('name')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('billing')}</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('members')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('sa_created')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('status')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -868,7 +868,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                       const expanded = expandedChurch === church.id;
                       return (
                         <React.Fragment key={church.id}>
-                          <tr onClick={() => setExpandedChurch(expanded ? null : church.id)} style={{ borderTop: '1px solid #e5e7eb', cursor: 'pointer', backgroundColor: expanded ? '#f9fafb' : 'white' }}>
+                          <tr onClick={() => setExpandedChurch(expanded ? null : church.id)} style={{ borderTop: '1px solid #f0f0f5', cursor: 'pointer', backgroundColor: expanded ? '#f9fafb' : 'white' }}>
                             <td style={{ padding: '12px 16px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <InitialsAvatar name={church.name} size={32} />
@@ -892,7 +892,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                             </td>
                           </tr>
                           {expanded && (
-                            <tr style={{ backgroundColor: '#f9fafb' }}>
+                            <tr style={{ backgroundColor: '#fafbff' }}>
                               <td colSpan="5" style={{ padding: '16px' }}>
                                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                                   <div style={{ fontSize: '13px', color: '#6b7280' }}>
@@ -949,7 +949,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
               <div className="cs-dash-two">
                 {/* Stripe */}
-                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>💳 Stripe</h3>
                     {(() => {
@@ -1000,7 +1000,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                 </div>
 
                 {/* PawaPay */}
-                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>📱 PawaPay</h3>
                     {(() => {
@@ -1019,7 +1019,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>{t('sa_mode')}</label>
                   {modeToggle('pawapay_mode', modeOf('pawapay_mode'))}
 
-                  <div style={{ padding: '10px 14px', borderRadius: '10px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', marginBottom: '14px' }}>
+                  <div style={{ padding: '10px 14px', borderRadius: '10px', backgroundColor: '#fafbff', border: '1px solid #e5e7eb', marginBottom: '14px' }}>
                     <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9ca3af', fontWeight: '600' }}>{t('sa_base_url')}</p>
                     <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontFamily: 'monospace', color: '#374151', wordBreak: 'break-all' }}>
                       {pawapayBaseUrl(modeOf('pawapay_mode'))}
@@ -1062,7 +1062,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                       { title: `🌍 ${t('momo_revenue_by_country')}`, rows: revenueByCountry },
                       { title: `📱 ${t('momo_revenue_by_provider')}`, rows: revenueByProvider }
                     ].map(card => (
-                      <div key={card.title} className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                      <div key={card.title} className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                         <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>{card.title}</h4>
                         {card.rows.length === 0 ? (
                           <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>{t('noRecords')}</p>
@@ -1081,8 +1081,8 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                   </div>
                 )}
 
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                  <div style={{ padding: '18px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                  <div style={{ padding: '18px 20px', borderBottom: '1px solid #f0f0f5', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', flex: '1 1 160px' }}>📲 {t('momo_transactions')}</h3>
                     <select value={momoFilter.status} onChange={(e) => setMomoFilter({ ...momoFilter, status: e.target.value })}
                       style={{ padding: '9px 12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', minHeight: '40px' }}>
@@ -1106,14 +1106,14 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                   ) : (
                     <div className="cs-table-wrap">
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ backgroundColor: '#f9fafb' }}>
+                        <thead style={{ backgroundColor: '#fafbff' }}>
                           <tr>
-                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('date')}</th>
-                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('sa_churches')}</th>
-                            <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('amount')}</th>
-                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('momo_provider')}</th>
-                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('billing')}</th>
-                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('status')}</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('date')}</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('sa_churches')}</th>
+                            <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('amount')}</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('momo_provider')}</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('billing')}</th>
+                            <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('status')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1125,7 +1125,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                               cancelled: { bg: '#f3f4f6', fg: '#6b7280', icon: '⊖' }
                             }[payment.status] || { bg: '#f3f4f6', fg: '#6b7280', icon: '•' };
                             return (
-                              <tr key={payment.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                              <tr key={payment.id} style={{ borderTop: '1px solid #f0f0f5' }}>
                                 <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatWhen(payment.created_at)}</td>
                                 <td style={{ padding: '12px 16px', fontSize: '13px' }}>{churchNameById[payment.church_id] || '—'}</td>
                                 <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', whiteSpace: 'nowrap' }}>
@@ -1156,7 +1156,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
           {/* ═══════════ COMMUNICATIONS ═══════════ */}
           {activeTab === 'comms' && (
             <div style={{ display: 'grid', gap: '16px' }}>
-              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>✉️ {t('sa_email_churches')}</h3>
 
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>{t('sa_recipients')}</label>
@@ -1218,8 +1218,8 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
               {/* Email Preview Modal */}
               {showPreview && (
                 <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowPreview(false)}>
-                  <div style={{ backgroundColor: '#f9fafb', borderRadius: '16px', maxWidth: '640px', width: '100%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, backgroundColor: '#f9fafb', borderRadius: '16px 16px 0 0' }}>
+                  <div style={{ backgroundColor: '#fafbff', borderRadius: '16px', maxWidth: '640px', width: '100%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, backgroundColor: '#fafbff', borderRadius: '16px 16px 0 0' }}>
                       <div>
                         <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>📧 {language === 'fr' ? 'Aperçu de l\'email' : 'Email Preview'}</h3>
                         <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{language === 'fr' ? 'Voici ce que les destinataires verront' : 'This is what recipients will see'}</p>
@@ -1228,7 +1228,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                     </div>
                     <div style={{ padding: '20px' }}>
                       {/* Simulated email */}
-                      <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                      <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                         <div style={{ backgroundColor: '#4F46E5', padding: '24px 32px', textAlign: 'center' }}>
                           <span style={{ color: '#ffffff', fontSize: '22px', fontWeight: '700', letterSpacing: '-0.5px' }}>ChurchSmart</span>
                         </div>
@@ -1237,9 +1237,9 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                           {(comms.message || '').split(/\n{2,}/).map((block, i) => (
                             <p key={i} style={{ margin: '0 0 16px 0', fontSize: '15px', lineHeight: '1.6', color: '#374151', whiteSpace: 'pre-wrap' }}>{block}</p>
                           ))}
-                          <p style={{ margin: '24px 0 0 0', paddingTop: '16px', borderTop: '1px solid #e5e7eb', fontSize: '13px', color: '#9ca3af' }}>ChurchSmart</p>
+                          <p style={{ margin: '24px 0 0 0', paddingTop: '16px', borderTop: '1px solid #f0f0f5', fontSize: '13px', color: '#9ca3af' }}>ChurchSmart</p>
                         </div>
-                        <div style={{ padding: '16px 32px 24px', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                        <div style={{ padding: '16px 32px 24px', textAlign: 'center', borderTop: '1px solid #f0f0f5' }}>
                           <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>&copy; 2026 ChurchSmart &middot; A product by DigiSmart Africa</p>
                           <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#d1d5db' }}>churchsmartnow.com</p>
                         </div>
@@ -1250,7 +1250,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
               )}
 
               {/* WhatsApp to churches — not built yet. */}
-              <div style={{ backgroundColor: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '16px', padding: '20px', opacity: 0.75 }}>
+              <div style={{ backgroundColor: '#fafbff', border: '1px dashed #d1d5db', borderRadius: '16px', padding: '20px', opacity: 0.75 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#6b7280' }}>💬 {t('sa_whatsapp_churches')}</h3>
                   <span style={{ padding: '3px 10px', borderRadius: '9999px', fontSize: '10px', fontWeight: '700', backgroundColor: '#fef3c7', color: '#92400e' }}>{t('comingSoon')}</span>
@@ -1259,8 +1259,8 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
               </div>
 
               {/* Campaign log, read back from the audit trail. */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '18px 20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '18px 20px', borderBottom: '1px solid #f0f0f5' }}>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>📜 {t('sa_email_log')}</h3>
                 </div>
                 {emailCampaigns.length === 0 ? (
@@ -1268,17 +1268,17 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                 ) : (
                   <div className="cs-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ backgroundColor: '#f9fafb' }}>
+                      <thead style={{ backgroundColor: '#fafbff' }}>
                         <tr>
-                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('date')}</th>
-                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('subject')}</th>
-                          <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('sa_recipients')}</th>
-                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('sa_sent_by')}</th>
+                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('date')}</th>
+                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('subject')}</th>
+                          <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('sa_recipients')}</th>
+                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('sa_sent_by')}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {emailCampaigns.map(entry => (
-                          <tr key={entry.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                          <tr key={entry.id} style={{ borderTop: '1px solid #f0f0f5' }}>
                             <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatWhen(entry.created_at)}</td>
                             <td style={{ padding: '12px 16px', fontSize: '14px' }}>{entry.details?.subject || '—'}</td>
                             <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600' }}>{entry.details?.recipient_count ?? '—'}</td>
@@ -1295,8 +1295,8 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
           {/* ═══════════ ACTIVITY LOG ═══════════ */}
           {activeTab === 'log' && (
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <select value={logFilter.admin} onChange={(e) => setLogFilter({ ...logFilter, admin: e.target.value })}
                   style={{ padding: '9px 12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', minHeight: '40px' }}>
                   <option value="all">{t('sa_all_admins')}</option>
@@ -1319,12 +1319,12 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
               ) : (
                 <div className="cs-table-wrap">
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <thead style={{ backgroundColor: '#fafbff' }}>
                       <tr>
-                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('date')}</th>
-                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('sa_admin')}</th>
-                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('sa_action')}</th>
-                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('description')}</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('date')}</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('sa_admin')}</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('sa_action')}</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('description')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1332,7 +1332,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                         const open = expandedLog === entry.id;
                         return (
                           <React.Fragment key={entry.id}>
-                            <tr onClick={() => setExpandedLog(open ? null : entry.id)} style={{ borderTop: '1px solid #e5e7eb', cursor: entry.details ? 'pointer' : 'default' }}>
+                            <tr onClick={() => setExpandedLog(open ? null : entry.id)} style={{ borderTop: '1px solid #f0f0f5', cursor: entry.details ? 'pointer' : 'default' }}>
                               <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatWhen(entry.created_at)}</td>
                               <td style={{ padding: '12px 16px', fontSize: '13px' }}>{entry.admin_email}</td>
                               <td style={{ padding: '12px 16px' }}>
@@ -1345,7 +1345,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                               </td>
                             </tr>
                             {open && entry.details && (
-                              <tr style={{ backgroundColor: '#f9fafb' }}>
+                              <tr style={{ backgroundColor: '#fafbff' }}>
                                 <td colSpan="4" style={{ padding: '12px 16px' }}>
                                   <pre style={{ margin: 0, fontSize: '12px', color: '#374151', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace' }}>
                                     {JSON.stringify(entry.details, null, 2)}
@@ -1366,8 +1366,8 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
           {/* ═══════════ TEAM ═══════════ */}
           {activeTab === 'team' && (
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>👤 {t('sa_team')}</h3>
                   <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{t('sa_team_hint')}</p>
@@ -1377,7 +1377,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
               {/* The hardcoded platform owners, for context: they are not rows
                   in sub_admins and cannot be edited here. */}
-              <div style={{ padding: '14px 20px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ padding: '14px 20px', backgroundColor: '#fafbff', borderBottom: '1px solid #f0f0f5' }}>
                 <p style={{ margin: '0 0 6px 0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9ca3af', fontWeight: '600' }}>{t('sa_owners')}</p>
                 {SUPER_ADMIN_EMAILS.map(email => (
                   <p key={email} style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#374151' }}>🛡️ {email}</p>
@@ -1386,13 +1386,13 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
 
               <div className="cs-table-wrap">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('name')}</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('sa_role')}</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('sa_last_login')}</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('status')}</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('actions')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('name')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('sa_role')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('sa_last_login')}</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('status')}</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1404,7 +1404,7 @@ function SuperAdminPage({ onNavigate, tab: controlledTab, onTabChange }) {
                         deactivated: { bg: '#f3f4f6', fg: '#6b7280', label: t('inactive') }
                       }[state];
                       return (
-                        <tr key={member.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <tr key={member.id} style={{ borderTop: '1px solid #f0f0f5' }}>
                           <td style={{ padding: '12px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <InitialsAvatar name={member.name || member.email} size={32} />
