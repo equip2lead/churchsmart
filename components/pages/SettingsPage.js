@@ -98,6 +98,11 @@ function SettingsPage({ plan, onNavigate }) {
   const BASE_ROLE_TO_NAME = { ADMIN: 'Admin', STAFF: 'Staff', VOLUNTEER: 'Volunteer' };
   const hasCustomRoles = roles.some(r => !DEFAULT_ROLE_NAMES.includes(r.name));
 
+  // Shareable Invite Links
+  const [inviteLinks, setInviteLinks] = useState([]);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [copiedLinkId, setCopiedLinkId] = useState(null);
+
   // Filter + sort role assignments for display. Revoked rows hidden (no toggle in v1).
   // NOTE: revoking an 'active' assignment only flips status on user_role_assignments;
   // it does NOT deactivate the user's church_users row. v1.1 should reconcile this —
@@ -160,6 +165,10 @@ function SettingsPage({ plan, onNavigate }) {
       setMessageTemplates(templatesData || []);
       setExpenseCategories(expCategoriesData || []);
       setUsedExpenseCategoryNames((expenseRows || []).map(e => (e.category || '').toLowerCase()).filter(Boolean));
+      // Fetch invite links (admin only, non-blocking)
+      if (user?.role === 'ADMIN' || !!user?.is_super_admin) {
+        fetchInviteLinks();
+      }
       setWhatsappConfig(whatsappData || null);
       setWhatsappForm({
         provider: whatsappData?.provider && whatsappData.provider !== 'none' ? whatsappData.provider : 'wamatas',
@@ -173,6 +182,75 @@ function SettingsPage({ plan, onNavigate }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ============ SHAREABLE INVITE LINK HANDLERS ============
+  const fetchInviteLinks = async () => {
+    try {
+      const { data: { session } } = await safeGetSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const res = await fetch(`/api/team/create-invite-link?churchId=${CHURCH_ID}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      setInviteLinks(data.links || []);
+    } catch (err) {
+      console.error('fetchInviteLinks error:', err);
+    }
+  };
+
+  const handleGenerateInviteLink = async () => {
+    setGeneratingLink(true);
+    try {
+      const { data: { session } } = await safeGetSession();
+      const token = session?.access_token;
+      if (!token) { toast.error('Session expired'); setGeneratingLink(false); return; }
+      const res = await fetch('/api/team/create-invite-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ churchId: CHURCH_ID, base_role: 'VOLUNTEER', expires_days: 30 })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        toast.error(data.error || 'Failed to create invite link');
+      } else {
+        toast.success(language === 'fr' ? 'Lien d\'invitation créé !' : 'Invite link created!');
+        fetchInviteLinks();
+      }
+    } catch (err) {
+      toast.error('Error creating invite link');
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const handleDeactivateLink = async (linkId) => {
+    try {
+      const { data: { session } } = await safeGetSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const res = await fetch('/api/team/create-invite-link', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ linkId, churchId: CHURCH_ID })
+      });
+      if (res.ok) {
+        toast.success(language === 'fr' ? 'Lien désactivé' : 'Link deactivated');
+        fetchInviteLinks();
+      }
+    } catch (err) {
+      toast.error('Error deactivating link');
+    }
+  };
+
+  const copyInviteLink = (linkCode) => {
+    const url = `https://app.churchsmartnow.com/join/${linkCode}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedLinkId(linkCode);
+      toast.success(language === 'fr' ? 'Lien copié !' : 'Link copied!');
+      setTimeout(() => setCopiedLinkId(null), 2000);
+    }).catch(() => toast.error('Could not copy'));
   };
 
   // ============ CHURCH INFO HANDLERS ============
@@ -1570,6 +1648,85 @@ function SettingsPage({ plan, onNavigate }) {
                         <p>No custom roles created yet</p>
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Shareable Invite Link */}
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>🔗 {language === 'fr' ? 'Lien d\'invitation partageable' : 'Shareable Invite Link'}</h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+                      {language === 'fr'
+                        ? 'Générez un lien que les responsables peuvent utiliser pour créer leur propre compte'
+                        : 'Generate a link that leaders can use to create their own account'}
+                    </p>
+                  </div>
+                  <Button onClick={handleGenerateInviteLink} disabled={generatingLink}>
+                    {generatingLink ? '⏳' : '➕'} {language === 'fr' ? 'Générer un lien' : 'Generate Link'}
+                  </Button>
+                </div>
+                <div style={{ padding: '20px' }}>
+                  {inviteLinks.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>
+                      <span style={{ fontSize: '32px' }}>🔗</span>
+                      <p style={{ margin: '8px 0 0' }}>{language === 'fr' ? 'Aucun lien actif. Générez-en un ci-dessus.' : 'No active links. Generate one above.'}</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      {inviteLinks.map((link) => {
+                        const isExpired = new Date(link.expires_at) < new Date();
+                        const expiresDate = formatBadgeDate(link.expires_at);
+                        return (
+                          <div key={link.id} style={{ padding: '16px', backgroundColor: isExpired ? '#f9fafb' : '#f0fdf4', borderRadius: '10px', border: `1px solid ${isExpired ? '#e5e7eb' : '#bbf7d0'}` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                              <div style={{ flex: 1, minWidth: '200px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                  <code style={{ fontSize: '13px', backgroundColor: '#e0e7ff', padding: '4px 10px', borderRadius: '6px', color: '#4338ca', wordBreak: 'break-all' }}>
+                                    app.churchsmartnow.com/join/{link.link_code}
+                                  </code>
+                                  {isExpired && (
+                                    <span style={{ padding: '2px 8px', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '9999px', fontSize: '11px', fontWeight: '500' }}>
+                                      {language === 'fr' ? 'Expiré' : 'Expired'}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', gap: '16px', marginTop: '8px', fontSize: '12px', color: '#6b7280', flexWrap: 'wrap' }}>
+                                  <span>👤 {language === 'fr' ? 'Rôle' : 'Role'}: <strong style={{ color: '#4338ca' }}>{link.base_role}</strong></span>
+                                  <span>📊 {language === 'fr' ? 'Utilisations' : 'Uses'}: <strong>{link.uses_count}</strong></span>
+                                  <span>📅 {language === 'fr' ? 'Expire' : 'Expires'}: {expiresDate}</span>
+                                  {link.created_by && <span>✉️ {link.created_by}</span>}
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                {!isExpired && (
+                                  <button
+                                    onClick={() => copyInviteLink(link.link_code)}
+                                    style={{ padding: '6px 14px', border: 'none', background: copiedLinkId === link.link_code ? '#dcfce7' : '#e0e7ff', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: copiedLinkId === link.link_code ? '#166534' : '#4338ca', transition: 'all 0.2s' }}
+                                  >
+                                    {copiedLinkId === link.link_code ? '✅' : '📋'} {copiedLinkId === link.link_code ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeactivateLink(link.id)}
+                                  style={{ padding: '6px 14px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#dc2626' }}
+                                >
+                                  🗑️ {language === 'fr' ? 'Désactiver' : 'Deactivate'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe' }}>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: '1.5' }}>
+                      💡 {language === 'fr'
+                        ? 'Partagez ce lien avec vos responsables via WhatsApp, email ou SMS. Ils pourront créer leur propre compte et accéder au calendrier, à la présence et plus encore.'
+                        : 'Share this link with your leaders via WhatsApp, email, or SMS. They can create their own account and access the calendar, attendance, and more.'}
+                    </p>
                   </div>
                 </div>
               </div>
