@@ -272,7 +272,8 @@ function AppContent() {
 function PublicJoinPage({ churchId }) {
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', phone: '', whatsapp: '', date_of_birth: '',
-    gender: 'MALE', address: '', city: '', emergency_contact: '', emergency_phone: '', photo_url: ''
+    gender: 'MALE', address: '', city: '', emergency_contact: '', emergency_phone: '', photo_url: '',
+    language_preference: 'FRENCH'
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -281,6 +282,9 @@ function PublicJoinPage({ churchId }) {
   const [churchLogo, setChurchLogo] = useState('');
   const [locations, setLocations] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState('');
+  const [lang, setLang] = useState('fr'); // UI language toggle: 'en' or 'fr'
+
+  const t = (en, fr) => lang === 'fr' ? fr : en;
 
   // Fetch church info + locations
   useEffect(() => {
@@ -304,17 +308,26 @@ function PublicJoinPage({ churchId }) {
 
   const handleSubmit = async () => {
     if (!form.first_name || !form.last_name) {
-      setError('First name and last name are required.');
+      setError(t('First name and last name are required.', 'Le prénom et le nom de famille sont requis.'));
       return;
     }
     if (!form.phone && !form.email) {
-      setError('Please provide at least a phone number or email address.');
+      setError(t('Please provide at least a phone number or email address.', 'Veuillez fournir au moins un numéro de téléphone ou une adresse e-mail.'));
       return;
     }
 
     setSubmitting(true);
     setError('');
     try {
+      // Auto-prepend +237 if user entered a local number (starts with 6 or 2)
+      const formatPhone = (val) => {
+        if (!val) return null;
+        const cleaned = val.trim().replace(/\s+/g, '');
+        if (/^[62]\d{8}$/.test(cleaned)) return `+237${cleaned}`;
+        if (/^237\d{9}$/.test(cleaned)) return `+${cleaned}`;
+        return cleaned;
+      };
+
       const response = await fetch('/api/public/register-member', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -323,10 +336,11 @@ function PublicJoinPage({ churchId }) {
           first_name: form.first_name.trim(),
           last_name: form.last_name.trim(),
           email: form.email.trim() || null,
-          phone: form.phone.trim() || null,
-          whatsapp: form.whatsapp.trim() || null,
+          phone: formatPhone(form.phone),
+          whatsapp: formatPhone(form.whatsapp),
           date_of_birth: form.date_of_birth || null,
           gender: form.gender,
+          language_preference: form.language_preference || 'FRENCH',
           address: form.address.trim() || null,
           city: form.city.trim() || null,
           emergency_contact: form.emergency_contact.trim() || null,
@@ -339,14 +353,14 @@ function PublicJoinPage({ churchId }) {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok || !result.success) {
-        setError(result.error || 'Submission failed. Please check your connection and try again.');
+        setError(result.error || t('Submission failed. Please check your connection and try again.', 'L\'envoi a échoué. Veuillez vérifier votre connexion et réessayer.'));
         setSubmitting(false);
         return;
       }
 
       setSubmitted(true);
     } catch (err) {
-      setError('Submission failed. Please check your connection and try again.');
+      setError(t('Submission failed. Please check your connection and try again.', 'L\'envoi a échoué. Veuillez vérifier votre connexion et réessayer.'));
     }
     setSubmitting(false);
   };
@@ -357,13 +371,15 @@ function PublicJoinPage({ churchId }) {
       <div style={{ minHeight: '100vh', backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <div style={{ backgroundColor: 'white', borderRadius: '24px', padding: '48px', maxWidth: '480px', width: '100%', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>✅</div>
-          <h1 style={{ margin: '0 0 12px 0', fontSize: '28px', fontWeight: '700', color: '#166534' }}>Welcome!</h1>
-          <p style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#374151' }}>Thank you, <strong>{form.first_name}</strong>!</p>
+          <h1 style={{ margin: '0 0 12px 0', fontSize: '28px', fontWeight: '700', color: '#166534' }}>{t('Welcome!', 'Bienvenue !')}</h1>
+          <p style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#374151' }}>{t('Thank you', 'Merci')}, <strong>{form.first_name}</strong>!</p>
           <p style={{ margin: '0 0 24px 0', fontSize: '15px', color: '#6b7280', lineHeight: '1.6' }}>
-            Your information has been submitted to <strong>{churchName || 'the church'}</strong>. 
-            A church leader will be in touch with you soon.
+            {t(
+              `Your information has been submitted to ${churchName || 'the church'}. A church leader will be in touch with you soon.`,
+              `Vos informations ont été envoyées à ${churchName || "l'église"}. Un responsable vous contactera bientôt.`
+            )}
           </p>
-          <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>You can close this page now.</p>
+          <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>{t('You can close this page now.', 'Vous pouvez fermer cette page maintenant.')}</p>
         </div>
       </div>
     );
@@ -373,6 +389,14 @@ function PublicJoinPage({ churchId }) {
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ maxWidth: '520px', width: '100%' }}>
 
+        {/* Language Toggle */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+          <div style={{ display: 'inline-flex', borderRadius: '20px', border: '1px solid #e5e7eb', overflow: 'hidden', fontSize: '13px', fontWeight: '600' }}>
+            <button onClick={() => setLang('en')} style={{ padding: '6px 14px', border: 'none', cursor: 'pointer', backgroundColor: lang === 'en' ? '#6366f1' : 'white', color: lang === 'en' ? 'white' : '#6b7280', transition: 'all 0.2s' }}>EN</button>
+            <button onClick={() => setLang('fr')} style={{ padding: '6px 14px', border: 'none', cursor: 'pointer', backgroundColor: lang === 'fr' ? '#6366f1' : 'white', color: lang === 'fr' ? 'white' : '#6b7280', transition: 'all 0.2s' }}>FR</button>
+          </div>
+        </div>
+
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           {churchLogo ? (
@@ -380,8 +404,8 @@ function PublicJoinPage({ churchId }) {
           ) : (
             <div style={{ fontSize: '48px', marginBottom: '8px' }}>⛪</div>
           )}
-          <h1 style={{ margin: '0 0 8px 0', fontSize: '26px', fontWeight: '700', color: '#1f2937' }}>{churchName || 'Welcome'}</h1>
-          <p style={{ margin: 0, fontSize: '15px', color: '#6b7280' }}>Please fill in your details to join our community</p>
+          <h1 style={{ margin: '0 0 8px 0', fontSize: '26px', fontWeight: '700', color: '#1f2937' }}>{churchName || t('Welcome', 'Bienvenue')}</h1>
+          <p style={{ margin: 0, fontSize: '15px', color: '#6b7280' }}>{t('Please fill in your details to join our community', 'Veuillez remplir vos informations pour rejoindre notre communauté')}</p>
         </div>
 
         {/* Form Card */}
@@ -408,7 +432,7 @@ function PublicJoinPage({ churchId }) {
               border: '1px solid #e5e7eb', borderRadius: '20px', fontSize: '13px',
               color: form.photo_url ? '#166534' : '#6b7280', cursor: 'pointer', fontWeight: '500'
             }}>
-              {form.photo_url ? '✅ Photo added' : '📷 Add Photo (optional)'}
+              {form.photo_url ? t('✅ Photo added', '✅ Photo ajoutée') : t('📷 Add Photo (optional)', '📷 Ajouter une photo (optionnel)')}
               <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files[0];
@@ -431,56 +455,77 @@ function PublicJoinPage({ churchId }) {
           {/* Name Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>First Name *</label>
-              <input type="text" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} placeholder="John" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('First Name *', 'Prénom *')}</label>
+              <input type="text" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} placeholder={t('John', 'Jean')} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Last Name *</label>
-              <input type="text" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} placeholder="Doe" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('Last Name *', 'Nom de famille *')}</label>
+              <input type="text" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} placeholder={t('Doe', 'Dupont')} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
             </div>
           </div>
 
-          {/* Phone + WhatsApp Row */}
+          {/* Phone + WhatsApp Row — with country code prefix */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>📱 Phone Number *</label>
-              <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+237 6XX XXX XXX" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('📱 Phone Number *', '📱 Numéro de téléphone *')}</label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+                <span style={{ padding: '12px 10px', backgroundColor: '#f3f4f6', borderRight: '1px solid #e5e7eb', fontSize: '14px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>🇨🇲 +237</span>
+                <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="6XX XXX XXX" style={{ width: '100%', padding: '12px 10px', border: 'none', fontSize: '15px', outline: 'none' }} />
+              </div>
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>💬 WhatsApp</label>
-              <input type="tel" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="Same or different number" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+                <span style={{ padding: '12px 10px', backgroundColor: '#f3f4f6', borderRight: '1px solid #e5e7eb', fontSize: '14px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>🇨🇲 +237</span>
+                <input type="tel" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder={t('Same or different', 'Même ou différent')} style={{ width: '100%', padding: '12px 10px', border: 'none', fontSize: '15px', outline: 'none' }} />
+              </div>
             </div>
           </div>
 
           {/* Email */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Email</label>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('Email', 'Courriel')}</label>
             <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@example.com" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
           </div>
 
-          {/* Gender + DOB Row */}
+          {/* Gender + Language Preference Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Gender</label>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('Gender', 'Sexe')}</label>
               <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', backgroundColor: 'white' }}>
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
+                <option value="MALE">{t('Male', 'Homme')}</option>
+                <option value="FEMALE">{t('Female', 'Femme')}</option>
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Date of Birth</label>
-              <input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px' }} />
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('🌐 Preferred Language', '🌐 Langue préférée')}</label>
+              <select value={form.language_preference} onChange={(e) => setForm({ ...form, language_preference: e.target.value })} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', backgroundColor: 'white' }}>
+                <option value="FRENCH">{t('French', 'Français')}</option>
+                <option value="ENGLISH">{t('English', 'Anglais')}</option>
+              </select>
             </div>
+          </div>
+
+          {/* Date of Birth — with note about month/day only */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('Date of Birth', 'Date de naissance')}</label>
+            <input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px' }} />
+            <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#6366f1', fontStyle: 'italic', lineHeight: '1.4' }}>
+              💡 {t(
+                'Only your birth month and day are used — for personalized birthday messages. You can use any year.',
+                'Seuls le mois et le jour sont utilisés — pour des messages d\'anniversaire personnalisés. Vous pouvez mettre n\'importe quelle année.'
+              )}
+            </p>
           </div>
 
           {/* Address + City Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Address</label>
-              <input type="text" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street address" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('Address', 'Adresse')}</label>
+              <input type="text" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder={t('Street address', 'Adresse')} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>City</label>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('City', 'Ville')}</label>
               <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Yaoundé" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
             </div>
           </div>
@@ -488,11 +533,11 @@ function PublicJoinPage({ churchId }) {
           {/* Emergency Contact Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>🆘 Emergency Contact</label>
-              <input type="text" value={form.emergency_contact} onChange={(e) => setForm({ ...form, emergency_contact: e.target.value })} placeholder="Contact name" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('🆘 Emergency Contact', '🆘 Contact d\'urgence')}</label>
+              <input type="text" value={form.emergency_contact} onChange={(e) => setForm({ ...form, emergency_contact: e.target.value })} placeholder={t('Contact name', 'Nom du contact')} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>📞 Emergency Phone</label>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('📞 Emergency Phone', '📞 Téléphone d\'urgence')}</label>
               <input type="tel" value={form.emergency_phone} onChange={(e) => setForm({ ...form, emergency_phone: e.target.value })} placeholder="+237 6XX XXX XXX" style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }} />
             </div>
           </div>
@@ -500,10 +545,10 @@ function PublicJoinPage({ churchId }) {
           {/* Location (if multiple) */}
           {locations.length > 1 && (
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>📍 Campus / Location</label>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>{t('📍 Campus / Location', '📍 Campus / Lieu')}</label>
               <select value={selectedLocation} onChange={(e) => setSelectedLocation(e.target.value)} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', backgroundColor: 'white' }}>
                 {locations.map(loc => (
-                  <option key={loc.id} value={loc.id}>{loc.is_main_campus ? `${loc.name} (Main Campus)` : loc.name}</option>
+                  <option key={loc.id} value={loc.id}>{loc.is_main_campus ? `${loc.name} (${t('Main Campus', 'Campus principal')})` : loc.name}</option>
                 ))}
               </select>
             </div>
@@ -516,11 +561,11 @@ function PublicJoinPage({ churchId }) {
             fontSize: '16px', fontWeight: '600', cursor: submitting ? 'wait' : 'pointer',
             transition: 'all 0.2s', marginTop: '4px'
           }}>
-            {submitting ? '⏳ Submitting...' : '✅ Submit My Information'}
+            {submitting ? t('⏳ Submitting...', '⏳ Envoi en cours...') : t('✅ Submit My Information', '✅ Envoyer mes informations')}
           </button>
 
           <p style={{ margin: '16px 0 0 0', fontSize: '12px', color: '#9ca3af', textAlign: 'center', lineHeight: '1.5' }}>
-            Your information is securely stored and only accessible to church leadership.
+            {t('Your information is securely stored and only accessible to church leadership.', 'Vos informations sont stockées en toute sécurité et accessibles uniquement aux responsables de l\'église.')}
           </p>
         </div>
 
