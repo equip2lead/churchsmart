@@ -38,6 +38,7 @@ function DashboardPage({ onNavigate }) {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [whatsappActive, setWhatsappActive] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [churchInfo, setChurchInfo] = useState(null);
 
   useEffect(() => { fetchData(); }, [filterLocation]);
 
@@ -203,6 +204,7 @@ function DashboardPage({ onNavigate }) {
         supabaseQuery('churches', { filters: [{ column: 'id', operator: 'eq', value: CHURCH_ID }], single: true }),
         supabaseQuery('church_users', { filters: [{ column: 'church_id', operator: 'eq', value: CHURCH_ID }] })
       ]);
+      setChurchInfo(churchProfile);
       const newCounts = {
         members: members?.length || 0,
         services: (services || []).length,
@@ -277,16 +279,45 @@ function DashboardPage({ onNavigate }) {
           <style dangerouslySetInnerHTML={{ __html: '@keyframes cs-fade-in{from{opacity:0}to{opacity:1}} @keyframes cs-confetti{0%{transform:translateY(0) scale(0)}50%{transform:translateY(-20px) scale(1.5)}100%{transform:translateY(0) scale(1)}}' }} />
         </div>
       )}
-      <PageHeader
-        title={`📊 ${t('dashboard')}`}
-        subtitle={(() => {
-          const hour = new Date().getHours();
-          const greeting = hour < 12 ? t('goodMorning') : hour < 17 ? t('goodAfternoon') : t('goodEvening');
-          const name = user?.name?.split(' ')[0] || '';
-          return `${greeting}${name ? ', ' + name : ''} 👋`;
-        })()}
-        actions={<Button onClick={fetchData} variant="secondary">🔄 {t('refresh') || 'Refresh'}</Button>}
-      />
+      {/* ─────────── Welcome Banner ─────────── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%)',
+        borderRadius: '20px',
+        padding: '28px 28px 24px',
+        marginBottom: '20px',
+        position: 'relative',
+        overflow: 'hidden',
+        color: 'white'
+      }}>
+        {/* Decorative circles */}
+        <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '140px', height: '140px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+        <div style={{ position: 'absolute', bottom: '-20px', right: '80px', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+        <div style={{ position: 'absolute', top: '20px', left: '-20px', width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', position: 'relative', zIndex: 1 }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '500', opacity: 0.8, letterSpacing: '0.03em' }}>
+              {(() => {
+                const hour = new Date().getHours();
+                return hour < 12 ? t('goodMorning') : hour < 17 ? t('goodAfternoon') : t('goodEvening');
+              })()}
+            </p>
+            <h1 style={{ margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800', letterSpacing: '-0.02em', lineHeight: '1.2' }}>
+              {user?.name ? `${t('welcome')}, ${user.name.split(' ')[0]}! 👋` : `${t('welcome')}! 👋`}
+            </h1>
+            <p style={{ margin: 0, fontSize: '13px', opacity: 0.75, fontWeight: '400' }}>
+              {churchInfo?.name || ''}{churchInfo?.city ? ` · ${churchInfo.city}` : ''}{churchInfo?.country ? `, ${churchInfo.country}` : ''}
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            {churchInfo?.logo_url && (
+              <div style={{ width: '48px', height: '48px', borderRadius: '14px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0 }}>
+                <img src={churchInfo.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            )}
+            <Button onClick={fetchData} variant="secondary" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.25)', borderRadius: '10px', padding: '8px 14px', fontSize: '12px', fontWeight: '600', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>🔄 {t('refresh') || 'Refresh'}</Button>
+          </div>
+        </div>
+      </div>
 
       {/* Location Filter */}
       {locations.length > 1 && (
@@ -407,7 +438,33 @@ function DashboardPage({ onNavigate }) {
             />
           </div>
 
-          {/* ─────────── ROW 2 · Trends ─────────── */}
+          {/* ─────────── ROW 2 · Quick Actions Grid ─────────── */}
+          <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', marginBottom: '16px' }}>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '700', color: '#111827' }}>⚡ {t('quickActions')}</h3>
+            <div className="cs-quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px' }}>
+              {[
+                { icon: '👥', label: t('addMember'), tab: 'members', color: '#6366f1', bg: '#eef2ff' },
+                { icon: '📅', label: t('record_attendance'), tab: 'attendance', color: '#0ea5e9', bg: '#f0f9ff' },
+                { icon: '📆', label: t('create_event') || 'Create Event', tab: 'services', color: '#f59e0b', bg: '#fffbeb' },
+                ...(isFinanceVisible ? [{ icon: '💰', label: t('record_offering'), tab: 'giving', color: '#10b981', bg: '#ecfdf5' }] : []),
+                { icon: '💬', label: t('send_message'), tab: 'messaging', color: '#8b5cf6', bg: '#f5f3ff' }
+              ].map(action => (
+                <button
+                  key={action.tab}
+                  type="button"
+                  onClick={() => onNavigate && onNavigate(action.tab)}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '18px 10px', borderRadius: '14px', border: '1px solid #f0f0f5', backgroundColor: action.bg, color: '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
+                >
+                  <span style={{ width: '44px', height: '44px', borderRadius: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', background: `linear-gradient(135deg, ${action.color}20, ${action.color}35)`, boxShadow: `0 2px 8px ${action.color}15` }}>{action.icon}</span>
+                  <span style={{ fontSize: '11px', fontWeight: '600', color: '#374151', textAlign: 'center', lineHeight: '1.3' }}>{action.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ─────────── ROW 3 · Attendance Chart + Upcoming Events ─────────── */}
           <div className="cs-dash-two" style={{ marginBottom: '16px' }}>
             <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
@@ -422,6 +479,68 @@ function DashboardPage({ onNavigate }) {
               />
             </div>
 
+            {/* Upcoming Events sidebar */}
+            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#111827' }}>📅 {t('upcomingEvents')}</h3>
+                <button
+                  type="button"
+                  onClick={() => onNavigate && onNavigate('services')}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#6366f1'}
+                  style={{ border: 'none', background: 'none', padding: '4px 8px', color: '#6366f1', fontSize: '12px', fontWeight: '600', cursor: 'pointer', borderRadius: '6px', transition: 'color 0.15s' }}
+                >
+                  {t('view_all')} →
+                </button>
+              </div>
+              {upcomingEvents.length === 0 ? (
+                <div style={{ padding: '32px 0', textAlign: 'center' }}>
+                  <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '12px' }}>📅</div>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#9ca3af' }}>{t('no_upcoming_events')}</p>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate && onNavigate('services')}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#6366f1'}
+                    style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'color 0.15s' }}
+                  >
+                    {t('create_event')} →
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  {upcomingEvents.map((item, i) => {
+                    const dayInfo = getDaysLabel(item.daysUntil);
+                    return (
+                      <div key={item.id || i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', backgroundColor: '#fafbff', borderRadius: '12px', borderLeft: `3px solid ${item.color}`, transition: 'all 0.15s' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f5f7ff'; e.currentTarget.style.transform = 'translateX(2px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#fafbff'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                      >
+                        <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: `linear-gradient(135deg, ${item.color}15, ${item.color}25)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: '10px', fontWeight: '800', color: item.color, textTransform: 'uppercase', lineHeight: '1' }}>
+                            {item.date.toLocaleDateString(undefined, { month: 'short' })}
+                          </span>
+                          <span style={{ fontSize: '16px', fontWeight: '800', color: '#111827', lineHeight: '1.1' }}>
+                            {item.date.getDate()}
+                          </span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
+                          <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#6b7280' }}>
+                            {item.time ? `🕐 ${formatTime(item.time)}` : formatDate(item.date)}
+                          </p>
+                        </div>
+                        <span style={{ flexShrink: 0, padding: '3px 9px', backgroundColor: dayInfo.bg, color: dayInfo.color, borderRadius: '9999px', fontSize: '10px', fontWeight: '600', whiteSpace: 'nowrap' }}>{dayInfo.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ─────────── ROW 4 · Giving Trend + Recent Activity ─────────── */}
+          <div className="cs-dash-two" style={{ marginBottom: '16px' }}>
             {isFinanceVisible && (
               <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
@@ -436,10 +555,7 @@ function DashboardPage({ onNavigate }) {
                 />
               </div>
             )}
-          </div>
 
-          {/* ─────────── ROW 3 · Activity + events & actions ─────────── */}
-          <div className="cs-dash-two" style={{ marginBottom: '16px' }}>
             {/* Recent activity */}
             <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
@@ -478,71 +594,6 @@ function DashboardPage({ onNavigate }) {
                   })}
                 </div>
               )}
-            </div>
-
-            {/* Upcoming events + quick actions */}
-            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              <div>
-                <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '700', color: '#111827' }}>📅 {t('upcomingEvents')}</h3>
-                {upcomingEvents.length === 0 ? (
-                  <div style={{ padding: '20px 0', textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#9ca3af' }}>{t('no_upcoming_events')}</p>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate && onNavigate('services')}
-                      onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = '#6366f1'}
-                      style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'color 0.15s' }}
-                    >
-                      {t('create_event')} →
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gap: '8px' }}>
-                    {upcomingEvents.map((item, i) => {
-                      const dayInfo = getDaysLabel(item.daysUntil);
-                      return (
-                        <div key={item.id || i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', backgroundColor: '#fafbff', borderRadius: '12px', borderLeft: `3px solid ${item.color}`, transition: 'background-color 0.15s' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f7ff'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fafbff'}
-                        >
-                          <span style={{ fontSize: '18px' }}>{item.icon}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
-                            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#6b7280' }}>
-                              {formatDate(item.date)}{item.time ? ` · ${formatTime(item.time)}` : ''}
-                            </p>
-                          </div>
-                          <span style={{ flexShrink: 0, padding: '3px 9px', backgroundColor: dayInfo.bg, color: dayInfo.color, borderRadius: '9999px', fontSize: '10px', fontWeight: '600', whiteSpace: 'nowrap' }}>{dayInfo.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ paddingTop: '16px', borderTop: '1px solid #f0f0f5' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '700', color: '#111827' }}>⚡ {t('quickActions')}</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {[
-                    { icon: '👥', label: t('addMember'), tab: 'members', color: '#6366f1' },
-                    { icon: '📅', label: t('record_attendance'), tab: 'attendance', color: '#0ea5e9' },
-                    ...(isFinanceVisible ? [{ icon: '💰', label: t('record_offering'), tab: 'giving', color: '#10b981' }] : []),
-                    { icon: '💬', label: t('send_message'), tab: 'messaging', color: '#8b5cf6' }
-                  ].map(action => (
-                    <button
-                      key={action.tab}
-                      type="button"
-                      onClick={() => onNavigate && onNavigate(action.tab)}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c7d2fe'; e.currentTarget.style.backgroundColor = '#fafbff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#f0f0f5'; e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 14px', borderRadius: '10px', border: '1px solid #f0f0f5', backgroundColor: 'white', color: '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
-                    >
-                      <span style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', background: `linear-gradient(135deg, ${action.color}15, ${action.color}25)` }}>{action.icon}</span>{action.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
 
