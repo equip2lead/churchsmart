@@ -1,14 +1,15 @@
 "use client";
 // CalendarPage — extracted from app/page.js for code splitting
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity } from '../../lib/cs-shared';
+import { supabase, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, logActivity, safeGetSession } from '../../lib/cs-shared';
+import Papa from 'papaparse';
 import { useLanguage, useToast, useAuth, usePermissions } from '../../lib/cs-contexts';
 import { canAccessFeature, canAccess, getPlanLimits } from '../../lib/featureGating';
 import { Modal, FormInput, Button, PageHeader, LoadingSpinner, ConfirmDialog, StatCard, StatusBadge } from '../cs-ui';
 import UpgradePrompt from '../UpgradePrompt';
 
 function CalendarPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const toast = useToast();
   const { user } = useAuth();
   const CHURCH_ID = user?.church_id;
@@ -25,6 +26,13 @@ function CalendarPage() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [saving, setSaving] = useState(false);
   const [filterLocation, setFilterLocation] = useState('all');
+
+  // Bulk upload state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadPreview, setUploadPreview] = useState([]);
+  const [uploadErrors, setUploadErrors] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [eventForm, setEventForm] = useState({
     title: '', description: '', event_date: '', start_time: '09:00',
@@ -205,6 +213,137 @@ function CalendarPage() {
     setSaving(false);
   };
 
+  // ============ BULK UPLOAD HANDLERS ============
+  const VALID_EVENT_TYPES = ['SERVICE', 'CONFERENCE', 'PRAYER', 'MEETING', 'OUTREACH', 'YOUTH', 'GENERAL', 'WORKSHOP'];
+
+  const downloadCSVTemplate = () => {
+    const header = 'title,event_date,start_time,end_time,event_type,description,location\n';
+    const examples = [
+      'Sunday Worship,2026-01-04,09:00,12:00,SERVICE,Regular Sunday service,Main Campus',
+      'Youth Conference,2026-02-14,08:00,17:00,CONFERENCE,Annual youth gathering,',
+      'Prayer Night,2026-01-09,18:00,20:00,PRAYER,Friday prayer meeting,',
+      'Leaders Meeting,2026-01-20,14:00,16:00,MEETING,Monthly leaders sync,',
+      'Community Outreach,2026-03-15,07:00,13:00,OUTREACH,Neighborhood evangelism,'
+    ].join('\n');
+    const blob = new Blob([header + examples], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'churchsmart-program-template.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const errors = [];
+        const rows = [];
+        (results.data || []).forEach((row, idx) => {
+          const lineNum = idx + 2; // header is line 1
+          const title = (row.title || '').trim();
+          const eventDate = (row.event_date || row.date || '').trim();
+          const startTime = (row.start_time || '').trim();
+          const endTime = (row.end_time || '').trim();
+          const eventType = (row.event_type || row.type || 'GENERAL').trim().toUpperCase();
+          const description = (row.description || '').trim();
+          const locationName = (row.location || '').trim();
+
+          if (!title) { errors.push(`Row ${lineNum}: Missing title`); return; }
+          if (!eventDate || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+            errors.push(`Row ${lineNum}: Invalid date "${eventDate}" — use YYYY-MM-DD`);
+            return;
+          }
+          if (isNaN(new Date(eventDate).getTime())) {
+            errors.push(`Row ${lineNum}: Invalid date "${eventDate}"`);
+            return;
+          }
+          if (!VALID_EVENT_TYPES.includes(eventType)) {
+            errors.push(`Row ${lineNum}: Unknown event type "${eventType}" — use ${VALID_EVENT_TYPES.join(', ')}`);
+            return;
+          }
+
+          // Match location by name (case-insensitive)
+          let locationId = null;
+          if (locationName) {
+            const match = locations.find(l => l.name.toLowerCase() === locationName.toLowerCase());
+            if (match) locationId = match.id;
+          }
+
+          rows.push({
+            title,
+            event_date: eventDate,
+            start_time: startTime || null,
+            end_time: endTime || null,
+            event_type: eventType,
+            description: description || null,
+            location_id: locationId,
+            _locationName: locationName || null, // for preview only
+            _line: lineNum
+          });
+        });
+
+        setUploadErrors(errors);
+        setUploadPreview(rows);
+        setShowUploadModal(true);
+      },
+      error: (err) => {
+        toast.error('Failed to parse CSV: ' + (err.message || 'Unknown error'));
+      }
+    });
+  };
+
+  const handleBulkInsert = async () => {
+    if (uploadPreview.length === 0) return;
+    setUploading(true);
+    try {
+      let inserted = 0;
+      // Insert in batches of 50
+      for (let i = 0; i < uploadPreview.length; i += 50) {
+        const batch = uploadPreview.slice(i, i + 50).map(row => ({
+          church_id: CHURCH_ID,
+          title: row.title,
+          event_date: row.event_date,
+          start_time: row.start_time,
+          end_time: row.end_time,
+          event_type: row.event_type,
+          description: row.description,
+          location_id: row.location_id,
+          created_by: user?.email || null
+        }));
+        await supabaseInsert('events', batch);
+        inserted += batch.length;
+      }
+
+      logActivity({
+        action: 'events_bulk_uploaded',
+        entity_type: 'event',
+        entity_id: null,
+        entity_name: `${inserted} events uploaded`,
+        details: null
+      });
+
+      toast.success(
+        language === 'fr'
+          ? `${inserted} événements importés avec succès !`
+          : `${inserted} events imported successfully!`
+      );
+      setShowUploadModal(false);
+      setUploadPreview([]);
+      setUploadErrors([]);
+      fetchCalendarData();
+    } catch (err) {
+      toast.error(err.message || 'Bulk insert failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleDeleteEvent = async (eventId) => {
     try {
       const target = (events || []).find(e => e.id === eventId);
@@ -250,7 +389,9 @@ function CalendarPage() {
               </select>
             )}
             <Button variant="secondary" onClick={goToToday}>{t('today')}</Button>
-            <Button onClick={() => openNewEvent(selectedDateStr)}>➕ Add Event</Button>
+            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>📤 {language === 'fr' ? 'Importer Programme' : 'Upload Program'}</Button>
+            <Button onClick={() => openNewEvent(selectedDateStr)}>➕ {language === 'fr' ? 'Ajouter' : 'Add Event'}</Button>
+            <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileSelect} style={{ display: 'none' }} />
           </div>
         }
       />
@@ -480,6 +621,86 @@ function CalendarPage() {
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px' }}>
           <Button variant="secondary" onClick={() => setShowEventModal(false)}>{t('cancel')}</Button>
           <Button onClick={handleSaveEvent} disabled={saving}>{saving ? '⏳ Saving...' : '💾 Save Event'}</Button>
+        </div>
+      </Modal>
+
+      {/* Bulk Upload Preview Modal */}
+      <Modal isOpen={showUploadModal} onClose={() => { setShowUploadModal(false); setUploadPreview([]); setUploadErrors([]); }} title={`📤 ${language === 'fr' ? 'Importer le Programme' : 'Import Church Program'}`} width="750px">
+        {uploadErrors.length > 0 && (
+          <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#fef2f2', borderRadius: '10px', border: '1px solid #fecaca' }}>
+            <p style={{ margin: '0 0 8px', fontWeight: '600', color: '#dc2626', fontSize: '14px' }}>⚠️ {uploadErrors.length} {language === 'fr' ? 'erreurs trouvées' : 'errors found'}:</p>
+            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#991b1b', maxHeight: '120px', overflowY: 'auto' }}>
+              {uploadErrors.map((err, i) => <li key={i}>{err}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {uploadPreview.length > 0 ? (
+          <>
+            <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <p style={{ margin: 0, fontSize: '14px', color: '#374151' }}>
+                <strong>{uploadPreview.length}</strong> {language === 'fr' ? 'événements prêts à importer' : 'events ready to import'}
+              </p>
+              <button onClick={downloadCSVTemplate} style={{ padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px', color: '#6b7280' }}>
+                📥 {language === 'fr' ? 'Télécharger modèle' : 'Download template'}
+              </button>
+            </div>
+            <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '10px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead style={{ backgroundColor: '#f9fafb', position: 'sticky', top: 0 }}>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>#</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>{language === 'fr' ? 'Titre' : 'Title'}</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>{language === 'fr' ? 'Heure' : 'Time'}</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>{language === 'fr' ? 'Lieu' : 'Location'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {uploadPreview.map((row, i) => (
+                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '8px 12px', color: '#9ca3af' }}>{i + 1}</td>
+                      <td style={{ padding: '8px 12px', fontWeight: '500' }}>{row.title}</td>
+                      <td style={{ padding: '8px 12px' }}>{row.event_date}</td>
+                      <td style={{ padding: '8px 12px' }}>{row.start_time ? `${row.start_time}${row.end_time ? ' – ' + row.end_time : ''}` : '—'}</td>
+                      <td style={{ padding: '8px 12px' }}>
+                        <span style={{ padding: '2px 8px', backgroundColor: '#e0e7ff', color: '#4338ca', borderRadius: '6px', fontSize: '11px' }}>{row.event_type}</span>
+                      </td>
+                      <td style={{ padding: '8px 12px', color: row.location_id ? '#374151' : '#9ca3af' }}>
+                        {row.location_id ? locations.find(l => l.id === row.location_id)?.name : (row._locationName || '—')}
+                        {row._locationName && !row.location_id && <span style={{ fontSize: '11px', color: '#f59e0b' }}> ⚠️</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 16px', fontSize: '14px' }}>
+              {language === 'fr'
+                ? 'Aucun événement valide trouvé dans le fichier.'
+                : 'No valid events found in the file.'}
+            </p>
+            <button onClick={downloadCSVTemplate} style={{ padding: '10px 20px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px', color: '#4338ca', fontWeight: '500' }}>
+              📥 {language === 'fr' ? 'Télécharger le modèle CSV' : 'Download CSV Template'}
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
+          <Button variant="secondary" onClick={() => { setShowUploadModal(false); setUploadPreview([]); setUploadErrors([]); }}>
+            {language === 'fr' ? 'Annuler' : 'Cancel'}
+          </Button>
+          {uploadPreview.length > 0 && (
+            <Button onClick={handleBulkInsert} disabled={uploading}>
+              {uploading
+                ? `⏳ ${language === 'fr' ? 'Importation...' : 'Importing...'}`
+                : `📤 ${language === 'fr' ? `Importer ${uploadPreview.length} événements` : `Import ${uploadPreview.length} Events`}`}
+            </Button>
+          )}
         </div>
       </Modal>
     </div>
