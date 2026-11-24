@@ -97,7 +97,7 @@ function WhatsAppLogPage({ onNavigate }) {
               backgroundColor: filter === tab.id ? '#eef2ff' : 'white',
               color: filter === tab.id ? '#6366f1' : '#6b7280',
               fontWeight: filter === tab.id ? '600' : '400',
-              cursor: 'pointer', fontSize: '14px'
+              cursor: 'pointer', fontSize: '14px', transition: 'all 0.15s'
             }}
           >
             {tab.label} ({tab.count})
@@ -106,7 +106,7 @@ function WhatsAppLogPage({ onNavigate }) {
       </div>
 
       {loading ? <LoadingSpinner /> : (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
           {filtered.length === 0 ? (
             <div style={{ padding: '64px 24px', textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: '12px' }}>\U0001f4ac</div>
@@ -124,17 +124,17 @@ function WhatsAppLogPage({ onNavigate }) {
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ backgroundColor: '#f9fafb' }}>
+                <thead style={{ backgroundColor: '#fafbff' }}>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('date')}</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('phone')}</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Message</th>
-                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>{t('status')}</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('date')}</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('phone')}</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Message</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('status')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((entry, i) => (
-                    <tr key={entry.id} style={{ borderTop: i === 0 ? 'none' : '1px solid #e5e7eb' }}>
+                    <tr key={entry.id} style={{ borderTop: i === 0 ? 'none' : '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatWhen(entry.created_at)}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px', fontFamily: 'monospace' }}>{entry.phone}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px', color: '#374151', maxWidth: '420px' }}>

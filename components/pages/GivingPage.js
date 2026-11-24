@@ -457,11 +457,11 @@ function GivingPage({ plan, onNavigate }) {
       {/* Tab Buttons */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setActiveTab('income')} style={{ padding: '12px 24px', border: activeTab === 'income' ? '2px solid #10b981' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'income' ? '#d1fae5' : 'white', color: activeTab === 'income' ? '#10b981' : '#6b7280', fontWeight: activeTab === 'income' ? '600' : '400', cursor: 'pointer' }}>💵 Income</button>
-          <button onClick={() => setActiveTab('expenses')} style={{ padding: '12px 24px', border: activeTab === 'expenses' ? '2px solid #ef4444' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'expenses' ? '#fef2f2' : 'white', color: activeTab === 'expenses' ? '#ef4444' : '#6b7280', fontWeight: activeTab === 'expenses' ? '600' : '400', cursor: 'pointer' }}>📤 Expenses</button>
-          <button onClick={() => setActiveTab('report')} style={{ padding: '12px 24px', border: activeTab === 'report' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'report' ? '#eef2ff' : 'white', color: activeTab === 'report' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'report' ? '600' : '400', cursor: 'pointer' }}>📊 Report</button>
+          <button onClick={() => setActiveTab('income')} style={{ padding: '12px 24px', border: activeTab === 'income' ? '2px solid #10b981' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'income' ? '#d1fae5' : 'white', color: activeTab === 'income' ? '#10b981' : '#6b7280', fontWeight: activeTab === 'income' ? '600' : '400', cursor: 'pointer', transition: 'all 0.2s ease' }}>💵 Income</button>
+          <button onClick={() => setActiveTab('expenses')} style={{ padding: '12px 24px', border: activeTab === 'expenses' ? '2px solid #ef4444' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'expenses' ? '#fef2f2' : 'white', color: activeTab === 'expenses' ? '#ef4444' : '#6b7280', fontWeight: activeTab === 'expenses' ? '600' : '400', cursor: 'pointer', transition: 'all 0.2s ease' }}>📤 Expenses</button>
+          <button onClick={() => setActiveTab('report')} style={{ padding: '12px 24px', border: activeTab === 'report' ? '2px solid #6366f1' : '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: activeTab === 'report' ? '#eef2ff' : 'white', color: activeTab === 'report' ? '#6366f1' : '#6b7280', fontWeight: activeTab === 'report' ? '600' : '400', cursor: 'pointer', transition: 'all 0.2s ease' }}>📊 Report</button>
         </div>
-        <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+        <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', transition: 'border-color 0.2s ease' }}>
           <option value="all">All Locations</option>
           {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
         </select>
@@ -483,8 +483,8 @@ function GivingPage({ plan, onNavigate }) {
               {/* Charts Section */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '24px' }}>
                 {/* Pie Chart */}
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                  <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600' }}>📊 Giving by Category</h3>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
+                  <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '700', letterSpacing: '-0.02em' }}>📊 Giving by Category</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                     <PieChart data={categoryTotals} size={180} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -500,9 +500,9 @@ function GivingPage({ plan, onNavigate }) {
                 </div>
 
                 {/* Line Chart - Monthly Trends */}
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>📈 Giving Trends</h3>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', letterSpacing: '-0.02em' }}>📈 Giving Trends</h3>
                     <span style={{ fontSize: '12px', color: '#6b7280' }}>Last 6 months</span>
                   </div>
                   <div style={{ position: 'relative', height: '150px' }}>
@@ -531,29 +531,29 @@ function GivingPage({ plan, onNavigate }) {
               </div>
 
               {/* Donations Table */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💵 Recent Donations</h3>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>💵 Recent Donations</h3>
                   <span style={{ fontSize: '14px', color: '#6b7280' }}>{filteredDonations.length} records</span>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <thead style={{ backgroundColor: '#fafbff' }}>
                       <tr>
-                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Donor</th>
-                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
-                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
-                        <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
-                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Method</th>
-                        <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Date</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Donor</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Category</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Location</th>
+                        <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Amount</th>
+                        <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Method</th>
+                        <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredDonations.slice(0, 10).map((donation, i) => (
-                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <tr key={i} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                           <td style={{ padding: '12px 16px', fontSize: '14px' }}>{donation.donation_date}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '500' }}>{getMemberName(donation)}</td>
+                          <td style={{ padding: '12px 16px', fontWeight: '600' }}>{getMemberName(donation)}</td>
                           <td style={{ padding: '12px 16px' }}>
                             <span style={{ padding: '4px 10px', backgroundColor: `${categoryColors[donation.category]}20`, color: categoryColors[donation.category], borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>{donation.category}</span>
                           </td>
@@ -561,8 +561,8 @@ function GivingPage({ plan, onNavigate }) {
                           <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: '#10b981' }}>{formatCurrency(donation.amount)}</td>
                           <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{donation.payment_method}</td>
                           <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                            <button onClick={() => openDonationModal(donation)} style={{ padding: '4px 8px', border: 'none', background: '#f3f4f6', borderRadius: '4px', cursor: 'pointer', marginRight: '4px', fontSize: '12px' }}>✏️</button>
-                            <button onClick={() => setDeleteConfirm({ ...donation, table: 'donations' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '4px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                            <button onClick={() => openDonationModal(donation)} style={{ padding: '4px 8px', border: 'none', background: '#f3f4f6', borderRadius: '8px', cursor: 'pointer', marginRight: '4px', fontSize: '12px', fontWeight: '500', transition: 'all 0.15s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.background = '#e5e7eb'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#f3f4f6'; }}>✏️</button>
+                            <button onClick={() => setDeleteConfirm({ ...donation, table: 'donations' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', color: '#dc2626', fontSize: '12px', fontWeight: '500', transition: 'all 0.15s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.background = '#fee2e2'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#fef2f2'; }}>🗑️</button>
                           </td>
                         </tr>
                       ))}
@@ -578,29 +578,29 @@ function GivingPage({ plan, onNavigate }) {
             <UpgradePrompt feature="expenses" featureLabel="Expense Tracking" onNavigate={onNavigate} />
           )}
           {activeTab === 'expenses' && canAccessFeature(plan, 'expenses') && (
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📤 Expenses</h3>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>📤 Expenses</h3>
                 <span style={{ fontSize: '14px', color: '#6b7280' }}>{filteredExpenses.length} records</span>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Description</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Vendor</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Description</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Category</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Location</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Amount</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Vendor</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredExpenses.map((expense, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <tr key={i} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                         <td style={{ padding: '12px 16px', fontSize: '14px' }}>{expense.expense_date}</td>
-                        <td style={{ padding: '12px 16px', fontWeight: '500' }}>{expense.description}</td>
+                        <td style={{ padding: '12px 16px', fontWeight: '600' }}>{expense.description}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{ padding: '4px 10px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '9999px', fontSize: '12px' }}>{expense.category}</span>
                         </td>
@@ -608,12 +608,16 @@ function GivingPage({ plan, onNavigate }) {
                         <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: '#ef4444' }}>{formatCurrency(expense.amount)}</td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>{expense.vendor_name || '—'}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                          <button onClick={() => openExpenseModal(expense)} style={{ padding: '4px 8px', border: 'none', background: '#f3f4f6', borderRadius: '4px', cursor: 'pointer', marginRight: '4px', fontSize: '12px' }}>✏️</button>
-                          <button onClick={() => setDeleteConfirm({ ...expense, table: 'expenses' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '4px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                          <button onClick={() => openExpenseModal(expense)} style={{ padding: '4px 8px', border: 'none', background: '#f3f4f6', borderRadius: '8px', cursor: 'pointer', marginRight: '4px', fontSize: '12px', fontWeight: '500', transition: 'all 0.15s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.background = '#e5e7eb'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#f3f4f6'; }}>✏️</button>
+                          <button onClick={() => setDeleteConfirm({ ...expense, table: 'expenses' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', color: '#dc2626', fontSize: '12px', fontWeight: '500', transition: 'all 0.15s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.background = '#fee2e2'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#fef2f2'; }}>🗑️</button>
                         </td>
                       </tr>
                     ))}
-                    {filteredExpenses.length === 0 && <tr><td colSpan="7" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No expenses recorded</td></tr>}
+                    {filteredExpenses.length === 0 && <tr><td colSpan="7" style={{ padding: '48px', textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '18px', background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)', marginBottom: '12px' }}>📤</div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '600', color: '#374151' }}>No expenses recorded</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>Add your first expense to start tracking</p>
+                    </td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -625,32 +629,32 @@ function GivingPage({ plan, onNavigate }) {
             <div style={{ display: 'grid', gap: '24px' }}>
               {/* Summary Cards */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-                <div style={{ backgroundColor: '#d1fae5', borderRadius: '16px', padding: '24px' }}>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#166534' }}>Total Income</p>
-                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#166534' }}>{formatCurrency(totalIncome)}</p>
+                <div style={{ backgroundColor: '#d1fae5', borderRadius: '16px', padding: '24px', border: '1px solid #a7f3d0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '500', color: '#166534', letterSpacing: '0.02em' }}>Total Income</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: '800', color: '#166534', letterSpacing: '-0.02em' }}>{formatCurrency(totalIncome)}</p>
                 </div>
-                <div style={{ backgroundColor: '#fef2f2', borderRadius: '16px', padding: '24px' }}>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#991b1b' }}>Total Expenses</p>
-                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#991b1b' }}>{formatCurrency(totalExpenses)}</p>
+                <div style={{ backgroundColor: '#fef2f2', borderRadius: '16px', padding: '24px', border: '1px solid #fecaca', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '500', color: '#991b1b', letterSpacing: '0.02em' }}>Total Expenses</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: '800', color: '#991b1b', letterSpacing: '-0.02em' }}>{formatCurrency(totalExpenses)}</p>
                 </div>
-                <div style={{ backgroundColor: netBalance >= 0 ? '#dbeafe' : '#fef2f2', borderRadius: '16px', padding: '24px' }}>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: netBalance >= 0 ? '#1e40af' : '#991b1b' }}>Net Balance</p>
-                  <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: netBalance >= 0 ? '#1e40af' : '#991b1b' }}>{formatCurrency(netBalance)}</p>
+                <div style={{ backgroundColor: netBalance >= 0 ? '#dbeafe' : '#fef2f2', borderRadius: '16px', padding: '24px', border: `1px solid ${netBalance >= 0 ? '#bfdbfe' : '#fecaca'}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '500', color: netBalance >= 0 ? '#1e40af' : '#991b1b', letterSpacing: '0.02em' }}>Net Balance</p>
+                  <p style={{ margin: 0, fontSize: '28px', fontWeight: '800', color: netBalance >= 0 ? '#1e40af' : '#991b1b', letterSpacing: '-0.02em' }}>{formatCurrency(netBalance)}</p>
                 </div>
               </div>
 
               {/* Category Breakdown Table */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📊 Category Breakdown</h3>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>📊 Category Breakdown</h3>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Category</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Income</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Expenses</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Net</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Category</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Income</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Expenses</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Net</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -660,8 +664,8 @@ function GivingPage({ plan, onNavigate }) {
                       const net = income - expense;
                       if (income === 0 && expense === 0) return null;
                       return (
-                        <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '12px 16px', fontWeight: '500' }}>
+                        <tr key={i} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <td style={{ padding: '12px 16px', fontWeight: '600' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: categoryColors[cat] || '#6b7280' }} />
                               {cat}
@@ -673,7 +677,7 @@ function GivingPage({ plan, onNavigate }) {
                         </tr>
                       );
                     })}
-                    <tr style={{ borderTop: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                    <tr style={{ borderTop: '2px solid #f0f0f5', backgroundColor: '#fafbff' }}>
                       <td style={{ padding: '12px 16px', fontWeight: '700' }}>TOTAL</td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '700', color: '#10b981' }}>{formatCurrency(totalIncome)}</td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '700', color: '#ef4444' }}>{formatCurrency(totalExpenses)}</td>

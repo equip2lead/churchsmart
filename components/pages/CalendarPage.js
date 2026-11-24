@@ -503,7 +503,7 @@ function CalendarPage() {
             {selectedAttendance.map((record, i) => {
               const serviceName = services.find(s => s.id === record.service_id)?.name || 'Service';
               return (
-                <div key={i} style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '10px', marginBottom: '8px' }}>
+                <div key={i} style={{ padding: '12px', backgroundColor: '#fafbff', borderRadius: '10px', marginBottom: '8px' }}>
                   <p style={{ margin: 0, fontSize: '13px', fontWeight: '600' }}>⛪ {serviceName}</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '8px', fontSize: '12px' }}>
                     <div><span style={{ color: '#6b7280' }}>{language === 'fr' ? 'Hommes' : 'Men'}:</span> <strong>{record.men_count || 0}</strong></div>
@@ -617,7 +617,7 @@ function CalendarPage() {
         <div style={{ ...S.card, overflowX: 'auto' }}>
           <div style={{ minWidth: '600px' }}>
             {/* Day headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: '56px repeat(7, 1fr)', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '56px repeat(7, 1fr)', borderBottom: '1px solid #f0f0f5' }}>
               <div style={{ padding: '12px 4px' }}></div>
               {weekDays.map((date, idx) => {
                 const dStr = date.toISOString().split('T')[0];
@@ -647,7 +647,7 @@ function CalendarPage() {
             {/* Time grid */}
             <div style={{ position: 'relative' }}>
               {hours.map((hour) => (
-                <div key={hour} style={{ display: 'grid', gridTemplateColumns: '56px repeat(7, 1fr)', minHeight: '52px', borderBottom: '1px solid #f9fafb' }}>
+                <div key={hour} style={{ display: 'grid', gridTemplateColumns: '56px repeat(7, 1fr)', minHeight: '52px', borderBottom: '1px solid #f0f0f5' }}>
                   <div style={{ padding: '4px 8px 0', textAlign: 'right', fontSize: '11px', color: '#9ca3af', fontVariantNumeric: 'tabular-nums' }}>
                     {fmtTime(`${String(hour).padStart(2,'0')}:00`)}
                   </div>
@@ -960,21 +960,21 @@ function CalendarPage() {
                 📥 {language === 'fr' ? 'Modèle' : 'Template'}
               </button>
             </div>
-            <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '10px' }}>
+            <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #f0f0f5', borderRadius: '10px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead style={{ backgroundColor: '#f9fafb', position: 'sticky', top: 0 }}>
+                <thead style={{ backgroundColor: '#fafbff', position: 'sticky', top: 0 }}>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>#</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>{language === 'fr' ? 'Titre' : 'Title'}</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>{language === 'fr' ? 'Heure' : 'Time'}</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: '600', color: '#6b7280' }}>{language === 'fr' ? 'Lieu' : 'Location'}</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>#</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>{language === 'fr' ? 'Titre' : 'Title'}</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>Date</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>{language === 'fr' ? 'Heure' : 'Time'}</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>Type</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>{language === 'fr' ? 'Lieu' : 'Location'}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {uploadPreview.map((row, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <tr key={i} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <td style={{ padding: '8px 12px', color: '#9ca3af' }}>{i + 1}</td>
                       <td style={{ padding: '8px 12px', fontWeight: '500' }}>{row.title}</td>
                       <td style={{ padding: '8px 12px' }}>{row.event_date}</td>

@@ -412,7 +412,7 @@ function BillingSection({ churchId }) {
       })()}
 
       {/* Current Plan Card */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600' }}>💳 Current Plan</h3>
@@ -659,7 +659,7 @@ function BillingSection({ churchId }) {
 
       {/* WhatsApp Feature Status */}
       {planLimits.whatsapp && (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>💬 WhatsApp Messaging</h3>
             <span style={{ fontSize: '13px', fontWeight: '600', color: '#10b981', backgroundColor: '#d1fae5', padding: '4px 12px', borderRadius: '50px' }}>✓ Enabled</span>
@@ -671,7 +671,7 @@ function BillingSection({ churchId }) {
       )}
 
       {/* Plans Grid */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📦 Available Plans</h3>
           {/* Monthly / Annual Toggle */}
@@ -796,23 +796,23 @@ function BillingSection({ churchId }) {
 
       {/* Payment History */}
       {payments.length > 0 && (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
           <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🧾 Payment History</h3>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ backgroundColor: '#f9fafb' }}>
+            <thead style={{ backgroundColor: '#fafbff' }}>
               <tr>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Description</th>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Receipt</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Date</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Description</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Amount</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Status</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Receipt</th>
               </tr>
             </thead>
             <tbody>
               {payments.map((p, i) => (
-                <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                <tr key={i} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                   <td style={{ padding: '12px 16px', fontSize: '14px' }}>{new Date(p.created_at).toLocaleDateString()}</td>
                   <td style={{ padding: '12px 16px', fontSize: '14px' }}>{p.description || `${(p.plan || '').charAt(0).toUpperCase() + (p.plan || '').slice(1)} Plan`}</td>
                   <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '600' }}>${((p.amount || 0) / 100).toFixed(2)}</td>

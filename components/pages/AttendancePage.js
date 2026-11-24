@@ -231,7 +231,7 @@ function AttendancePage() {
               onClick={() => setActiveView('charts')}
               style={{
                 padding: '10px 20px',
-                border: activeView === 'charts' ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                border: activeView === 'charts' ? '2px solid #6366f1' : '1.5px solid #e5e7eb',
                 borderRadius: '10px',
                 backgroundColor: activeView === 'charts' ? '#6366f1' : 'white',
                 color: activeView === 'charts' ? 'white' : '#6b7280',
@@ -239,7 +239,9 @@ function AttendancePage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontWeight: '500'
+                fontWeight: '600',
+                fontSize: '14px',
+                transition: 'all 0.15s'
               }}
             >
               📈 Charts
@@ -248,7 +250,7 @@ function AttendancePage() {
               onClick={() => setActiveView('details')}
               style={{
                 padding: '10px 20px',
-                border: activeView === 'details' ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                border: activeView === 'details' ? '2px solid #6366f1' : '1.5px solid #e5e7eb',
                 borderRadius: '10px',
                 backgroundColor: activeView === 'details' ? '#6366f1' : 'white',
                 color: activeView === 'details' ? 'white' : '#6b7280',
@@ -256,7 +258,9 @@ function AttendancePage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontWeight: '500'
+                fontWeight: '600',
+                fontSize: '14px',
+                transition: 'all 0.15s'
               }}
             >
               📋 Details
@@ -281,14 +285,14 @@ function AttendancePage() {
       />
 
       {/* Filters */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>Location</label>
             <select
               value={filterLocation}
               onChange={(e) => setFilterLocation(e.target.value)}
-              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+              style={{ width: '100%', padding: '12px 16px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', transition: 'border-color 0.2s ease' }}
             >
               <option value="all">All Locations</option>
               {locations.map(loc => (
@@ -301,7 +305,7 @@ function AttendancePage() {
             <select
               value={filterService}
               onChange={(e) => setFilterService(e.target.value)}
-              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+              style={{ width: '100%', padding: '12px 16px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', transition: 'border-color 0.2s ease' }}
             >
               <option value="all">All Services</option>
               {services.map(svc => (
@@ -314,7 +318,7 @@ function AttendancePage() {
             <select
               value={filterDateRange}
               onChange={(e) => setFilterDateRange(e.target.value)}
-              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+              style={{ width: '100%', padding: '12px 16px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', transition: 'border-color 0.2s ease' }}
             >
               <option value="4weeks">Last 4 Weeks</option>
               <option value="10weeks">Last 10 Weeks</option>
@@ -327,35 +331,35 @@ function AttendancePage() {
 
       {/* Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>Current Week Attendance</p>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#111827' }}>{currentWeekAttendance}</p>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
+          <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 8px 0', fontWeight: '500', letterSpacing: '0.01em' }}>Current Week Attendance</p>
+          <p style={{ fontSize: '32px', fontWeight: '800', margin: '0 0 8px 0', color: '#111827', letterSpacing: '-0.02em' }}>{currentWeekAttendance}</p>
           <p style={{ fontSize: '14px', margin: 0, color: parseFloat(weekOverWeekChange) >= 0 ? '#10b981' : '#ef4444' }}>
             {parseFloat(weekOverWeekChange) >= 0 ? '+' : ''}{weekOverWeekChange}% from previous week
           </p>
         </div>
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>Average Attendance</p>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#111827' }}>{avgAttendance}</p>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
+          <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 8px 0', fontWeight: '500', letterSpacing: '0.01em' }}>Average Attendance</p>
+          <p style={{ fontSize: '32px', fontWeight: '800', margin: '0 0 8px 0', color: '#111827', letterSpacing: '-0.02em' }}>{avgAttendance}</p>
           <p style={{ fontSize: '14px', margin: 0, color: '#6b7280' }}>Over the {filterDateRange.replace('weeks', ' weeks').replace('months', ' months').replace('year', ' year')}</p>
         </div>
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>First Time Visitors</p>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#111827' }}>{totalFirstTimers}</p>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
+          <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 8px 0', fontWeight: '500', letterSpacing: '0.01em' }}>First Time Visitors</p>
+          <p style={{ fontSize: '32px', fontWeight: '800', margin: '0 0 8px 0', color: '#111827', letterSpacing: '-0.02em' }}>{totalFirstTimers}</p>
           <p style={{ fontSize: '14px', margin: 0, color: '#6b7280' }}>{filteredAttendance.length} total in period</p>
         </div>
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>Children's Attendance</p>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#111827' }}>{totalChildren}</p>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
+          <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 8px 0', fontWeight: '500', letterSpacing: '0.01em' }}>Children's Attendance</p>
+          <p style={{ fontSize: '32px', fontWeight: '800', margin: '0 0 8px 0', color: '#111827', letterSpacing: '-0.02em' }}>{totalChildren}</p>
           <p style={{ fontSize: '14px', margin: 0, color: '#6b7280' }}>{childrenPercentage}% of total attendance</p>
         </div>
       </div>
 
       {/* Charts View */}
       {activeView === 'charts' && (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📈 Attendance Trends</h3>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.01em' }}>📈 Attendance Trends</h3>
             <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ width: '12px', height: '12px', backgroundColor: '#6366f1', borderRadius: '2px' }}></span>
@@ -440,7 +444,7 @@ function AttendancePage() {
           </div>
 
           {/* Summary below chart */}
-          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #f0f0f5', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
             <div style={{ textAlign: 'center' }}>
               <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#6366f1', margin: 0 }}>{totalAttendance}</p>
               <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Total Attendance</p>
@@ -463,31 +467,31 @@ function AttendancePage() {
 
       {/* Details View */}
       {activeView === 'details' && (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-          <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📋 Attendance Records</h3>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.01em' }}>📋 Attendance Records</h3>
             <span style={{ fontSize: '14px', color: '#6b7280' }}>{filteredAttendance.length} records</span>
           </div>
           {loading ? <LoadingSpinner /> : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ backgroundColor: '#f9fafb' }}>
+                <thead style={{ backgroundColor: '#fafbff' }}>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('date')}</th>
-                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Service</th>
-                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
-                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('men')}</th>
-                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('women')}</th>
-                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('children')}</th>
-                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('total')}</th>
-                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>First Timers</th>
-                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Offering</th>
-                    <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>{t('actions')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('date')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Service</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Location</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('men')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('women')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('children')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('total')}</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>First Timers</th>
+                    <th style={{ textAlign: 'left', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Offering</th>
+                    <th style={{ textAlign: 'right', padding: '16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAttendance.slice().reverse().map((record, index) => (
-                    <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <tr key={index} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <td style={{ padding: '16px', fontWeight: '500' }}>{new Date(record.service_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
                       <td style={{ padding: '16px', color: '#6366f1' }}>{getServiceName(record.service_id)}</td>
                       <td style={{ padding: '16px', color: '#6b7280' }}>{getLocationName(record.location_id)}</td>
@@ -499,8 +503,8 @@ function AttendancePage() {
                       <td style={{ padding: '16px', color: '#10b981', fontWeight: '500' }}>XAF {(record.total_offering || 0).toLocaleString()}</td>
                       <td style={{ padding: '16px', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <button onClick={() => openModal(record)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️ Edit</button>
-                          <button onClick={() => setDeleteConfirm(record)} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑️ Delete</button>
+                          <button onClick={() => openModal(record)} style={{ padding: '6px 14px', border: 'none', background: '#f3f4f6', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'all 0.15s' }} onMouseEnter={e => { e.target.style.backgroundColor = '#e5e7eb'; e.target.style.transform = 'translateY(-1px)'; }} onMouseLeave={e => { e.target.style.backgroundColor = '#f3f4f6'; e.target.style.transform = 'translateY(0)'; }}>✏️ Edit</button>
+                          <button onClick={() => setDeleteConfirm(record)} style={{ padding: '6px 14px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', color: '#dc2626', transition: 'all 0.15s' }} onMouseEnter={e => { e.target.style.backgroundColor = '#fee2e2'; e.target.style.transform = 'translateY(-1px)'; }} onMouseLeave={e => { e.target.style.backgroundColor = '#fef2f2'; e.target.style.transform = 'translateY(0)'; }}>🗑️ Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -532,7 +536,7 @@ function AttendancePage() {
         </div>
         <FormInput label={t('date')} type="date" value={form.service_date} onChange={(e) => setForm({ ...form, service_date: e.target.value })} required />
         
-        <div style={{ backgroundColor: '#f9fafb', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
+        <div style={{ backgroundColor: '#fafbff', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
           <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>👥 Attendance Count</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
             <FormInput label={t('men')} type="number" value={form.men_count} onChange={(e) => setForm({ ...form, men_count: e.target.value })} />

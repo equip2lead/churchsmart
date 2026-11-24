@@ -252,7 +252,7 @@ function ServicesPage() {
           onClick={() => setActiveTab('services')}
           style={{
             padding: '12px 24px',
-            border: activeTab === 'services' ? '2px solid #6366f1' : '1px solid #e5e7eb',
+            border: activeTab === 'services' ? '2px solid #6366f1' : '1.5px solid #e5e7eb',
             borderRadius: '10px',
             backgroundColor: activeTab === 'services' ? '#eef2ff' : 'white',
             color: activeTab === 'services' ? '#6366f1' : '#6b7280',
@@ -260,7 +260,8 @@ function ServicesPage() {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            transition: 'all 0.15s'
           }}
         >
           🕐 Services ({services.length})
@@ -269,7 +270,7 @@ function ServicesPage() {
           onClick={() => setActiveTab('events')}
           style={{
             padding: '12px 24px',
-            border: activeTab === 'events' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+            border: activeTab === 'events' ? '2px solid #f59e0b' : '1.5px solid #e5e7eb',
             borderRadius: '10px',
             backgroundColor: activeTab === 'events' ? '#fef3c7' : 'white',
             color: activeTab === 'events' ? '#f59e0b' : '#6b7280',
@@ -277,7 +278,8 @@ function ServicesPage() {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            transition: 'all 0.15s'
           }}
         >
           🎉 Events ({events.length})
@@ -286,7 +288,7 @@ function ServicesPage() {
           onClick={() => setActiveTab('attendance')}
           style={{
             padding: '12px 24px',
-            border: activeTab === 'attendance' ? '2px solid #10b981' : '1px solid #e5e7eb',
+            border: activeTab === 'attendance' ? '2px solid #10b981' : '1.5px solid #e5e7eb',
             borderRadius: '10px',
             backgroundColor: activeTab === 'attendance' ? '#d1fae5' : 'white',
             color: activeTab === 'attendance' ? '#10b981' : '#6b7280',
@@ -294,7 +296,8 @@ function ServicesPage() {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            transition: 'all 0.15s'
           }}
         >
           📊 Recent Attendance
@@ -315,12 +318,12 @@ function ServicesPage() {
           {activeTab === 'services' && (
             <>
               {/* Service Times Table */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', marginBottom: '24px' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🕐 Service Times</h3>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden', marginBottom: '24px' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.01em' }}>🕐 Service Times</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <label style={{ fontSize: '14px', color: '#6b7280' }}>Filter:</label>
-                    <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}>
+                    <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '8px 16px', border: '1.5px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', cursor: 'pointer', transition: 'border-color 0.2s ease' }}>
                       <option value="all">All Locations</option>
                       {locations.map(loc => (<option key={loc.id} value={loc.id}>{loc.name}</option>))}
                     </select>
@@ -328,24 +331,24 @@ function ServicesPage() {
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ backgroundColor: '#f9fafb' }}>
+                    <thead style={{ backgroundColor: '#fafbff' }}>
                       <tr>
-                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Service</th>
-                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
-                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Day</th>
-                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Time</th>
-                        <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
-                        <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
+                        <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Service</th>
+                        <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Location</th>
+                        <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Day</th>
+                        <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Time</th>
+                        <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</th>
+                        <th style={{ textAlign: 'right', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredServices.map((service, index) => (
-                        <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <tr key={index} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = ''}>
                           <td style={{ padding: '16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <div style={{ width: '40px', height: '40px', backgroundColor: '#e0e7ff', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>⛪</div>
+                              <div style={{ width: '40px', height: '40px', background: 'linear-gradient(135deg, #6366f112, #6366f120)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>⛪</div>
                               <div>
-                                <p style={{ margin: 0, fontWeight: '500' }}>{service.name}</p>
+                                <p style={{ margin: 0, fontWeight: '600' }}>{service.name}</p>
                                 {service.description && <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{service.description}</p>}
                               </div>
                             </div>
@@ -365,14 +368,18 @@ function ServicesPage() {
                           </td>
                           <td style={{ padding: '16px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                              <button onClick={() => openServiceModal(service)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️ Edit</button>
-                              <button onClick={() => setDeleteConfirm({ ...service, type: 'service' })} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑️</button>
+                              <button onClick={() => openServiceModal(service)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.background = '#e5e7eb'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.background = '#f3f4f6'; }}>✏️ Edit</button>
+                              <button onClick={() => setDeleteConfirm({ ...service, type: 'service' })} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', color: '#dc2626', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.background = '#fee2e2'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.background = '#fef2f2'; }}>🗑️</button>
                             </div>
                           </td>
                         </tr>
                       ))}
                       {filteredServices.length === 0 && (
-                        <tr><td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No services found</td></tr>
+                        <tr><td colSpan="6" style={{ padding: '64px 48px', textAlign: 'center' }}>
+                          <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #6366f112, #6366f120)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 16px' }}>⛪</div>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>No services found</p>
+                          <p style={{ margin: 0, fontSize: '14px', color: '#9ca3af' }}>Add your first service to get started</p>
+                        </td></tr>
                       )}
                     </tbody>
                   </table>
@@ -380,17 +387,17 @@ function ServicesPage() {
               </div>
 
               {/* Locations Overview */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>📍 Services by Location</h3>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '700', letterSpacing: '-0.01em' }}>📍 Services by Location</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                   {locations.map((location, index) => {
                     const locationServices = services.filter(s => s.location_id === location.id);
                     return (
-                      <div key={index} style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                      <div key={index} style={{ padding: '20px', backgroundColor: '#fafbff', borderRadius: '12px', border: '1px solid #f0f0f5', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                           <span style={{ fontSize: '24px' }}>{location.is_main_campus ? '🏛️' : '🏢'}</span>
                           <div>
-                            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>{location.name}</h4>
+                            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700' }}>{location.name}</h4>
                             {location.is_main_campus && <span style={{ fontSize: '11px', color: '#6366f1' }}>Main Campus</span>}
                           </div>
                         </div>
@@ -416,32 +423,33 @@ function ServicesPage() {
           {activeTab === 'events' && (
             <>
               {/* Upcoming Events */}
-              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', marginBottom: '24px' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>🎉 Upcoming Events</h3>
+              <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden', marginBottom: '24px' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.01em' }}>🎉 Upcoming Events</h3>
                   <span style={{ padding: '4px 12px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '12px' }}>{upcomingEvents.length} upcoming</span>
                 </div>
                 {upcomingEvents.length === 0 ? (
-                  <div style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
-                    <span style={{ fontSize: '48px' }}>📅</span>
-                    <p>No upcoming events. Create one!</p>
+                  <div style={{ padding: '64px 48px', textAlign: 'center' }}>
+                    <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #f59e0b12, #f59e0b20)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 16px' }}>📅</div>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>No upcoming events</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#9ca3af' }}>Create your first event to get started</p>
                   </div>
                 ) : (
                   <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
                     {upcomingEvents.map((event, index) => {
                       const daysUntil = Math.ceil((new Date(event.event_date) - new Date()) / (1000 * 60 * 60 * 24));
                       return (
-                        <div key={index} style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px', border: `2px solid ${eventTypeColors[event.event_type] || '#e5e7eb'}20`, position: 'relative' }}>
+                        <div key={index} style={{ padding: '20px', backgroundColor: '#fafbff', borderRadius: '12px', border: `1px solid #f0f0f5`, position: 'relative', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
                           <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '4px' }}>
-                            <button onClick={() => openEventModal(event)} style={{ padding: '4px 8px', border: 'none', background: '#f3f4f6', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>✏️</button>
-                            <button onClick={() => setDeleteConfirm({ ...event, type: 'event' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', color: '#dc2626' }}>🗑️</button>
+                            <button onClick={() => openEventModal(event)} style={{ padding: '4px 8px', border: 'none', background: '#f3f4f6', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'all 0.15s' }}>✏️</button>
+                            <button onClick={() => setDeleteConfirm({ ...event, type: 'event' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', color: '#dc2626', transition: 'all 0.15s' }}>🗑️</button>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
-                            <div style={{ width: '50px', height: '50px', backgroundColor: `${eventTypeColors[event.event_type] || '#6b7280'}20`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                            <div style={{ width: '50px', height: '50px', background: `linear-gradient(135deg, ${eventTypeColors[event.event_type] || '#6b7280'}12, ${eventTypeColors[event.event_type] || '#6b7280'}20)`, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
                               {eventTypeIcons[event.event_type] || '📅'}
                             </div>
                             <div style={{ flex: 1 }}>
-                              <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>{event.title}</h4>
+                              <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '700' }}>{event.title}</h4>
                               <span style={{ padding: '2px 8px', backgroundColor: `${eventTypeColors[event.event_type] || '#6b7280'}20`, color: eventTypeColors[event.event_type] || '#6b7280', borderRadius: '9999px', fontSize: '11px', fontWeight: '500' }}>
                                 {event.event_type}
                               </span>
@@ -453,7 +461,7 @@ function ServicesPage() {
                             {event.start_time && <span>🕐 {formatTime(event.start_time)} - {formatTime(event.end_time)}</span>}
                             {event.location_id && <span>📍 {getLocationName(event.location_id)}</span>}
                           </div>
-                          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f0f0f5' }}>
                             <span style={{ padding: '4px 12px', backgroundColor: daysUntil <= 3 ? '#fef3c7' : '#dbeafe', color: daysUntil <= 3 ? '#92400e' : '#1e40af', borderRadius: '9999px', fontSize: '12px', fontWeight: '500' }}>
                               {daysUntil === 0 ? '🎉 Today!' : daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`}
                             </span>
@@ -467,28 +475,28 @@ function ServicesPage() {
 
               {/* Past Events */}
               {pastEvents.length > 0 && (
-                <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                  <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#6b7280' }}>📜 Past Events</h3>
+                <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+                  <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.01em', color: '#6b7280' }}>📜 Past Events</h3>
                   </div>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ backgroundColor: '#f9fafb' }}>
+                      <thead style={{ backgroundColor: '#fafbff' }}>
                         <tr>
-                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Event</th>
-                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
-                          <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                          <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Actions</th>
+                          <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>Event</th>
+                          <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>Type</th>
+                          <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>Date</th>
+                          <th style={{ textAlign: 'right', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.06em' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {pastEvents.slice(0, 5).map((event, index) => (
-                          <tr key={index} style={{ borderTop: '1px solid #e5e7eb', opacity: 0.7 }}>
-                            <td style={{ padding: '12px 16px', fontWeight: '500' }}>{event.title}</td>
+                          <tr key={index} style={{ borderTop: '1px solid #f0f0f5', opacity: 0.7, transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = ''}>
+                            <td style={{ padding: '12px 16px', fontWeight: '600' }}>{event.title}</td>
                             <td style={{ padding: '12px 16px' }}><span style={{ fontSize: '12px' }}>{eventTypeIcons[event.event_type]} {event.event_type}</span></td>
-                            <td style={{ padding: '12px 16px', color: '#6b7280' }}>{formatDate(event.event_date)}</td>
+                            <td style={{ padding: '12px 16px', color: '#9ca3af' }}>{formatDate(event.event_date)}</td>
                             <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                              <button onClick={() => setDeleteConfirm({ ...event, type: 'event' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', color: '#dc2626' }}>🗑️</button>
+                              <button onClick={() => setDeleteConfirm({ ...event, type: 'event' })} style={{ padding: '4px 8px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', color: '#dc2626', transition: 'all 0.15s' }}>🗑️</button>
                             </td>
                           </tr>
                         ))}
@@ -502,28 +510,28 @@ function ServicesPage() {
 
           {/* ATTENDANCE TAB */}
           {activeTab === 'attendance' && (
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>📊 Recent Attendance Records</h3>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.01em' }}>📊 Recent Attendance Records</h3>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <thead style={{ backgroundColor: '#fafbff' }}>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Date</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Service</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Location</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Men</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Women</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Children</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Total</th>
-                      <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Offering</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Service</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Location</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Men</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Women</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Children</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</th>
+                      <th style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Offering</th>
                     </tr>
                   </thead>
                   <tbody>
                     {attendance.map((record, index) => (
-                      <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '16px', fontWeight: '500' }}>{formatDate(record.service_date)}</td>
+                      <tr key={index} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = ''}>
+                        <td style={{ padding: '16px', fontWeight: '600' }}>{formatDate(record.service_date)}</td>
                         <td style={{ padding: '16px', color: '#6366f1' }}>{getServiceName(record.service_id)}</td>
                         <td style={{ padding: '16px' }}><span style={{ padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '6px', fontSize: '12px' }}>{getLocationName(record.location_id)}</span></td>
                         <td style={{ padding: '16px' }}>{record.men_count}</td>
@@ -534,7 +542,11 @@ function ServicesPage() {
                       </tr>
                     ))}
                     {attendance.length === 0 && (
-                      <tr><td colSpan="8" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>No attendance records yet</td></tr>
+                      <tr><td colSpan="8" style={{ padding: '64px 48px', textAlign: 'center' }}>
+                        <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #10b98112, #10b98120)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 16px' }}>📊</div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>No attendance records yet</p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#9ca3af' }}>Record your first service attendance</p>
+                      </td></tr>
                     )}
                   </tbody>
                 </table>

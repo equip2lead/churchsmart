@@ -110,15 +110,15 @@ function SalvationsPage() {
         <StatCard label="This Month" value={filteredSalvations.filter(s => new Date(s.salvation_date) > new Date(Date.now() - 30*24*60*60*1000)).length} icon="📅" color="#6366f1" />
         <StatCard label="Pending" value={filteredSalvations.filter(s => s.followup_status === 'PENDING').length} icon="⏰" color="#f59e0b" />
       </div>
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '14px', color: '#6b7280' }}>Showing {filteredSalvations.length} of {salvations.length}</span>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}>🔍</span>
-              <input value={searchTerm} onChange={function(e) { setSearchTerm(e.target.value); }} placeholder="Search salvations..." style={{ padding: '8px 12px 8px 36px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', width: '220px', backgroundColor: '#f9fafb' }} />
+              <input value={searchTerm} onChange={function(e) { setSearchTerm(e.target.value); }} placeholder="Search salvations..." style={{ padding: '8px 12px 8px 36px', border: '1.5px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', width: '220px', backgroundColor: '#fafbff', outline: 'none', transition: 'border-color 0.15s' }} onFocus={e => e.target.style.borderColor = '#6366f1'} onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
             </div>
-          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '8px 16px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer' }}>
             <option value="all">All Locations</option>
             {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
           </select>
