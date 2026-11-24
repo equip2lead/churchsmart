@@ -264,10 +264,10 @@ function DashboardPage({ onNavigate }) {
     <div>
       {/* Onboarding completion celebration */}
       {showCelebration && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', animation: 'cs-fade-in 0.3s' }}>
-          <div style={{ textAlign: 'center', backgroundColor: 'white', borderRadius: '24px', padding: '48px', maxWidth: '400px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', animation: 'cs-fade-in 0.3s' }}>
+          <div style={{ textAlign: 'center', backgroundColor: 'white', borderRadius: '24px', padding: '48px', maxWidth: '400px', boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)' }}>
             <p style={{ fontSize: '64px', margin: '0 0 16px' }}>🎉</p>
-            <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{t('allSetup')}</h2>
+            <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '800', color: '#1f2937', letterSpacing: '-0.02em' }}>{t('allSetup')}</h2>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '16px' }}>
               {[...Array(12)].map((_, i) => (
                 <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][i % 6], animation: `cs-confetti 0.6s ease-out ${i * 0.05}s both` }} />
@@ -283,15 +283,18 @@ function DashboardPage({ onNavigate }) {
           const hour = new Date().getHours();
           const greeting = hour < 12 ? t('goodMorning') : hour < 17 ? t('goodAfternoon') : t('goodEvening');
           const name = user?.name?.split(' ')[0] || '';
-          return `${greeting}${name ? ', ' + name : ''} 👋 ${t('churchOverview')}`;
+          return `${greeting}${name ? ', ' + name : ''} 👋`;
         })()}
-        actions={<Button onClick={fetchData} variant="secondary">🔄 Refresh</Button>}
+        actions={<Button onClick={fetchData} variant="secondary">🔄 {t('refresh') || 'Refresh'}</Button>}
       />
 
       {/* Location Filter */}
       {locations.length > 1 && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 20px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', color: '#4b5563', backgroundColor: 'white', cursor: 'pointer', fontWeight: '500' }}>
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', color: '#4b5563', backgroundColor: 'white', cursor: 'pointer', fontWeight: '500', outline: 'none', transition: 'border-color 0.15s' }}
+            onFocus={(e) => { e.target.style.borderColor = '#6366f1'; e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
+            onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }}
+          >
             <option value="all">📍 {t('allLocations')}</option>
             {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.is_main_campus ? `⭐ ${loc.name}` : loc.name}</option>)}
           </select>
@@ -330,16 +333,27 @@ function DashboardPage({ onNavigate }) {
             const allDone = steps.every(s => s.done);
             if (onboardingDismissed || allDone) return null;
             return (
-              <div style={{ backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '24px', marginBottom: '24px', position: 'relative' }}>
-                <button onClick={() => { setOnboardingDismissed(true); localStorage.setItem('churchsmart_onboarding_dismissed', 'true'); }} style={{ position: 'absolute', top: '12px', right: '12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '18px', color: '#6b7280' }} title="Dismiss">✕</button>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#312e81' }}>{t('gettingStarted')}</h3>
-                <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#4338ca' }}>{t('completeSteps')} ({steps.filter(s => s.done).length}/{steps.length})</p>
-                <div style={{ display: 'grid', gap: '10px' }}>
+              <div style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #e8ecff 100%)', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '24px', marginBottom: '24px', position: 'relative' }}>
+                <button onClick={() => { setOnboardingDismissed(true); localStorage.setItem('churchsmart_onboarding_dismissed', 'true'); }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e0e7ff'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
+                  style={{ position: 'absolute', top: '12px', right: '12px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '16px', color: '#6b7280', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }} title="Dismiss">✕</button>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '800', color: '#312e81', letterSpacing: '-0.01em' }}>{t('gettingStarted')}</h3>
+                <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#4338ca' }}>{t('completeSteps')}</p>
+                {/* Progress bar */}
+                <div style={{ margin: '12px 0 16px', height: '6px', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${(steps.filter(s => s.done).length / steps.length) * 100}%`, background: 'linear-gradient(90deg, #6366f1, #4f46e5)', borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                </div>
+                <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#6366f1', fontWeight: '600' }}>{steps.filter(s => s.done).length}/{steps.length} {t('completed') || 'completed'}</p>
+                <div style={{ display: 'grid', gap: '8px' }}>
                   {steps.map((step, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '18px' }}>{step.done ? '✅' : '☐'}</span>
-                      <span style={{ color: step.done ? '#166534' : '#374151', fontWeight: '500' }}>{step.label}</span>
-                      {!step.done && step.tab && <button onClick={() => { const e = document.querySelector(`[data-tab="${step.tab}"]`); if (e) e.click(); }} style={{ padding: '2px 10px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '6px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer' }}>{t('go')}</button>}
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', backgroundColor: step.done ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.7)', borderRadius: '10px' }}>
+                      <span style={{ fontSize: '16px' }}>{step.done ? '✅' : '⬜'}</span>
+                      <span style={{ flex: 1, color: step.done ? '#166534' : '#374151', fontWeight: '500', fontSize: '14px', textDecoration: step.done ? 'line-through' : 'none', opacity: step.done ? 0.7 : 1 }}>{step.label}</span>
+                      {!step.done && step.tab && <button onClick={() => { const e = document.querySelector(`[data-tab="${step.tab}"]`); if (e) e.click(); }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#4f46e5'; e.currentTarget.style.color = 'white'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = '#4f46e5'; }}
+                        style={{ padding: '4px 12px', fontSize: '12px', border: '1px solid #c7d2fe', borderRadius: '8px', backgroundColor: 'white', color: '#4f46e5', cursor: 'pointer', fontWeight: '600', transition: 'all 0.15s ease' }}>{t('go')} →</button>}
                     </div>
                   ))}
                 </div>
@@ -393,10 +407,10 @@ function DashboardPage({ onNavigate }) {
 
           {/* ─────────── ROW 2 · Trends ─────────── */}
           <div className="cs-dash-two" style={{ marginBottom: '16px' }}>
-            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>📈 {t('attendance_trend')}</h3>
-                <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('last_12_services')}</span>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#111827' }}>📈 {t('attendance_trend')}</h3>
+                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{t('last_12_services')}</span>
               </div>
               <DashLineChart
                 points={metrics.attendanceSeries}
@@ -407,16 +421,14 @@ function DashboardPage({ onNavigate }) {
             </div>
 
             {isFinanceVisible && (
-              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>💹 {t('giving_trend')}</h3>
-                  <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('last_6_months')}</span>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#111827' }}>💹 {t('giving_trend')}</h3>
+                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{t('last_6_months')}</span>
                 </div>
                 <DashBarChart
                   bars={metrics.givingSeries}
                   color="#10b981"
-                  /* Axis labels are compacted (12k) so they fit; the tooltip
-                     carries the exact figure. */
                   formatValue={(v) => compactNumber(v)}
                   emptyLabel={t('not_enough_data')}
                 />
@@ -427,15 +439,17 @@ function DashboardPage({ onNavigate }) {
           {/* ─────────── ROW 3 · Activity + events & actions ─────────── */}
           <div className="cs-dash-two" style={{ marginBottom: '16px' }}>
             {/* Recent activity */}
-            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>🔔 {t('recent_activity')}</h3>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#111827' }}>🔔 {t('recent_activity')}</h3>
                 <button
                   type="button"
                   onClick={() => onNavigate && onNavigate('settings')}
-                  style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '12px', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#6366f1'}
+                  style={{ border: 'none', background: 'none', padding: '4px 8px', color: '#6366f1', fontSize: '12px', fontWeight: '600', cursor: 'pointer', borderRadius: '6px', transition: 'color 0.15s' }}
                 >
-                  {t('view_all')}
+                  {t('view_all')} →
                 </button>
               </div>
 
@@ -446,12 +460,12 @@ function DashboardPage({ onNavigate }) {
                   {recentActivity.map((log, i) => {
                     const meta = activityMeta(log);
                     return (
-                      <div key={log.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid #f3f4f6' }}>
-                        <span style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', backgroundColor: `${meta.color}14` }}>
+                      <div key={log.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid #f5f5fa' }}>
+                        <span style={{ flexShrink: 0, width: '30px', height: '30px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', background: `linear-gradient(135deg, ${meta.color}10, ${meta.color}18)` }}>
                           {meta.icon}
                         </span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: '1.45' }}>{meta.text}</p>
+                          <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: '1.45', fontWeight: '500' }}>{meta.text}</p>
                           <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{timeAgo(log.created_at)}</p>
                         </div>
                       </div>
@@ -462,16 +476,18 @@ function DashboardPage({ onNavigate }) {
             </div>
 
             {/* Upcoming events + quick actions */}
-            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div>
-                <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>📅 {t('upcomingEvents')}</h3>
+                <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '700', color: '#111827' }}>📅 {t('upcomingEvents')}</h3>
                 {upcomingEvents.length === 0 ? (
                   <div style={{ padding: '20px 0', textAlign: 'center' }}>
                     <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#9ca3af' }}>{t('no_upcoming_events')}</p>
                     <button
                       type="button"
                       onClick={() => onNavigate && onNavigate('services')}
-                      style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = '#6366f1'}
+                      style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'color 0.15s' }}
                     >
                       {t('create_event')} →
                     </button>
@@ -481,10 +497,13 @@ function DashboardPage({ onNavigate }) {
                     {upcomingEvents.map((item, i) => {
                       const dayInfo = getDaysLabel(item.daysUntil);
                       return (
-                        <div key={item.id || i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', backgroundColor: '#f9fafb', borderRadius: '10px', borderLeft: `3px solid ${item.color}` }}>
+                        <div key={item.id || i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', backgroundColor: '#fafbff', borderRadius: '12px', borderLeft: `3px solid ${item.color}`, transition: 'background-color 0.15s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f7ff'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fafbff'}
+                        >
                           <span style={{ fontSize: '18px' }}>{item.icon}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '500', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
+                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
                             <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#6b7280' }}>
                               {formatDate(item.date)}{item.time ? ` · ${formatTime(item.time)}` : ''}
                             </p>
@@ -497,8 +516,8 @@ function DashboardPage({ onNavigate }) {
                 )}
               </div>
 
-              <div style={{ paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>⚡ {t('quickActions')}</h3>
+              <div style={{ paddingTop: '16px', borderTop: '1px solid #f0f0f5' }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '700', color: '#111827' }}>⚡ {t('quickActions')}</h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {[
                     { icon: '👥', label: t('addMember'), tab: 'members' },
@@ -510,7 +529,9 @@ function DashboardPage({ onNavigate }) {
                       key={action.tab}
                       type="button"
                       onClick={() => onNavigate && onNavigate(action.tab)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '9999px', border: '1px solid #e5e7eb', backgroundColor: 'white', color: '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c7d2fe'; e.currentTarget.style.backgroundColor = '#fafbff'; e.currentTarget.style.color = '#4f46e5'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = '#374151'; }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', border: '1px solid #e5e7eb', backgroundColor: 'white', color: '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s ease' }}
                     >
                       <span>{action.icon}</span>{action.label}
                     </button>
@@ -521,18 +542,21 @@ function DashboardPage({ onNavigate }) {
           </div>
 
           {/* ─────────── ROW 4 · Birthdays ─────────── */}
-          <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div className="cs-dash-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>🎂 {t('upcomingBirthdays')}</h3>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#111827' }}>🎂 {t('upcomingBirthdays')}</h3>
               {whatsappActive ? (
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#166534', backgroundColor: '#dcfce7', padding: '4px 10px', borderRadius: '9999px' }}>
-                  {t('auto_greetings_enabled')} ✅
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#166534', backgroundColor: '#dcfce7', padding: '4px 10px', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
+                  {t('auto_greetings_enabled')}
                 </span>
               ) : (
                 <button
                   type="button"
                   onClick={() => onNavigate && onNavigate('settings')}
-                  style={{ border: 'none', background: 'none', padding: 0, color: '#6366f1', fontSize: '12px', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#6366f1'}
+                  style={{ border: 'none', background: 'none', padding: '4px 8px', color: '#6366f1', fontSize: '12px', fontWeight: '600', cursor: 'pointer', borderRadius: '6px', transition: 'color 0.15s' }}
                 >
                   {t('enable_whatsapp_greetings')} →
                 </button>
@@ -544,7 +568,10 @@ function DashboardPage({ onNavigate }) {
             ) : (
               <div className="cs-birthday-strip">
                 {upcomingBirthdays.map((m, i) => (
-                  <div key={m.id || i} style={{ width: '104px', textAlign: 'center', padding: '12px 8px', borderRadius: '12px', backgroundColor: m.daysUntil === 0 ? '#fef3c7' : '#f9fafb' }}>
+                  <div key={m.id || i} style={{ width: '108px', textAlign: 'center', padding: '14px 8px', borderRadius: '14px', backgroundColor: m.daysUntil === 0 ? '#fef3c7' : '#fafbff', border: m.daysUntil === 0 ? '1px solid #fde68a' : '1px solid #f0f0f5', transition: 'transform 0.15s ease' }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
                       <InitialsAvatar name={`${m.first_name || ''} ${m.last_name || ''}`} color={m.daysUntil === 0 ? '#f59e0b' : '#6366f1'} />
                     </div>
