@@ -260,16 +260,16 @@ function StatCard({ label, value, icon, color = '#6366f1', trend }) {
   }, [value, isNumber]);
   return (
     <div
-      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }}
-      style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default' }}>
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'; }}
+      style={{ backgroundColor: 'white', borderRadius: '16px', padding: '22px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', color: '#111827', transition: 'all 0.2s ease', cursor: 'default' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 8px 0' }}>{label}</p>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', margin: 0, color: '#111827' }}>{isNumber ? display : value}</p>
-          {trend && <p style={{ fontSize: '12px', color: typeof trend === 'string' && trend.startsWith('+') ? '#10b981' : '#ef4444', margin: '8px 0 0 0' }}>{trend}</p>}
+          <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px 0', fontWeight: '500' }}>{label}</p>
+          <p style={{ fontSize: '28px', fontWeight: '800', margin: 0, color: '#111827', letterSpacing: '-0.02em' }}>{isNumber ? display : value}</p>
+          {trend && <p style={{ fontSize: '12px', color: typeof trend === 'string' && trend.startsWith('+') ? '#10b981' : '#ef4444', margin: '8px 0 0 0', fontWeight: '600' }}>{trend}</p>}
         </div>
-        <div style={{ width: '48px', height: '48px', backgroundColor: `${color}15`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+        <div style={{ width: '48px', height: '48px', background: `linear-gradient(135deg, ${color}12, ${color}20)`, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
           {icon}
         </div>
       </div>
@@ -279,24 +279,25 @@ function StatCard({ label, value, icon, color = '#6366f1', trend }) {
 
 function StatusBadge({ status }) {
   const colors = {
-    'ACTIVE': { bg: '#dcfce7', text: '#166534' },
-    'INACTIVE': { bg: '#fee2e2', text: '#991b1b' },
-    'NOT_STARTED': { bg: '#fef9c3', text: '#854d0e' },
-    'IN_PROGRESS': { bg: '#dbeafe', text: '#1e40af' },
-    'COMPLETED': { bg: '#dcfce7', text: '#166534' },
-    'BECAME_MEMBER': { bg: '#d1fae5', text: '#065f46' },
-    'PENDING': { bg: '#fef9c3', text: '#854d0e' },
-    'NEW': { bg: '#dbeafe', text: '#1e40af' },
-    'TITHE': { bg: '#e0e7ff', text: '#4338ca' },
-    'OFFERING': { bg: '#fef3c7', text: '#92400e' },
-    'MISSIONS': { bg: '#d1fae5', text: '#065f46' },
-    'CELL': { bg: '#e0e7ff', text: '#4338ca' },
-    'DEPARTMENT': { bg: '#fce7f3', text: '#9d174d' },
+    'ACTIVE': { bg: '#dcfce7', text: '#166534', dot: '#22c55e' },
+    'INACTIVE': { bg: '#fee2e2', text: '#991b1b', dot: '#ef4444' },
+    'NOT_STARTED': { bg: '#fef9c3', text: '#854d0e', dot: '#eab308' },
+    'IN_PROGRESS': { bg: '#dbeafe', text: '#1e40af', dot: '#3b82f6' },
+    'COMPLETED': { bg: '#dcfce7', text: '#166534', dot: '#22c55e' },
+    'BECAME_MEMBER': { bg: '#d1fae5', text: '#065f46', dot: '#10b981' },
+    'PENDING': { bg: '#fef9c3', text: '#854d0e', dot: '#eab308' },
+    'NEW': { bg: '#dbeafe', text: '#1e40af', dot: '#3b82f6' },
+    'TITHE': { bg: '#e0e7ff', text: '#4338ca', dot: '#6366f1' },
+    'OFFERING': { bg: '#fef3c7', text: '#92400e', dot: '#f59e0b' },
+    'MISSIONS': { bg: '#d1fae5', text: '#065f46', dot: '#10b981' },
+    'CELL': { bg: '#e0e7ff', text: '#4338ca', dot: '#6366f1' },
+    'DEPARTMENT': { bg: '#fce7f3', text: '#9d174d', dot: '#ec4899' },
   };
-  const color = colors[status] || { bg: '#f3f4f6', text: '#374151' };
-  
+  const color = colors[status] || { bg: '#f3f4f6', text: '#374151', dot: '#9ca3af' };
+
   return (
-    <span style={{ padding: '4px 12px', borderRadius: '9999px', fontSize: '12px', fontWeight: '500', backgroundColor: color.bg, color: color.text }}>
+    <span style={{ padding: '4px 12px', borderRadius: '9999px', fontSize: '11px', fontWeight: '600', backgroundColor: color.bg, color: color.text, display: 'inline-flex', alignItems: 'center', gap: '6px', letterSpacing: '0.02em' }}>
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: color.dot, flexShrink: 0 }} />
       {status?.replace(/_/g, ' ')}
     </span>
   );
@@ -304,43 +305,57 @@ function StatusBadge({ status }) {
 
 function Modal({ isOpen, onClose, title, children, width = '500px' }) {
   if (!isOpen) return null;
-  
+
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-      <div className="cs-modal-body" style={{ backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: width, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>{title}</h3>
-          <button onClick={onClose} style={{ padding: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '20px' }}>✕</button>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', animation: 'cs-fade-in 0.15s ease' }}>
+      <div className="cs-modal-body" style={{ backgroundColor: 'white', borderRadius: '20px', width: '100%', maxWidth: width, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)', animation: 'cs-modal-enter 0.2s ease' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, #fafbff 0%, #f8f9fc 100%)' }}>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111827', letterSpacing: '-0.01em' }}>{title}</h3>
+          <button
+            onClick={onClose}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
+            style={{ padding: '6px 8px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '18px', color: '#9ca3af', borderRadius: '8px', transition: 'all 0.15s ease', lineHeight: 1 }}
+          >✕</button>
         </div>
         <div style={{ padding: '24px', overflowY: 'auto' }}>
           {children}
         </div>
       </div>
+      <style dangerouslySetInnerHTML={{ __html: '@keyframes cs-modal-enter{from{opacity:0;transform:scale(0.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}' }} />
     </div>
   );
 }
 
 function FormInput({ label, type = 'text', value, onChange, placeholder, required, options }) {
-  const inputStyle = { width: '100%', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' };
-  
+  const [focused, setFocused] = useState(false);
+  const inputStyle = {
+    width: '100%', padding: '11px 14px',
+    border: focused ? '1.5px solid #6366f1' : '1px solid #e5e7eb',
+    borderRadius: '12px', fontSize: '15px', outline: 'none', boxSizing: 'border-box', minHeight: '44px',
+    backgroundColor: focused ? '#fafbff' : 'white',
+    boxShadow: focused ? '0 0 0 3px rgba(99,102,241,0.08)' : 'none',
+    transition: 'all 0.2s ease', color: '#111827'
+  };
+
   return (
     <div style={{ marginBottom: '16px' }}>
-      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px', letterSpacing: '0.01em' }}>
         {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
       </label>
       {type === 'select' ? (
-        <select value={value} onChange={onChange} style={inputStyle}>
+        <select value={value} onChange={onChange} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} style={inputStyle}>
           <option value="">Select...</option>
           {options?.map((opt, i) => (
             <option key={i} value={opt.value}>{opt.label}</option>
           ))}
         </select>
       ) : type === 'textarea' ? (
-        <textarea value={value} onChange={onChange} placeholder={placeholder} rows={4} style={inputStyle} />
+        <textarea value={value} onChange={onChange} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} placeholder={placeholder} rows={4} style={inputStyle} />
       ) : type === 'file' ? (
         <input type="file" onChange={onChange} accept="image/*" style={inputStyle} />
       ) : (
-        <input type={type} value={value} onChange={onChange} placeholder={placeholder} style={inputStyle} />
+        <input type={type} value={value} onChange={onChange} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} placeholder={placeholder} style={inputStyle} />
       )}
     </div>
   );
@@ -364,11 +379,18 @@ function AccessDenied({ onNavigate }) {
   };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', textAlign: 'center' }}>
-      <span style={{ fontSize: '64px', marginBottom: '16px' }}>🔒</span>
-      <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{t('accessDenied')}</h2>
-      <p style={{ margin: 0, fontSize: '15px', color: '#6b7280', maxWidth: '440px' }}>{t('noPermission')}</p>
-      <p style={{ margin: '8px 0 20px', fontSize: '13px', color: '#9ca3af', maxWidth: '440px' }}>{t('contactAdmin')}</p>
-      <button onClick={goDashboard} style={{ padding: '10px 20px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+      <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+        <span style={{ fontSize: '36px' }}>🔒</span>
+      </div>
+      <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '800', color: '#1f2937', letterSpacing: '-0.02em' }}>{t('accessDenied')}</h2>
+      <p style={{ margin: 0, fontSize: '15px', color: '#6b7280', maxWidth: '440px', lineHeight: '1.5' }}>{t('noPermission')}</p>
+      <p style={{ margin: '8px 0 24px', fontSize: '13px', color: '#9ca3af', maxWidth: '440px' }}>{t('contactAdmin')}</p>
+      <button
+        onClick={goDashboard}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.3)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(99,102,241,0.25)'; }}
+        style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(99,102,241,0.25)', transition: 'all 0.15s ease' }}
+      >
         {t('goToDashboard')}
       </button>
     </div>
@@ -383,23 +405,25 @@ const NoAccessPage = AccessDenied;
 // ==========================================
 function Button({ children, onClick, variant = 'primary', disabled, type = 'button', fullWidth }) {
   const styles = {
-    primary: { background: 'linear-gradient(135deg, #6366f1, #3b82f6)', color: 'white', border: 'none' },
-    secondary: { background: 'white', color: '#374151', border: '1px solid #e5e7eb' },
-    danger: { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' },
-    success: { background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' },
-    sms: { background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0' },
-    whatsapp: { background: '#dcfce7', color: '#166534', border: '1px solid #22c55e' },
+    primary: { background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white', border: 'none', boxShadow: '0 2px 8px rgba(99,102,241,0.3)' },
+    secondary: { background: 'white', color: '#374151', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
+    danger: { background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', color: '#dc2626', border: '1px solid #fecaca', boxShadow: 'none' },
+    success: { background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', color: '#166534', border: '1px solid #bbf7d0', boxShadow: 'none' },
+    sms: { background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', color: '#166534', border: '1px solid #bbf7d0', boxShadow: 'none' },
+    whatsapp: { background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)', color: '#166534', border: '1px solid #22c55e', boxShadow: '0 2px 8px rgba(34,197,94,0.2)' },
   };
-  
+
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
+      onMouseEnter={(e) => { if (!disabled) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.filter = 'brightness(1.05)'; } }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.filter = 'brightness(1)'; }}
       style={{
         ...styles[variant],
-        padding: '12px 24px',
-        borderRadius: '10px',
+        padding: '11px 22px',
+        borderRadius: '12px',
         fontSize: '14px',
         fontWeight: '600',
         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -408,7 +432,9 @@ function Button({ children, onClick, variant = 'primary', disabled, type = 'butt
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '8px'
+        gap: '8px',
+        transition: 'all 0.15s ease',
+        letterSpacing: '0.01em'
       }}
     >
       {children}
@@ -419,9 +445,11 @@ function Button({ children, onClick, variant = 'primary', disabled, type = 'butt
 function ConfirmDialog({ isOpen, onClose, onConfirm, title, message }) {
   const { t } = useLanguage();
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} width="400px">
-      <p style={{ color: '#6b7280', marginBottom: '24px' }}>{message}</p>
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+    <Modal isOpen={isOpen} onClose={onClose} title={title} width="420px">
+      <div style={{ padding: '4px 0 20px' }}>
+        <p style={{ color: '#4b5563', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>{message}</p>
+      </div>
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid #f0f0f5' }}>
         <Button variant="secondary" onClick={onClose}>{t('cancel')}</Button>
         <Button variant="danger" onClick={onConfirm}>{t('delete')}</Button>
       </div>
@@ -431,31 +459,33 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, message }) {
 
 function DataTable({ columns, data, onEdit, onDelete, onSMS, emptyMessage = 'No data found', pageSize = 50 }) {
   const [dtPage, setDtPage] = useState(1);
+  const [hoveredRow, setHoveredRow] = useState(null);
   const dtTotal = Math.ceil((data || []).length / pageSize);
   const dtPaged = (data || []).slice((dtPage - 1) * pageSize, dtPage * pageSize);
   useEffect(function() { setDtPage(1); }, [data]);
   if (!data || data.length === 0) {
     return (
-      <div style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
-        <p style={{ fontSize: '48px', marginBottom: '16px' }}>📭</p>
-        <p>{emptyMessage}</p>
+      <div style={{ padding: '64px 24px', textAlign: 'center', color: '#6b7280' }}>
+        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>📭</div>
+        <p style={{ fontSize: '15px', fontWeight: '500', color: '#374151', margin: '0 0 4px' }}>{emptyMessage}</p>
+        <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>Records will appear here once added</p>
       </div>
     );
   }
 
   return (
     <>
-    <div className="cs-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+    <div className="cs-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: '12px', border: '1px solid #f0f0f5' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-        <thead style={{ backgroundColor: '#f9fafb' }}>
-          <tr>
+        <thead>
+          <tr style={{ background: 'linear-gradient(135deg, #f8faff 0%, #f0f0f8 100%)' }}>
             {columns.map((col, i) => (
-              <th key={i} style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+              <th key={i} style={{ textAlign: 'left', padding: '14px 16px', fontSize: '11px', fontWeight: '700', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', borderBottom: '2px solid #e0e7ff' }}>
                 {col.header}
               </th>
             ))}
             {(onEdit || onDelete || onSMS) && (
-              <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>
+              <th style={{ textAlign: 'right', padding: '14px 16px', fontSize: '11px', fontWeight: '700', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid #e0e7ff' }}>
                 Actions
               </th>
             )}
@@ -463,23 +493,48 @@ function DataTable({ columns, data, onEdit, onDelete, onSMS, emptyMessage = 'No 
         </thead>
         <tbody>
           {dtPaged.map((row, rowIndex) => (
-            <tr key={rowIndex} style={{ borderTop: '1px solid #e5e7eb' }}>
+            <tr
+              key={rowIndex}
+              onMouseEnter={() => setHoveredRow(rowIndex)}
+              onMouseLeave={() => setHoveredRow(null)}
+              style={{
+                borderTop: '1px solid #f3f4f6',
+                backgroundColor: hoveredRow === rowIndex ? '#f8faff' : 'white',
+                transition: 'background-color 0.15s ease'
+              }}
+            >
               {columns.map((col, colIndex) => (
-                <td key={colIndex} style={{ padding: '16px' }}>
+                <td key={colIndex} style={{ padding: '14px 16px', fontSize: '14px', color: '#374151' }}>
                   {col.render ? col.render(row) : row[col.key]}
                 </td>
               ))}
               {(onEdit || onDelete || onSMS) && (
-                <td style={{ padding: '16px', textAlign: 'right' }}>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                     {onSMS && (
-                      <button onClick={() => onSMS(row)} style={{ padding: '8px', border: 'none', background: '#dcfce7', borderRadius: '8px', cursor: 'pointer' }} title="Send SMS">📱</button>
+                      <button
+                        onClick={() => onSMS(row)}
+                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(34,197,94,0.25)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                        style={{ padding: '7px 10px', border: '1px solid #bbf7d0', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s ease', fontSize: '14px' }}
+                        title="Send SMS"
+                      >📱</button>
                     )}
                     {onEdit && (
-                      <button onClick={() => onEdit(row)} style={{ padding: '8px', border: 'none', background: '#f3f4f6', borderRadius: '8px', cursor: 'pointer' }}>✏️</button>
+                      <button
+                        onClick={() => onEdit(row)}
+                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(99,102,241,0.2)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                        style={{ padding: '7px 10px', border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f5f3ff, #eef2ff)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s ease', fontSize: '14px' }}
+                      >✏️</button>
                     )}
                     {onDelete && (
-                      <button onClick={() => onDelete(row)} style={{ padding: '8px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer' }}>🗑️</button>
+                      <button
+                        onClick={() => onDelete(row)}
+                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(239,68,68,0.2)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                        style={{ padding: '7px 10px', border: '1px solid #fecaca', background: 'linear-gradient(135deg, #fff5f5, #fef2f2)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s ease', fontSize: '14px' }}
+                      >🗑️</button>
                     )}
                   </div>
                 </td>
@@ -490,10 +545,29 @@ function DataTable({ columns, data, onEdit, onDelete, onSMS, emptyMessage = 'No 
       </table>
     </div>
     {dtTotal > 1 && (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', padding: '16px' }}>
-        <button onClick={function(){setDtPage(function(p){return Math.max(1,p-1)})}} disabled={dtPage===1} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: dtPage===1 ? '#f9fafb' : 'white', color: dtPage===1 ? '#d1d5db' : '#4b5563', cursor: dtPage===1 ? 'default' : 'pointer', fontSize: '14px' }}>Previous</button>
-        <span style={{ fontSize: '14px', color: '#6b7280' }}>Page {dtPage} of {dtTotal}</span>
-        <button onClick={function(){setDtPage(function(p){return Math.min(dtTotal,p+1)})}} disabled={dtPage>=dtTotal} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: dtPage>=dtTotal ? '#f9fafb' : 'white', color: dtPage>=dtTotal ? '#d1d5db' : '#4b5563', cursor: dtPage>=dtTotal ? 'default' : 'pointer', fontSize: '14px' }}>Next</button>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '20px 16px' }}>
+        <button
+          onClick={function(){setDtPage(function(p){return Math.max(1,p-1)})}}
+          disabled={dtPage===1}
+          style={{ padding: '8px 18px', border: '1px solid #e0e7ff', borderRadius: '10px', backgroundColor: dtPage===1 ? '#f9fafb' : 'white', color: dtPage===1 ? '#d1d5db' : '#4f46e5', cursor: dtPage===1 ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.15s ease' }}
+        >← Prev</button>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {Array.from({ length: Math.min(dtTotal, 5) }, (_, i) => {
+            let pg;
+            if (dtTotal <= 5) pg = i + 1;
+            else if (dtPage <= 3) pg = i + 1;
+            else if (dtPage >= dtTotal - 2) pg = dtTotal - 4 + i;
+            else pg = dtPage - 2 + i;
+            return (
+              <button key={pg} onClick={() => setDtPage(pg)} style={{ width: '36px', height: '36px', border: 'none', borderRadius: '10px', backgroundColor: pg === dtPage ? '#6366f1' : 'transparent', color: pg === dtPage ? 'white' : '#6b7280', cursor: 'pointer', fontSize: '13px', fontWeight: pg === dtPage ? '700' : '500', transition: 'all 0.15s ease' }}>{pg}</button>
+            );
+          })}
+        </div>
+        <button
+          onClick={function(){setDtPage(function(p){return Math.min(dtTotal,p+1)})}}
+          disabled={dtPage>=dtTotal}
+          style={{ padding: '8px 18px', border: '1px solid #e0e7ff', borderRadius: '10px', backgroundColor: dtPage>=dtTotal ? '#f9fafb' : 'white', color: dtPage>=dtTotal ? '#d1d5db' : '#4f46e5', cursor: dtPage>=dtTotal ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.15s ease' }}
+        >Next →</button>
       </div>
     )}
     </>
@@ -502,27 +576,40 @@ function DataTable({ columns, data, onEdit, onDelete, onSMS, emptyMessage = 'No 
 
 function PageHeader({ title, subtitle, actions }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
       <div>
-        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>{title}</h1>
-        {subtitle && <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>{subtitle}</p>}
+        <h1 style={{ margin: 0, fontSize: '28px', fontWeight: '800', color: '#111827', letterSpacing: '-0.02em', lineHeight: '1.2' }}>{title}</h1>
+        {subtitle && <p style={{ margin: '6px 0 0 0', color: '#6b7280', fontSize: '15px', lineHeight: '1.5' }}>{subtitle}</p>}
       </div>
-      {actions && <div style={{ display: 'flex', gap: '12px' }}>{actions}</div>}
+      {actions && <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>{actions}</div>}
     </div>
   );
 }
 
 function SearchBar({ value, onChange, placeholder }) {
   const { t } = useLanguage();
+  const [focused, setFocused] = useState(false);
   return (
     <div style={{ position: 'relative' }}>
-      <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}>🔍</span>
+      <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: focused ? '#6366f1' : '#9ca3af', transition: 'color 0.15s ease', fontSize: '14px' }}>🔍</span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         placeholder={placeholder || t('search')}
-        style={{ padding: '10px 16px 10px 42px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', width: '280px', outline: 'none' }}
+        style={{
+          padding: '10px 16px 10px 42px',
+          border: focused ? '1.5px solid #6366f1' : '1px solid #e5e7eb',
+          borderRadius: '12px',
+          fontSize: '14px',
+          width: '280px',
+          outline: 'none',
+          backgroundColor: focused ? '#fafbff' : '#f9fafb',
+          boxShadow: focused ? '0 0 0 3px rgba(99,102,241,0.1)' : 'none',
+          transition: 'all 0.2s ease'
+        }}
       />
     </div>
   );
@@ -530,8 +617,9 @@ function SearchBar({ value, onChange, placeholder }) {
 
 function LoadingSpinner() {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '48px' }}>
-      <div style={{ width: '32px', height: '32px', border: '3px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'cs-spin 0.7s linear infinite' }} />
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '48px', gap: '12px' }}>
+      <div style={{ width: '36px', height: '36px', border: '3px solid #e0e7ff', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'cs-spin 0.7s linear infinite' }} />
+      <span style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '500' }}>Loading...</span>
     </div>
   );
 }
@@ -702,8 +790,8 @@ function Skeleton({ width = '100%', height = '14px', radius = '6px', style = {} 
 
 function DashStatSkeleton() {
   return (
-    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-      <Skeleton width="36px" height="36px" radius="10px" />
+    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
+      <Skeleton width="40px" height="40px" radius="12px" />
       <Skeleton width="60%" height="28px" style={{ marginTop: '16px' }} />
       <Skeleton width="40%" height="12px" style={{ marginTop: '10px' }} />
     </div>
@@ -712,7 +800,7 @@ function DashStatSkeleton() {
 
 function DashPanelSkeleton({ height = '240px' }) {
   return (
-    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5' }}>
       <Skeleton width="40%" height="16px" />
       <Skeleton width="100%" height={height} style={{ marginTop: '16px' }} />
     </div>
@@ -726,28 +814,28 @@ function DashPanelSkeleton({ height = '240px' }) {
  */
 function DashStatCard({ icon, label, value, display, sublabel, trend, trendLabel, color = '#6366f1' }) {
   const animated = useCountUp(value);
-  // `display` formats the animated number (currency, percentages); without it
-  // the raw count is shown.
   const shown = display ? display(animated) : Math.round(animated).toLocaleString();
   const up = trend != null && trend >= 0;
 
   return (
     <div
       className="cs-dash-card"
-      style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'; }}
+      style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', transition: 'all 0.2s ease', cursor: 'default' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-        <span style={{ width: '36px', height: '36px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', backgroundColor: `${color}14` }}>
+        <span style={{ width: '40px', height: '40px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', background: `linear-gradient(135deg, ${color}12, ${color}20)` }}>
           {icon}
         </span>
         {trend != null && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: '600', backgroundColor: up ? '#dcfce7' : '#fef2f2', color: up ? '#166534' : '#991b1b' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '9999px', fontSize: '11px', fontWeight: '600', backgroundColor: up ? '#dcfce7' : '#fef2f2', color: up ? '#166534' : '#991b1b' }}>
             {up ? '↑' : '↓'} {Math.abs(Math.round(trend))}%
           </span>
         )}
       </div>
-      <p style={{ margin: '14px 0 0 0', fontSize: '26px', fontWeight: '700', color: '#111827', lineHeight: '1.15', wordBreak: 'break-word' }}>{shown}</p>
-      <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>{label}</p>
+      <p style={{ margin: '14px 0 0 0', fontSize: '26px', fontWeight: '800', color: '#111827', lineHeight: '1.15', wordBreak: 'break-word', letterSpacing: '-0.02em' }}>{shown}</p>
+      <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>{label}</p>
       {sublabel && <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>{sublabel}</p>}
       {trend != null && trendLabel && (
         <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#9ca3af' }}>{trendLabel}</p>
@@ -973,7 +1061,7 @@ function InitialsAvatar({ name, color = '#6366f1', size = 44 }) {
     .join('')
     .toUpperCase() || '?';
   return (
-    <div style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: `${color}1a`, color, fontWeight: '700', fontSize: `${Math.round(size / 2.9)}px` }}>
+    <div style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg, ${color}18, ${color}28)`, color, fontWeight: '700', fontSize: `${Math.round(size / 2.9)}px`, letterSpacing: '0.02em' }}>
       {initials}
     </div>
   );
