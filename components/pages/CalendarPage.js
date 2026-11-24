@@ -791,7 +791,7 @@ function CalendarPage() {
                 day.events.map((ev, i) => (
                   <div key={`${day.date}-${i}`} style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '8px 12px', borderRadius: '8px', backgroundColor: '#f9fafb',
+                    padding: '8px 12px', borderRadius: '8px', backgroundColor: '#fafbff',
                     fontSize: '13px',
                   }}>
                     <span style={{ color: '#9ca3af', fontSize: '12px', minWidth: '70px' }}>{day.date.slice(5)}</span>
