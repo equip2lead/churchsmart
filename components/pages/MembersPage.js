@@ -370,48 +370,56 @@ function MembersPage({ plan, onNavigate }) {
       </div>
 
       {/* Members by Location */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>📍 Members by Location</h3>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', color: '#111827', marginBottom: '28px' }}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', letterSpacing: '-0.01em' }}>📍 Members by Location</h3>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {locationStats.map((loc, i) => (
-            <div key={i} onClick={() => setFilterLocation(filterLocation === loc.id ? 'all' : loc.id)} style={{ padding: '16px 24px', backgroundColor: filterLocation === loc.id ? `${getLocationColor(loc.id)}20` : '#f9fafb', borderRadius: '12px', cursor: 'pointer', borderLeft: `4px solid ${getLocationColor(loc.id)}`, transition: 'all 0.2s', border: filterLocation === loc.id ? `2px solid ${getLocationColor(loc.id)}` : '2px solid transparent' }}>
-              <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: getLocationColor(loc.id) }}>{loc.count}</p>
-              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>{loc.name}</p>
-              {loc.is_main_campus && <span style={{ fontSize: '10px', color: '#6366f1' }}>Main Campus</span>}
+            <div key={i} onClick={() => setFilterLocation(filterLocation === loc.id ? 'all' : loc.id)}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+              style={{ padding: '16px 24px', backgroundColor: filterLocation === loc.id ? `${getLocationColor(loc.id)}12` : '#fafbff', borderRadius: '14px', cursor: 'pointer', borderLeft: `4px solid ${getLocationColor(loc.id)}`, transition: 'all 0.2s ease', border: filterLocation === loc.id ? `2px solid ${getLocationColor(loc.id)}` : '2px solid transparent' }}>
+              <p style={{ margin: 0, fontSize: '28px', fontWeight: '800', color: getLocationColor(loc.id), letterSpacing: '-0.02em' }}>{loc.count}</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>{loc.name}</p>
+              {loc.is_main_campus && <span style={{ fontSize: '10px', color: '#6366f1', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Main Campus</span>}
             </div>
           ))}
           {members.filter(m => !m.location_id).length > 0 && (
-            <div style={{ padding: '16px 24px', backgroundColor: '#f9fafb', borderRadius: '12px', borderLeft: '4px solid #9ca3af' }}>
-              <p style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#9ca3af' }}>{members.filter(m => !m.location_id).length}</p>
-              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>Unassigned</p>
+            <div style={{ padding: '16px 24px', backgroundColor: '#fafbff', borderRadius: '14px', borderLeft: '4px solid #9ca3af' }}>
+              <p style={{ margin: 0, fontSize: '28px', fontWeight: '800', color: '#9ca3af', letterSpacing: '-0.02em' }}>{members.filter(m => !m.location_id).length}</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>Unassigned</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', color: '#111827', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: '200px' }}>
             <input
               type="text"
               placeholder="🔍 Search members..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+              onFocus={(e) => { e.target.style.borderColor = '#6366f1'; e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
+              onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }}
+              style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', transition: 'all 0.15s' }}
             />
           </div>
-          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', backgroundColor: 'white' }}>
             <option value="all">All Locations</option>
             {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
           </select>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', backgroundColor: 'white' }}>
             <option value="all">All Statuses</option>
             <option value="ACTIVE">Active</option>
             <option value="INACTIVE">Inactive</option>
           </select>
           {(filterLocation !== 'all' || filterStatus !== 'all' || searchTerm) && (
-            <button onClick={() => { setFilterLocation('all'); setFilterStatus('all'); setSearchTerm(''); }} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px' }}>
+            <button onClick={() => { setFilterLocation('all'); setFilterStatus('all'); setSearchTerm(''); }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c7d2fe'; e.currentTarget.style.backgroundColor = '#fafbff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}
+              style={{ padding: '10px 16px', border: '1.5px solid #e5e7eb', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', fontSize: '14px', transition: 'all 0.15s', fontWeight: '500', color: '#6b7280' }}>
               🔄 Reset
             </button>
           )}
@@ -420,28 +428,28 @@ function MembersPage({ plan, onNavigate }) {
 
       {/* Members Table */}
       {loading ? <LoadingSpinner /> : (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>{t('showing')} {Math.min(memberPage*50, filteredMembers.length)} {t('of')} {filteredMembers.length} {t('members').toLowerCase()}</span>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '500' }}>{t('showing')} {Math.min(memberPage*50, filteredMembers.length)} {t('of')} {filteredMembers.length} {t('members').toLowerCase()}</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ backgroundColor: '#f9fafb' }}>
+              <thead style={{ backgroundColor: '#fafbff' }}>
                 <tr>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Member</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Contact</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Joined</th>
-                  <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Member</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Contact</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Location</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Joined</th>
+                  <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredMembers.slice((memberPage-1)*50, memberPage*50).map((member, index) => (
-                  <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                  <tr key={index} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fafbff'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }}>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ width: '40px', height: '40px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontWeight: '600', overflow: 'hidden', flexShrink: 0 }}>
+                        <div style={{ width: '40px', height: '40px', background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5', fontWeight: '600', overflow: 'hidden', flexShrink: 0 }}>
                           {member.photo_url ? (
                             <img src={member.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
@@ -474,17 +482,17 @@ function MembersPage({ plan, onNavigate }) {
                       {formatDate(member.membership_date || member.created_at)}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <button onClick={() => openModal(member)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', marginRight: '8px', fontSize: '12px' }}>✏️ Edit</button>
-                      <button onClick={() => setDeleteConfirm(member)} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', color: '#dc2626', fontSize: '12px' }}>🗑️</button>
+                      <button onClick={() => openModal(member)} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e0e7ff'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; }} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '8px', cursor: 'pointer', marginRight: '8px', fontSize: '12px', fontWeight: '500', transition: 'all 0.15s' }}>✏️ Edit</button>
+                      <button onClick={() => setDeleteConfirm(member)} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fecaca'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; }} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', color: '#dc2626', fontSize: '12px', fontWeight: '500', transition: 'all 0.15s' }}>🗑️</button>
                     </td>
                   </tr>
                 ))}
                 {filteredMembers.length === 0 && (
                   <tr>
                     <td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
-                      <span style={{ fontSize: '48px', display: 'block', marginBottom: '12px' }}>👥</span>
-                      <p style={{ fontSize: '16px', fontWeight: '500', color: '#374151', margin: '0 0 8px' }}>{members.length === 0 ? t('emptyMembers') : t('noResults')}</p>
-                      {members.length === 0 && <button onClick={() => openModal()} style={{ marginTop: '12px', padding: '10px 24px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>➕ {t('addMember')}</button>}
+                      <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><span style={{ fontSize: '28px' }}>👥</span></div>
+                      <p style={{ fontSize: '16px', fontWeight: '600', color: '#374151', margin: '0 0 8px' }}>{members.length === 0 ? t('emptyMembers') : t('noResults')}</p>
+                      {members.length === 0 && <button onClick={() => openModal()} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(79,70,229,0.3)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }} style={{ marginTop: '12px', padding: '10px 24px', background: 'linear-gradient(135deg, #4f46e5, #6366f1)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s' }}>➕ {t('addMember')}</button>}
                     </td>
                   </tr>
                 )}
@@ -492,10 +500,10 @@ function MembersPage({ plan, onNavigate }) {
             </table>
           </div>
           {filteredMembers.length > 50 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', padding: '16px' }}>
-              <button onClick={() => setMemberPage(p => Math.max(1, p-1))} disabled={memberPage===1} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: memberPage===1 ? '#f9fafb' : 'white', color: memberPage===1 ? '#d1d5db' : '#4b5563', cursor: memberPage===1 ? 'default' : 'pointer', fontSize: '14px' }}>{'← '+t('previous')}</button>
-              <span style={{ fontSize: '14px', color: '#6b7280' }}>{t('page')} {memberPage} {t('of')} {Math.ceil(filteredMembers.length/50)}</span>
-              <button onClick={() => setMemberPage(p => Math.min(Math.ceil(filteredMembers.length/50), p+1))} disabled={memberPage>=Math.ceil(filteredMembers.length/50)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: memberPage>=Math.ceil(filteredMembers.length/50) ? '#f9fafb' : 'white', color: memberPage>=Math.ceil(filteredMembers.length/50) ? '#d1d5db' : '#4b5563', cursor: memberPage>=Math.ceil(filteredMembers.length/50) ? 'default' : 'pointer', fontSize: '14px' }}>{t('next')+' →'}</button>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', padding: '16px', borderTop: '1px solid #f0f0f5' }}>
+              <button onClick={() => setMemberPage(p => Math.max(1, p-1))} disabled={memberPage===1} style={{ padding: '8px 16px', border: '1.5px solid #e5e7eb', borderRadius: '10px', backgroundColor: memberPage===1 ? '#f9fafb' : 'white', color: memberPage===1 ? '#d1d5db' : '#4b5563', cursor: memberPage===1 ? 'default' : 'pointer', fontSize: '13px', fontWeight: '500', transition: 'all 0.15s' }}>{'← '+t('previous')}</button>
+              <span style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '500' }}>{t('page')} {memberPage} {t('of')} {Math.ceil(filteredMembers.length/50)}</span>
+              <button onClick={() => setMemberPage(p => Math.min(Math.ceil(filteredMembers.length/50), p+1))} disabled={memberPage>=Math.ceil(filteredMembers.length/50)} style={{ padding: '8px 16px', border: '1.5px solid #e5e7eb', borderRadius: '10px', backgroundColor: memberPage>=Math.ceil(filteredMembers.length/50) ? '#f9fafb' : 'white', color: memberPage>=Math.ceil(filteredMembers.length/50) ? '#d1d5db' : '#4b5563', cursor: memberPage>=Math.ceil(filteredMembers.length/50) ? 'default' : 'pointer', fontSize: '13px', fontWeight: '500', transition: 'all 0.15s' }}>{t('next')+' →'}</button>
             </div>
           )}
         </div>

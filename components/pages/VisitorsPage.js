@@ -405,32 +405,35 @@ function VisitorsPage() {
       </div>
 
       {/* Auto Follow-up Section */}
-      <div style={{ backgroundColor: '#f0fdf4', borderRadius: '16px', padding: '20px', marginBottom: '24px', border: '1px solid #bbf7d0' }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#166534' }}>📱 Auto Follow-up Queue</h3>
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+      <div style={{ backgroundColor: '#f0fdf4', borderRadius: '16px', padding: '24px', marginBottom: '28px', border: '1px solid #bbf7d0' }}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#166534', letterSpacing: '-0.01em' }}>📱 Auto Follow-up Queue</h3>
+        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
           {visitors.filter(v => v.followup_status === 'NOT_STARTED' || v.followup_status === 'IN_PROGRESS').slice(0, 5).map((visitor, i) => {
             const days = getVisitorDays(visitor.visit_date);
             return (
-              <div key={i} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', minWidth: '200px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>{visitor.full_name}</p>
-                <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#6b7280' }}>Visited {days} day(s) ago</p>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div key={i}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'; }}
+                style={{ backgroundColor: 'white', borderRadius: '14px', padding: '16px', minWidth: '200px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', transition: 'all 0.2s ease' }}>
+                <p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px', color: '#111827' }}>{visitor.full_name}</p>
+                <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Visited {days} day(s) ago</p>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {days >= 1 && (
-                    <button onClick={() => sendAutoFollowUp(visitor, 1)} style={{ padding: '6px 12px', fontSize: '12px', backgroundColor: '#dcfce7', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#166534' }}>
+                    <button onClick={() => sendAutoFollowUp(visitor, 1)} onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.04)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }} style={{ padding: '5px 10px', fontSize: '11px', backgroundColor: '#dcfce7', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#166534', fontWeight: '600', transition: 'transform 0.15s' }}>
                       📱 Day 1
                     </button>
                   )}
                   {days >= 3 && (
-                    <button onClick={() => sendAutoFollowUp(visitor, 3)} style={{ padding: '6px 12px', fontSize: '12px', backgroundColor: '#dbeafe', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#1e40af' }}>
+                    <button onClick={() => sendAutoFollowUp(visitor, 3)} onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.04)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }} style={{ padding: '5px 10px', fontSize: '11px', backgroundColor: '#dbeafe', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#1e40af', fontWeight: '600', transition: 'transform 0.15s' }}>
                       📱 Day 3
                     </button>
                   )}
                   {days >= 7 && (
-                    <button onClick={() => sendAutoFollowUp(visitor, 7)} style={{ padding: '6px 12px', fontSize: '12px', backgroundColor: '#fef3c7', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#92400e' }}>
+                    <button onClick={() => sendAutoFollowUp(visitor, 7)} onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.04)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }} style={{ padding: '5px 10px', fontSize: '11px', backgroundColor: '#fef3c7', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#92400e', fontWeight: '600', transition: 'transform 0.15s' }}>
                       📱 Day 7
                     </button>
                   )}
-                  <button onClick={() => openSMSModal(visitor)} style={{ padding: '6px 12px', fontSize: '12px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+                  <button onClick={() => openSMSModal(visitor)} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e5e7eb'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; }} style={{ padding: '5px 10px', fontSize: '11px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', transition: 'all 0.15s' }}>
                     ✉️ Custom
                   </button>
                 </div>
@@ -438,15 +441,17 @@ function VisitorsPage() {
             );
           })}
           {visitors.filter(v => v.followup_status === 'NOT_STARTED' || v.followup_status === 'IN_PROGRESS').length === 0 && (
-            <p style={{ color: '#6b7280' }}>No visitors pending follow-up 🎉</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6b7280', fontWeight: '500' }}>
+              <span style={{ fontSize: '20px' }}>🎉</span> No visitors pending follow-up
+            </div>
           )}
         </div>
       </div>
 
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
+        <div style={{ padding: '20px', borderBottom: '1px solid #f0f0f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <SearchBar value={search} onChange={setSearch} />
-          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', backgroundColor: 'white' }}>
             <option value="all">All Locations</option>
             {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
           </select>

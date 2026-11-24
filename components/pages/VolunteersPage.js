@@ -224,39 +224,44 @@ function VolunteersPage() {
       </div>
 
       {/* Ministry Breakdown */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>📊 Volunteers by Ministry</h3>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', marginBottom: '28px' }}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', letterSpacing: '-0.01em', color: '#111827' }}>📊 Volunteers by Ministry</h3>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {ministryStats.map((m, i) => (
-            <div key={i} style={{ padding: '12px 20px', backgroundColor: `${ministryColors[m.ministry] || '#6b7280'}15`, borderRadius: '10px', borderLeft: `4px solid ${ministryColors[m.ministry] || '#6b7280'}` }}>
-              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: ministryColors[m.ministry] || '#6b7280' }}>{m.count}</p>
-              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>{m.ministry}</p>
+            <div key={i}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+              style={{ padding: '14px 22px', backgroundColor: `${ministryColors[m.ministry] || '#6b7280'}10`, borderRadius: '14px', borderLeft: `4px solid ${ministryColors[m.ministry] || '#6b7280'}`, transition: 'all 0.2s ease', cursor: 'default' }}>
+              <p style={{ margin: 0, fontSize: '24px', fontWeight: '800', color: ministryColors[m.ministry] || '#6b7280', letterSpacing: '-0.02em' }}>{m.count}</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>{m.ministry}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', color: '#111827', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', color: '#111827', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: '200px' }}>
             <input
               type="text"
               placeholder="🔍 Search volunteers..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
+              onFocus={(e) => { e.target.style.borderColor = '#6366f1'; e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
+              onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }}
+              style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', transition: 'all 0.15s' }}
             />
           </div>
-          <select value={filterMinistry} onChange={(e) => setFilterMinistry(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+          <select value={filterMinistry} onChange={(e) => setFilterMinistry(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', backgroundColor: 'white' }}>
             <option value="all">All Ministries</option>
             {ministries.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', backgroundColor: 'white' }}>
             <option value="all">All Statuses</option>
             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}>
+          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', cursor: 'pointer', backgroundColor: 'white' }}>
             <option value="all">All Locations</option>
             {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
           </select>
@@ -265,35 +270,35 @@ function VolunteersPage() {
 
       {/* Volunteers Table */}
       {loading ? <LoadingSpinner /> : (
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f5', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ backgroundColor: '#f9fafb' }}>
+              <thead style={{ backgroundColor: '#fafbff' }}>
                 <tr>
-                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Volunteer</th>
-                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Ministry</th>
-                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Role</th>
-                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
-                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Availability</th>
-                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Location</th>
-                  <th style={{ textAlign: 'left', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Contact</th>
-                  <th style={{ textAlign: 'right', padding: '16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Volunteer</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Ministry</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Role</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Availability</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Location</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Contact</th>
+                  <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '11px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredVolunteers.map((volunteer, index) => (
-                  <tr key={index} style={{ borderTop: '1px solid #e5e7eb' }}>
+                  <tr key={index} style={{ borderTop: '1px solid #f0f0f5', transition: 'background-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafbff'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                     <td style={{ padding: '16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ width: '40px', height: '40px', backgroundColor: `${ministryColors[volunteer.ministry] || '#6b7280'}20`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ministryColors[volunteer.ministry] || '#6b7280', fontWeight: '600', fontSize: '14px' }}>
+                        <div style={{ width: '40px', height: '40px', background: `linear-gradient(135deg, ${ministryColors[volunteer.ministry] || '#6b7280'}12, ${ministryColors[volunteer.ministry] || '#6b7280'}20)`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ministryColors[volunteer.ministry] || '#6b7280', fontWeight: '600', fontSize: '14px' }}>
                           {volunteer.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </div>
                         <div>
-                          <p style={{ margin: 0, fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <p style={{ margin: 0, fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             {volunteer.full_name}
                             {volunteer.is_team_leader && <span style={{ fontSize: '14px' }}>⭐</span>}
                           </p>
-                          {volunteer.email && <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280' }}>{volunteer.email}</p>}
+                          {volunteer.email && <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>{volunteer.email}</p>}
                         </div>
                       </div>
                     </td>
@@ -315,17 +320,18 @@ function VolunteersPage() {
                     </td>
                     <td style={{ padding: '16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button onClick={() => openModal(volunteer)} style={{ padding: '6px 12px', border: 'none', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>✏️ Edit</button>
-                        <button onClick={() => setDeleteConfirm(volunteer)} style={{ padding: '6px 12px', border: 'none', background: '#fef2f2', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑️</button>
+                        <button onClick={() => openModal(volunteer)} style={{ padding: '6px 14px', border: 'none', background: '#f3f4f6', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'all 0.15s' }} onMouseEnter={e => { e.target.style.backgroundColor = '#e5e7eb'; e.target.style.transform = 'translateY(-1px)'; }} onMouseLeave={e => { e.target.style.backgroundColor = '#f3f4f6'; e.target.style.transform = 'translateY(0)'; }}>✏️ Edit</button>
+                        <button onClick={() => setDeleteConfirm(volunteer)} style={{ padding: '6px 14px', border: 'none', background: '#fef2f2', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', color: '#dc2626', transition: 'all 0.15s' }} onMouseEnter={e => { e.target.style.backgroundColor = '#fee2e2'; e.target.style.transform = 'translateY(-1px)'; }} onMouseLeave={e => { e.target.style.backgroundColor = '#fef2f2'; e.target.style.transform = 'translateY(0)'; }}>🗑️</button>
                       </div>
                     </td>
                   </tr>
                 ))}
                 {filteredVolunteers.length === 0 && (
                   <tr>
-                    <td colSpan="7" style={{ padding: '48px', textAlign: 'center', color: '#6b7280' }}>
-                      <span style={{ fontSize: '48px' }}>🙋‍♂️</span>
-                      <p>No volunteers found</p>
+                    <td colSpan="8" style={{ padding: '64px 48px', textAlign: 'center', color: '#6b7280' }}>
+                      <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>🙋‍♂️</div>
+                      <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: '#374151', fontSize: '15px' }}>No volunteers found</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>Try adjusting your filters or add a new volunteer</p>
                     </td>
                   </tr>
                 )}
