@@ -219,22 +219,33 @@ export default function JoinPage({ params }) {
 
       // === Everything below is non-critical — errors won't block the user ===
 
-      // If role_id, create assignment (non-blocking)
-      if (linkInfo.role_id) {
-        try {
+      // Create role assignment so user appears in Role Assignments list
+      try {
+        let roleId = linkInfo.role_id;
+        // If no role_id on the link, look up the matching role by base_role name
+        if (!roleId) {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('id')
+            .eq('church_id', linkInfo.church_id)
+            .ilike('name', linkInfo.base_role || 'Volunteer')
+            .maybeSingle();
+          roleId = roleData?.id;
+        }
+        if (roleId) {
           await supabase
             .from('user_role_assignments')
             .insert({
               church_id: linkInfo.church_id,
               user_email: normalizedEmail,
               user_name: full_name.trim(),
-              role_id: linkInfo.role_id,
+              role_id: roleId,
               status: 'active',
               pending_base_role: linkInfo.base_role || 'VOLUNTEER',
               accepted_at: new Date().toISOString()
             });
-        } catch (e) { console.warn('Role assignment failed:', e); }
-      }
+        }
+      } catch (e) { console.warn('Role assignment failed:', e); }
 
       // Increment uses_count (non-blocking)
       try {
