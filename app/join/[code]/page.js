@@ -133,10 +133,10 @@ export default function JoinPage({ params }) {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      // Check if already a member of any church
+      // Check if already a member of this church
       const { data: existing } = await supabase
         .from('church_users')
-        .select('church_id')
+        .select('church_id, auth_id')
         .ilike('email', normalizedEmail)
         .eq('is_active', true)
         .limit(1)
@@ -156,20 +156,47 @@ export default function JoinPage({ params }) {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
-        options: { data: { full_name: full_name.trim() } }
+        options: {
+          data: { full_name: full_name.trim() },
+          emailRedirectTo: APP_URL
+        }
       });
 
-      if (authError) {
-        if (authError.message?.includes('already registered')) {
-          setError(t.errorAuthExists);
-        } else {
-          setError(t.errorFailed);
-        }
-        setSubmitting(false);
-        return;
-      }
+      let authId = null;
 
-      const authId = authData?.user?.id;
+      if (authError) {
+        // If "already registered", try to sign in — the user may have an auth account
+        // but no church_users entry (partial registration from a previous attempt)
+        if (authError.message?.includes('already registered')) {
+          const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password
+          });
+          if (signInErr) {
+            setError(t.errorAuthExists);
+            setSubmitting(false);
+            return;
+          }
+          authId = signInData?.user?.id;
+        } else {
+          console.error('Auth signup error:', authError);
+          setError(t.errorFailed);
+          setSubmitting(false);
+          return;
+        }
+      } else {
+        authId = authData?.user?.id;
+
+        // Handle Supabase email confirmation: if session is null, user needs confirmation.
+        // But we still proceed to create the church_users entry.
+        // signUp may return a user with empty identities if email exists and is unconfirmed.
+        if (authData?.user?.identities?.length === 0) {
+          // This email already exists but is unconfirmed — treat as "already registered"
+          setError(t.errorAuthExists);
+          setSubmitting(false);
+          return;
+        }
+      }
 
       // Create church_users entry
       const { error: cuError } = await supabase
@@ -190,53 +217,64 @@ export default function JoinPage({ params }) {
         return;
       }
 
-      // If role_id, create assignment
+      // === Everything below is non-critical — errors won't block the user ===
+
+      // If role_id, create assignment (non-blocking)
       if (linkInfo.role_id) {
+        try {
+          await supabase
+            .from('user_role_assignments')
+            .insert({
+              church_id: linkInfo.church_id,
+              user_email: normalizedEmail,
+              user_name: full_name.trim(),
+              role_id: linkInfo.role_id,
+              status: 'active',
+              pending_base_role: linkInfo.base_role || 'VOLUNTEER',
+              accepted_at: new Date().toISOString()
+            });
+        } catch (e) { console.warn('Role assignment failed:', e); }
+      }
+
+      // Increment uses_count (non-blocking)
+      try {
+        await supabase.rpc('increment_invite_link_uses', { link_id: linkInfo.id });
+      } catch {
+        try {
+          await supabase
+            .from('church_invite_links')
+            .update({ uses_count: (linkInfo.uses_count || 0) + 1 })
+            .eq('id', linkInfo.id);
+        } catch (e) { console.warn('Increment uses failed:', e); }
+      }
+
+      // Log activity (non-blocking)
+      try {
         await supabase
-          .from('user_role_assignments')
+          .from('activity_logs')
           .insert({
             church_id: linkInfo.church_id,
             user_email: normalizedEmail,
-            user_name: full_name.trim(),
-            role_id: linkInfo.role_id,
-            status: 'active',
-            pending_base_role: linkInfo.base_role || 'VOLUNTEER',
-            accepted_at: new Date().toISOString()
+            action: 'member_joined_via_link',
+            entity_type: 'church_user',
+            entity_name: full_name.trim(),
+            details: JSON.stringify({ base_role: linkInfo.base_role, link_code: code })
           });
-      }
+      } catch (e) { console.warn('Activity log failed:', e); }
 
-      // Increment uses_count
-      await supabase.rpc('increment_invite_link_uses', { link_id: linkInfo.id }).catch(() => {
-        // Fallback: direct update
-        supabase
-          .from('church_invite_links')
-          .update({ uses_count: (linkInfo.uses_count || 0) + 1 })
-          .eq('id', linkInfo.id)
-          .then(() => {});
-      });
-
-      // Log activity
-      await supabase
-        .from('activity_logs')
-        .insert({
-          church_id: linkInfo.church_id,
-          user_email: normalizedEmail,
-          action: 'member_joined_via_link',
-          entity_type: 'church_user',
-          entity_name: full_name.trim(),
-          details: JSON.stringify({ base_role: linkInfo.base_role, link_code: code })
-        }).catch(() => {});
-
+      // Show success BEFORE attempting auto sign-in
       setStatus('success');
 
-      // Auto sign in and redirect
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password
-      });
+      // Auto sign in and redirect (non-blocking)
+      try {
+        await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password
+        });
+      } catch (e) { console.warn('Auto sign-in failed:', e); }
 
       setTimeout(() => {
-        window.location.href = signInError ? APP_URL : APP_URL;
+        window.location.href = APP_URL;
       }, 2000);
     } catch (err) {
       console.error('Join error:', err);
